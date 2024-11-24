@@ -1,14 +1,14 @@
 use bevy::{prelude::*, utils::all_tuples};
 use std::collections::HashMap;
 
-trait Evaluate: sealed::Sealed + Sized {
-    fn evaluate(self) -> Evaluation;
+trait Evaluate: sealed::Sealed {
+    fn evaluate(&self) -> Evaluation;
 }
 
 mod sealed {
     pub trait Sealed {}
 
-    impl<T> Sealed for super::Evaluator<T> {}
+    impl<const LEN: usize> Sealed for super::Evaluator<LEN> {}
 }
 
 #[derive(Debug, Hash)]
@@ -20,16 +20,21 @@ struct DialogueState {
     active: bool,
 }
 
-struct Evaluator<C> {
-    count: usize,
-    conditions: C,
+struct Evaluator<const LEN: usize> {
+    conditions: [bool; LEN],
 }
 
-impl Evaluator<()> {
-    pub fn new() -> Self {
-        Self {
-            count: 0,
-            conditions: (),
+impl<const LEN: usize> Evaluator<LEN> {
+    pub fn new(conditions: [bool; LEN]) -> Self {
+        Self { conditions }
+    }
+}
+
+impl<const LEN: usize> Evaluate for Evaluator<LEN> {
+    fn evaluate(&self) -> Evaluation {
+        Evaluation {
+            result: self.conditions.iter().all(|c| *c),
+            count: LEN,
         }
     }
 }
@@ -55,45 +60,6 @@ pub fn clear_evaluated_dialogue(mut evaluated_dialogue: ResMut<EvaluatedDialogue
     evaluated_dialogue.clear();
 }
 
-macro_rules! impl_eval {
-    ($($condition:ident),*) => {
-        #[allow(non_snake_case)]
-        impl<$($condition),*> Evaluator<($($condition,)*)> {
-            fn fact<F>(self, fact: F) -> Evaluator<($($condition,)* F,)>
-            where
-                F: FnOnce() -> bool
-            {
-                let ($($condition,)*) = self.conditions;
-
-                Evaluator {
-                    count: self.count + 1,
-                    conditions: ($($condition,)* fact,)
-                }
-            }
-        }
-
-        #[allow(non_snake_case)]
-        impl<F, $($condition),*> Evaluator<($($condition,)* F,)>
-        where $($condition: FnOnce() -> bool,)*
-            F: FnOnce() -> bool,
-        {
-            fn evaluate(self) -> Evaluation {
-                let ($($condition,)* F,) = self.conditions;
-
-                Evaluation {
-                    result: $($condition()||)* F(),
-                    count: self.count,
-                }
-            }
-        }
-    };
-}
-
-all_tuples!(impl_eval, 0, 16, T);
-
 fn eval_d1(mut q: Query<()>, evals: ResMut<EvaluatedDialogue>) -> Evaluation {
-    Evaluator::new()
-        .fact(q.single_mut().is_dynamic())
-        .fact(q.single_mut().is_dynamic())
-        .evaluate()
+    Evaluator::new([q.single_mut().is_dynamic(), q.single_mut().is_dynamic()]).evaluate()
 }
