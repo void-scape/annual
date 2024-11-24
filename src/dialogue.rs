@@ -1,77 +1,92 @@
-use bevy::{ecs::schedule::ScheduleLabel, prelude::*, utils::HashMap};
+use bevy::{ecs::system::SystemId, prelude::*, utils::HashMap};
+use paste::paste;
+use rand::Rng;
 use std::marker::PhantomData;
 
-macro_rules! dlg {
-    ($stuff:tt) => {};
-}
-
-trait Dialogue {}
-
-impl<T> Dialogue for T {}
-
-struct DialogueId(u64);
-struct DialogueState {
-    id: DialogueId,
-    triggered: usize,
-    active: bool,
-}
-
-pub struct IntroDialogue<M, C, O> {
-    cond: C,
-    _marker: PhantomData<fn() -> (M, O)>,
-}
-
-impl<M, O> IntroDialogue<M, (), O>
-where
-    O: Condition<M> + Clone,
-{
-    pub fn new(condition: O) -> IntroDialogue<M, impl Fn() -> O, O> {
-        IntroDialogue {
-            cond: move || condition.clone(),
-            _marker: PhantomData,
+macro_rules! dialogue {
+    ($scene:ident, $($dlog:expr, $dlog_cond:expr),*) => {
+        pub struct $scene<M, C, O> {
+            condition: C,
+            _marker: PhantomData<fn() -> (M, O)>,
         }
-    }
+
+        impl<M, O> $scene<M, (), O>
+        where
+            O: Condition<M> + Clone,
+        {
+            pub fn new(condition: O) -> $scene<M, impl Fn() -> O, O> {
+                $scene {
+                    condition: move || condition.clone(),
+                    _marker: PhantomData,
+                }
+            }
+        }
+
+        paste! {
+            impl<M: 'static, C: 'static + Send + Sync, O: 'static> Plugin for $scene<M, C, O>
+            where
+                C: Fn() -> O,
+                O: Condition<M>,
+            {
+                fn build(&self, app: &mut App) {
+                    app.add_systems(
+                        Update,
+                        run_dialogue.in_set([<$scene Set>]),
+                    );
+                    app.configure_sets(Update, [<$scene Set>].run_if((self.condition)()));
+                    app.add_systems(Startup, setup);
+                }
+            }
+
+            #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone, Copy)]
+            pub struct [<$scene Set>];
+        }
+    };
 }
 
-impl<M: 'static, C: 'static + Send + Sync, O: 'static> Plugin for IntroDialogue<M, C, O>
-where
-    C: Fn() -> O,
-    O: Condition<M>,
-{
-    fn build(&self, app: &mut App) {
-        app.add_systems(
-            Update,
-            (d1.run_if(d1_eval), d2.run_if(d2_eval)).in_set(IntroSet),
-        )
-        .configure_sets(Update, IntroSet.run_if((self.cond)()));
-    }
+fn setup(mut commands: Commands, mut evaluated_dialogue: ResMut<EvaluatedDialogue>) {
+    evaluated_dialogue.register(DialogueHash(0), commands.register_one_shot_system(d1));
 }
 
-#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone, Copy)]
-pub struct IntroSet;
+dialogue!(IntroScene, d1, d1_eval, d2, d2_eval);
 
 //////////////////////////////
-
-pub struct Evaluator {}
 
 #[derive(Component, Debug)]
 struct EvaluatorResult(bool, usize);
 
-#[derive(Component, Debug, Hash)]
+#[derive(Component, Debug, Hash, PartialEq, Eq)]
 struct DialogueHash(usize);
 
 #[derive(Resource, Debug, Default)]
 pub struct EvaluatedDialogue {
-    evaluations: HashMap<DialogueHash, EvaluatorResult>,
+    evaluations: HashMap<DialogueHash, Evaluation>,
+    oneshots: HashMap<DialogueHash, SystemId>,
 }
 
 impl EvaluatedDialogue {
+    pub fn register(&mut self, hash: DialogueHash, id: SystemId) {
+        self.oneshots.insert(hash, id);
+    }
+
+    pub fn insert_evaluation(&mut self, hash: DialogueHash, evaluation: Evaluation) {
+        self.evaluations.insert(hash, evaluation);
+    }
+
     pub fn clear(&mut self) {
         self.evaluations.clear();
     }
 }
 
-pub fn clear_evaluated_dialogue(mut evaluated_dialogue: ResMut<EvaluatedDialogue>) {
+fn run_dialogue(mut commands: Commands, mut evaluated_dialogue: ResMut<EvaluatedDialogue>) {
+    let evaluations = evaluated_dialogue.evaluations.drain().collect::<Vec<_>>();
+    evaluations.sort_by_key(|(_, eval)| eval.count);
+    if let Some(hash) = evaluations.find_map(|(hash, eval)| eval.result.then_some(hash)) {
+        if let Some(oneshot) = evaluated_dialogue.oneshots.get(hash) {
+            commands.run_system(*oneshot);
+        }
+    }
+
     evaluated_dialogue.clear();
 }
 
@@ -83,7 +98,7 @@ pub struct DialogStep(pub usize);
 #[derive(Component, Debug)]
 struct IntroDialogueMarker;
 
-pub fn d1_eval(step: Res<DialogStep>) -> bool {
+pub fn d1_eval(step: Res<DialogStep>) -> Evaluation {
     step.0 == 0
 }
 
@@ -92,7 +107,7 @@ pub fn d1(mut step: ResMut<DialogStep>) {
     step.0 += 1;
 }
 
-pub fn d2_eval(step: Res<DialogStep>) -> bool {
+pub fn d2_eval(step: Res<DialogStep>) -> Evaluation {
     step.0 == 1
 }
 
