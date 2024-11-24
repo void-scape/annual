@@ -1,6 +1,5 @@
 use bevy::{ecs::system::SystemId, prelude::*, utils::HashMap};
 use paste::paste;
-use rand::Rng;
 use std::marker::PhantomData;
 
 macro_rules! dialogue {
