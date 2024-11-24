@@ -2,6 +2,8 @@ use bevy::{ecs::system::SystemId, prelude::*, utils::HashMap};
 use paste::paste;
 use std::marker::PhantomData;
 
+use crate::evaluate::{Evaluate, Evaluator};
+
 macro_rules! dialogue {
     ($scene:ident, $($dlog:expr, $dlog_cond:expr),*) => {
         pub struct $scene<M, C, O> {
@@ -30,10 +32,11 @@ macro_rules! dialogue {
                 fn build(&self, app: &mut App) {
                     app.add_systems(
                         Update,
-                        run_dialogue.in_set([<$scene Set>]),
+                        evaluate_dialogue.in_set([<$scene Set>]),
                     );
                     app.configure_sets(Update, [<$scene Set>].run_if((self.condition)()));
                     app.add_systems(Startup, setup);
+                    app.add_systems(Update, run_dialogue);
                 }
             }
 
@@ -43,8 +46,16 @@ macro_rules! dialogue {
     };
 }
 
+fn evaluate_dialogue(mut commands: Commands, mut evaluated_dialogue: ResMut<EvaluatedDialogue>) {
+    evaluated_dialogue.insert_evaluation(
+        DialogueHash(0),
+        commands.run_system(commands.register_one_shot_system(d1_eval)),
+    );
+}
+
 fn setup(mut commands: Commands, mut evaluated_dialogue: ResMut<EvaluatedDialogue>) {
     evaluated_dialogue.register(DialogueHash(0), commands.register_one_shot_system(d1));
+    evaluated_dialogue.register(DialogueHash(1), commands.register_one_shot_system(d2));
 }
 
 dialogue!(IntroScene, d1, d1_eval, d2, d2_eval);
@@ -97,8 +108,8 @@ pub struct DialogStep(pub usize);
 #[derive(Component, Debug)]
 struct IntroDialogueMarker;
 
-pub fn d1_eval(step: Res<DialogStep>) -> Evaluation {
-    step.0 == 0
+pub fn d1_eval(mut writer: EventWriter<Evaluation>, step: Res<DialogStep>) -> Evaluation {
+    writer.send(Evaluator::new([step.0 == 0]).evaluate());
 }
 
 pub fn d1(mut step: ResMut<DialogStep>) {

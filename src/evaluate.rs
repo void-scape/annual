@@ -1,7 +1,7 @@
 use bevy::{prelude::*, utils::all_tuples};
 use std::collections::HashMap;
 
-trait Evaluate: sealed::Sealed {
+pub trait Evaluate: sealed::Sealed {
     fn evaluate(&self) -> Evaluation;
 }
 
@@ -20,7 +20,7 @@ struct DialogueState {
     active: bool,
 }
 
-struct Evaluator<const LEN: usize> {
+pub struct Evaluator<const LEN: usize> {
     conditions: [bool; LEN],
 }
 
@@ -40,7 +40,7 @@ impl<const LEN: usize> Evaluate for Evaluator<LEN> {
 }
 
 #[derive(Component, Debug)]
-struct Evaluation {
+pub struct Evaluation {
     pub result: bool,
     pub count: usize,
 }
