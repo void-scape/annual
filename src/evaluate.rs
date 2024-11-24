@@ -1,4 +1,4 @@
-use bevy::{prelude::*, utils::all_tuples};
+use bevy::prelude::*;
 use std::collections::HashMap;
 
 pub trait Evaluate: sealed::Sealed {
@@ -8,38 +8,55 @@ pub trait Evaluate: sealed::Sealed {
 mod sealed {
     pub trait Sealed {}
 
-    impl<const LEN: usize> Sealed for super::Evaluator<LEN> {}
+    impl Sealed for super::Evaluation {}
+    impl<const LEN: usize> Sealed for [bool; LEN] {}
+    impl Sealed for Vec<bool> {}
+    impl Sealed for bool {}
 }
 
-#[derive(Debug, Hash)]
-struct DialogueId(u64);
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct DialogueId(pub u64);
 
-struct DialogueState {
+pub struct DialogueState {
     id: DialogueId,
     triggered: usize,
     active: bool,
 }
 
-pub struct Evaluator<const LEN: usize> {
-    conditions: [bool; LEN],
-}
-
-impl<const LEN: usize> Evaluator<LEN> {
-    pub fn new(conditions: [bool; LEN]) -> Self {
-        Self { conditions }
-    }
-}
-
-impl<const LEN: usize> Evaluate for Evaluator<LEN> {
+impl Evaluate for bool {
     fn evaluate(&self) -> Evaluation {
         Evaluation {
-            result: self.conditions.iter().all(|c| *c),
-            count: LEN,
+            result: *self,
+            count: 1,
         }
     }
 }
 
-#[derive(Component, Debug)]
+impl<const LEN: usize> Evaluate for [bool; LEN] {
+    fn evaluate(&self) -> Evaluation {
+        Evaluation {
+            result: self.iter().all(|e| *e),
+            count: self.len(),
+        }
+    }
+}
+
+impl Evaluate for Vec<bool> {
+    fn evaluate(&self) -> Evaluation {
+        Evaluation {
+            result: self.iter().all(|e| *e),
+            count: self.len(),
+        }
+    }
+}
+
+impl Evaluate for Evaluation {
+    fn evaluate(&self) -> Evaluation {
+        *self
+    }
+}
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Evaluation {
     pub result: bool,
     pub count: usize,
@@ -58,8 +75,4 @@ impl EvaluatedDialogue {
 
 pub fn clear_evaluated_dialogue(mut evaluated_dialogue: ResMut<EvaluatedDialogue>) {
     evaluated_dialogue.clear();
-}
-
-fn eval_d1(mut q: Query<()>, evals: ResMut<EvaluatedDialogue>) -> Evaluation {
-    Evaluator::new([q.single_mut().is_dynamic(), q.single_mut().is_dynamic()]).evaluate()
 }

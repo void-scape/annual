@@ -4,13 +4,12 @@ use dialogue::DialogStep;
 mod dialogue;
 mod evaluate;
 
-use dialogue::*;
-
 fn main() {
     App::default()
         .add_plugins(DefaultPlugins)
         .insert_resource(DialogStep(0))
+        .insert_resource(dialogue::EvaluatedDialogue::default())
         .add_systems(Update, bevy_bits::close_on_escape)
-        // .add_systems(Update, (d1, d2))
+        .add_plugins(dialogue::IntroScene::new(|| true))
         .run();
 }

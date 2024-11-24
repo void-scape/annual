@@ -1,42 +1,51 @@
+use crate::evaluate::{DialogueId, Evaluate, Evaluation};
 use bevy::{ecs::system::SystemId, prelude::*, utils::HashMap};
 use paste::paste;
 use std::marker::PhantomData;
 
-use crate::evaluate::{Evaluate, Evaluator};
-
 macro_rules! dialogue {
-    ($scene:ident, $($dlog:expr, $dlog_cond:expr),*) => {
-        pub struct $scene<M, C, O> {
+    ($scene:ident, $($dlog:expr, $dlog_cond:expr, $dlog_id:expr),*) => {
+        pub struct $scene<C, M> {
             condition: C,
-            _marker: PhantomData<fn() -> (M, O)>,
+            _marker: PhantomData<fn() -> M>,
         }
 
-        impl<M, O> $scene<M, (), O>
-        where
-            O: Condition<M> + Clone,
-        {
-            pub fn new(condition: O) -> $scene<M, impl Fn() -> O, O> {
+        impl $scene<(), ()> {
+            pub fn new<C, M>(condition: C) -> $scene<C, M>
+            where
+                C: Condition<M> + Clone,
+            {
                 $scene {
-                    condition: move || condition.clone(),
+                    condition,
                     _marker: PhantomData,
                 }
             }
         }
 
         paste! {
-            impl<M: 'static, C: 'static + Send + Sync, O: 'static> Plugin for $scene<M, C, O>
+            impl<M: 'static, C: 'static + Send + Sync> Plugin for $scene<C, M>
             where
-                C: Fn() -> O,
-                O: Condition<M>,
+                C: Condition<M> + Clone,
             {
                 fn build(&self, app: &mut App) {
-                    app.add_systems(
-                        Update,
-                        evaluate_dialogue.in_set([<$scene Set>]),
-                    );
-                    app.configure_sets(Update, [<$scene Set>].run_if((self.condition)()));
-                    app.add_systems(Startup, setup);
-                    app.add_systems(Update, run_dialogue);
+                    app
+                        .add_systems(
+                            Startup,
+                            |mut commands: Commands, mut evaluated: ResMut<EvaluatedDialogue>| {
+                                $(
+                                    evaluated.register($dlog_id, commands.register_one_shot_system($dlog));
+                                )*
+                            }
+                        )
+                        .add_systems(
+                            Update,
+                            (
+                                $(map_eval($dlog_cond, $dlog_id),)*
+                            )
+                            .in_set([<$scene Set>]),
+                        )
+                        .configure_sets(Update, [<$scene Set>].run_if(self.condition.clone()))
+                        .add_systems(Update, run_dialogue);
                 }
             }
 
@@ -46,40 +55,46 @@ macro_rules! dialogue {
     };
 }
 
-fn evaluate_dialogue(mut commands: Commands, mut evaluated_dialogue: ResMut<EvaluatedDialogue>) {
-    evaluated_dialogue.insert_evaluation(
-        DialogueHash(0),
-        commands.run_system(commands.register_one_shot_system(d1_eval)),
-    );
+/// Pipe an evaluation system into one that updates the eval hash map.
+///
+/// The evaluation system can return anything that implements [Evaluate].
+#[inline(always)]
+fn map_eval<S, I, O, M>(eval_system: S, id: DialogueId) -> impl IntoSystem<I, (), ()>
+where
+    S: IntoSystem<I, O, M>,
+    O: Evaluate + 'static,
+{
+    eval_system.pipe(
+        move |eval: In<O>, mut evaluated_dialogue: ResMut<EvaluatedDialogue>| {
+            evaluated_dialogue.insert_evaluation(id, eval.0.evaluate());
+        },
+    )
 }
 
-fn setup(mut commands: Commands, mut evaluated_dialogue: ResMut<EvaluatedDialogue>) {
-    evaluated_dialogue.register(DialogueHash(0), commands.register_one_shot_system(d1));
-    evaluated_dialogue.register(DialogueHash(1), commands.register_one_shot_system(d2));
-}
-
-dialogue!(IntroScene, d1, d1_eval, d2, d2_eval);
+dialogue!(
+    IntroScene,
+    d1,
+    d1_eval,
+    DialogueId(0),
+    d2,
+    d2_eval,
+    DialogueId(1)
+);
 
 //////////////////////////////
 
-#[derive(Component, Debug)]
-struct EvaluatorResult(bool, usize);
-
-#[derive(Component, Debug, Hash, PartialEq, Eq)]
-struct DialogueHash(usize);
-
 #[derive(Resource, Debug, Default)]
 pub struct EvaluatedDialogue {
-    evaluations: HashMap<DialogueHash, Evaluation>,
-    oneshots: HashMap<DialogueHash, SystemId>,
+    evaluations: HashMap<DialogueId, Evaluation>,
+    oneshots: HashMap<DialogueId, SystemId>,
 }
 
 impl EvaluatedDialogue {
-    pub fn register(&mut self, hash: DialogueHash, id: SystemId) {
+    pub fn register(&mut self, hash: DialogueId, id: SystemId) {
         self.oneshots.insert(hash, id);
     }
 
-    pub fn insert_evaluation(&mut self, hash: DialogueHash, evaluation: Evaluation) {
+    pub fn insert_evaluation(&mut self, hash: DialogueId, evaluation: Evaluation) {
         self.evaluations.insert(hash, evaluation);
     }
 
@@ -89,9 +104,12 @@ impl EvaluatedDialogue {
 }
 
 fn run_dialogue(mut commands: Commands, mut evaluated_dialogue: ResMut<EvaluatedDialogue>) {
-    let evaluations = evaluated_dialogue.evaluations.drain().collect::<Vec<_>>();
+    let mut evaluations = evaluated_dialogue.evaluations.drain().collect::<Vec<_>>();
     evaluations.sort_by_key(|(_, eval)| eval.count);
-    if let Some(hash) = evaluations.find_map(|(hash, eval)| eval.result.then_some(hash)) {
+    if let Some(hash) = evaluations
+        .iter()
+        .find_map(|(hash, eval)| eval.result.then_some(hash))
+    {
         if let Some(oneshot) = evaluated_dialogue.oneshots.get(hash) {
             commands.run_system(*oneshot);
         }
@@ -105,11 +123,8 @@ fn run_dialogue(mut commands: Commands, mut evaluated_dialogue: ResMut<Evaluated
 #[derive(Resource)]
 pub struct DialogStep(pub usize);
 
-#[derive(Component, Debug)]
-struct IntroDialogueMarker;
-
-pub fn d1_eval(mut writer: EventWriter<Evaluation>, step: Res<DialogStep>) -> Evaluation {
-    writer.send(Evaluator::new([step.0 == 0]).evaluate());
+pub fn d1_eval(step: Res<DialogStep>) -> impl Evaluate {
+    step.0 == 0
 }
 
 pub fn d1(mut step: ResMut<DialogStep>) {
@@ -117,7 +132,7 @@ pub fn d1(mut step: ResMut<DialogStep>) {
     step.0 += 1;
 }
 
-pub fn d2_eval(step: Res<DialogStep>) -> Evaluation {
+pub fn d2_eval(step: Res<DialogStep>) -> impl Evaluate {
     step.0 == 1
 }
 
@@ -126,27 +141,40 @@ pub fn d2(mut step: ResMut<DialogStep>) {
     step.0 += 1;
 }
 
-// static COOL_DIALGOUE: DialogueId = dlg!("Hello, Synthia!");
-// static D2: DialogueId = dlg!(precondition = D1, "whatever");
+// // Dialogue with a globally-scoped ID.
+// static TAGGED_DIALOGUE: DialogueId = dialogue!("Hey John...");
 //
-// dialogue! {
-//     D1 = "Hello",
-//     D2 = "whatever",
+// fn scene(mut commands: Commands) {
+//     // A sequence takes a tuple of dialogue items where
+//     // each item has an implicit evaluation on whether the
+//     // previous item has finished.
+//     let scene = sequence((
+//         // Most dialogue won't need a global ID -- it can just be dynamically generated.
+//         "Hello, Synthia!",
+//         TAGGED_DIALOGUE,
+//         // `any` will advance as soon as at least one item has finished.
+//         any((
+//             // `eval` allows us to pass an explicit evaulation.
+//             eval(
+//                 demon_slayer_eval,
+//                 sequence((
+//                     "Did you slay the demon?",
+//                     |slain: Res<DemonsSlain>| format!("Yes, I've slain {} in fact.", slain.0),
+//                     "Wow!",
+//                 )),
+//             ),
+//             sequence((
+//                 // We can add `on_trigger` hooks (which are just systems) to any bit of dialogue.
+//                 "How's the weather?".on_trigger(|mut weather_question: ResMut<Weather>| *dq = true),
+//                 "Hm.. seems okay...",
+//             )),
+//         )),
+//         "Anyway, let's get going, shall we?",
+//     ));
+//
+//     scene.register(commands);
 // }
 //
-// fn idea() -> impl Dialogue {
-//     dlg!("Here's some dialogue", |q: Query<Health>| {
-//         q.single().unwrap().0 < 10
-//     })
-//
-//     vec![
-//         "Hello",
-//         "My name is jeff",
-//         "Yo",
-//     ];
-//
-//     vec![
-//         dlg!("Oh no!", |q: Query<Health>| { q.single().unwrap() < 10 }),
-//         dlg!("Nice!", |q: Query<Health>| { q.single().unwrap() > 10 }),
-//     ]
+// fn demon_slayer_eval(slain: Res<DemonsSlain>) -> impl Evalate {
+//     slain.0 != 0
 // }
