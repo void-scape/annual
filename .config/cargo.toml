@@ -2,5 +2,9 @@
 linker = "clang"
 rustflags = ["-C", "link-arg=--ld-path=/usr/local/bin/mold"]
 
+[target.aarch64-apple-darwin]
+linker = "clang"
+rustflags = ["-C", "link-arg=--ld-path=/usr/local/bin/mold"]
+
 [target.wasm32-unknown-unknown]
 runner = "wasm-server-runner"
