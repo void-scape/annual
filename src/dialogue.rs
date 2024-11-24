@@ -5,17 +5,6 @@ macro_rules! dlg {
     ($stuff:tt) => {};
 }
 
-trait Dialogue {}
-
-impl<T> Dialogue for T {}
-
-struct DialogueId(u64);
-struct DialogueState {
-    id: DialogueId,
-    triggered: usize,
-    active: bool,
-}
-
 pub struct IntroDialogue<M, C, O> {
     cond: C,
     _marker: PhantomData<fn() -> (M, O)>,
@@ -51,29 +40,6 @@ where
 pub struct IntroSet;
 
 //////////////////////////////
-
-pub struct Evaluator {}
-
-#[derive(Component, Debug)]
-struct EvaluatorResult(bool, usize);
-
-#[derive(Component, Debug, Hash)]
-struct DialogueHash(usize);
-
-#[derive(Resource, Debug, Default)]
-pub struct EvaluatedDialogue {
-    evaluations: HashMap<DialogueHash, EvaluatorResult>,
-}
-
-impl EvaluatedDialogue {
-    pub fn clear(&mut self) {
-        self.evaluations.clear();
-    }
-}
-
-pub fn clear_evaluated_dialogue(mut evaluated_dialogue: ResMut<EvaluatedDialogue>) {
-    evaluated_dialogue.clear();
-}
 
 /////////////
 
