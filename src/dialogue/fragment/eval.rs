@@ -1,6 +1,6 @@
-use super::{DialogueEvent, Fragment, IntoFragment, Unregistered};
-use crate::dialogue::EvaluatedDialogue;
-use crate::evaluate::{DialogueId, Evaluate, Evaluation};
+use super::{Fragment, IntoFragment, Unregistered};
+use crate::dialogue::evaluate::{Evaluate, EvaluatedDialogue, Evaluation};
+use crate::dialogue::{DialogueEvent, DialogueId};
 use bevy::ecs::system::SystemId;
 use bevy::prelude::*;
 use std::marker::PhantomData;
@@ -30,8 +30,9 @@ where
                 move |eval: In<O>, mut evaluated_dialogue: ResMut<EvaluatedDialogue>| {
                     // TODO: clearly these evaluations should be additive, not simply clear each
                     // other out.
+                    let eval = eval.0.evaluate();
                     for id in id.iter() {
-                        evaluated_dialogue.insert_evaluation(*id, eval.evaluate());
+                        evaluated_dialogue.insert(*id, eval);
                     }
                 },
             ),
@@ -58,7 +59,7 @@ where
         self.fragment.emit(selected_id, writer, commands);
     }
 
-    fn id(&self) -> &[crate::evaluate::DialogueId] {
+    fn id(&self) -> &[DialogueId] {
         self.fragment.id()
     }
 }

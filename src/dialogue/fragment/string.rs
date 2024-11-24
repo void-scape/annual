@@ -1,5 +1,5 @@
-use super::{DialogueEvent, Fragment, IntoFragment};
-use crate::evaluate::DialogueId;
+use super::{Fragment, IntoFragment};
+use crate::dialogue::{DialogueEvent, DialogueId};
 use bevy::prelude::*;
 
 pub struct StringFragment<S> {

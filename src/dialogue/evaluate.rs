@@ -1,6 +1,7 @@
+use crate::dialogue::DialogueId;
 use bevy::prelude::*;
 use rand::Rng;
-use std::collections::HashMap;
+use std::collections::{hash_map::Entry, HashMap};
 
 pub trait Evaluate: sealed::Sealed {
     fn evaluate(&self) -> Evaluation;
@@ -13,21 +14,6 @@ mod sealed {
     impl<const LEN: usize> Sealed for [bool; LEN] {}
     impl Sealed for Vec<bool> {}
     impl Sealed for bool {}
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct DialogueId(u64);
-
-impl DialogueId {
-    pub fn random() -> Self {
-        Self(rand::thread_rng().gen())
-    }
-}
-
-pub struct DialogueState {
-    id: DialogueId,
-    triggered: usize,
-    active: bool,
 }
 
 impl Evaluate for bool {
@@ -69,12 +55,40 @@ pub struct Evaluation {
     pub count: usize,
 }
 
+impl Evaluation {
+    pub fn merge(&mut self, other: Evaluation) {
+        self.result &= other.result;
+        self.count += other.count;
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct DialogueState {
+    pub triggered: usize,
+    pub active: bool,
+}
+
+#[derive(Resource, Debug, Default)]
+pub struct DialogueStates {
+    pub state: HashMap<DialogueId, DialogueState>,
+}
+
 #[derive(Resource, Debug, Default)]
 pub struct EvaluatedDialogue {
-    evaluations: HashMap<DialogueId, Evaluation>,
+    pub(super) evaluations: HashMap<DialogueId, Evaluation>,
 }
 
 impl EvaluatedDialogue {
+    pub fn insert<E: Evaluate>(&mut self, id: DialogueId, evaluation: E) {
+        let eval = evaluation.evaluate();
+        match self.evaluations.entry(id) {
+            Entry::Vacant(e) => {
+                e.insert(eval);
+            }
+            Entry::Occupied(mut e) => e.get_mut().merge(eval),
+        }
+    }
+
     pub fn clear(&mut self) {
         self.evaluations.clear();
     }

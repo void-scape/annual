@@ -1,5 +1,5 @@
-use super::{DialogueEvent, Fragment, IntoFragment, Unregistered};
-use crate::evaluate::DialogueId;
+use super::{Fragment, IntoFragment, Unregistered};
+use crate::dialogue::{DialogueEvent, DialogueId};
 use bevy::ecs::system::SystemId;
 use bevy::prelude::*;
 
@@ -52,7 +52,7 @@ where
         }
     }
 
-    fn id(&self) -> &[crate::evaluate::DialogueId] {
+    fn id(&self) -> &[DialogueId] {
         self.id()
     }
 }

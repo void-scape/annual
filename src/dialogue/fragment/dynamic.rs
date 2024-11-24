@@ -1,5 +1,5 @@
-use super::{DialogueEvent, Fragment, IntoFragment, Unregistered};
-use crate::evaluate::DialogueId;
+use super::{Fragment, IntoFragment, Unregistered};
+use crate::dialogue::{DialogueEvent, DialogueId};
 use bevy::ecs::system::SystemId;
 use bevy::prelude::*;
 
@@ -63,7 +63,7 @@ impl Fragment for Dynamic<SystemId> {
         }
     }
 
-    fn id(&self) -> &[crate::evaluate::DialogueId] {
+    fn id(&self) -> &[DialogueId] {
         core::slice::from_ref(&self.id)
     }
 }

@@ -1,4 +1,5 @@
-use crate::evaluate::DialogueId;
+use super::evaluate::EvaluatedDialogue;
+use crate::dialogue::{DialogueEvent, DialogueId};
 use bevy::{ecs::system::SystemId, prelude::*};
 use std::marker::PhantomData;
 
@@ -20,12 +21,6 @@ pub struct Unregistered<T>(T);
 /// A type-erased fragment component.
 #[derive(Component)]
 pub struct ErasedFragment(pub Box<dyn Fragment + Send + Sync>);
-
-#[derive(Debug, Event)]
-pub struct DialogueEvent {
-    pub dialogue: String,
-    pub id: DialogueId,
-}
 
 /// A dialogue fragment.
 ///
