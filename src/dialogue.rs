@@ -75,18 +75,18 @@ dialogue!(
     IntroScene,
     d1,
     d1_eval,
-    DialogueId(0),
+    DialogueId::random(),
     d2,
     d2_eval,
-    DialogueId(1)
+    DialogueId::random()
 );
 
 //////////////////////////////
 
 #[derive(Resource, Debug, Default)]
 pub struct EvaluatedDialogue {
-    evaluations: HashMap<DialogueId, Evaluation>,
-    oneshots: HashMap<DialogueId, SystemId>,
+    pub evaluations: HashMap<DialogueId, Evaluation>,
+    pub oneshots: HashMap<DialogueId, SystemId>,
 }
 
 impl EvaluatedDialogue {
@@ -155,14 +155,12 @@ pub fn d2(mut step: ResMut<DialogStep>) {
 //         // `any` will advance as soon as at least one item has finished.
 //         any((
 //             // `eval` allows us to pass an explicit evaulation.
-//             eval(
-//                 demon_slayer_eval,
-//                 sequence((
-//                     "Did you slay the demon?",
-//                     |slain: Res<DemonsSlain>| format!("Yes, I've slain {} in fact.", slain.0),
-//                     "Wow!",
-//                 )),
-//             ),
+//             sequence((
+//                 "Did you slay the demon?",
+//                 |slain: Res<DemonsSlain>| format!("Yes, I've slain {} in fact.", slain.0),
+//                 "Wow!",
+//             ))
+//             .eval(demon_slayer_eval),
 //             sequence((
 //                 // We can add `on_trigger` hooks (which are just systems) to any bit of dialogue.
 //                 "How's the weather?".on_trigger(|mut weather_question: ResMut<Weather>| *dq = true),

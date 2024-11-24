@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use rand::Rng;
 use std::collections::HashMap;
 
 pub trait Evaluate: sealed::Sealed {
@@ -15,7 +16,13 @@ mod sealed {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct DialogueId(pub u64);
+pub struct DialogueId(u64);
+
+impl DialogueId {
+    pub fn random() -> Self {
+        Self(rand::thread_rng().gen())
+    }
+}
 
 pub struct DialogueState {
     id: DialogueId,
