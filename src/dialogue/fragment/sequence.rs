@@ -1,7 +1,24 @@
 use super::{Fragment, IntoFragment};
+use crate::dialogue::evaluate::{DialogueStates, EvaluatedDialogue};
 use crate::dialogue::{DialogueEvent, DialogueId};
 use bevy::prelude::*;
 use bevy::utils::all_tuples;
+
+#[derive(Debug, Component)]
+pub struct SequenceItems(Vec<DialogueId>);
+
+pub fn update_sequence_items(
+    q: Query<&SequenceItems>,
+    state: Res<DialogueStates>,
+    mut evals: ResMut<EvaluatedDialogue>,
+) {
+    for items in q.iter() {
+        for window in items.0.windows(2) {
+            let eval = state.is_done(window[0]) && !state.has_triggered(window[1]);
+            evals.insert(window[1], eval);
+        }
+    }
+}
 
 pub struct Sequence<F> {
     fragments: F,
@@ -21,7 +38,7 @@ macro_rules! seq_frag {
                 let mut ids = self.ids;
                 let ($($ty,)*) = self.fragments;
 
-                Sequence {
+                let seq = Sequence {
                     fragments: (
                         $({
                             let frag = $ty.into_fragment(world);
@@ -30,7 +47,13 @@ macro_rules! seq_frag {
                         },)*
                     ),
                     ids,
-                }
+                };
+
+                // TODO: this is basically a leak. It would be nice if we could
+                // remove this when this sequene is no longer active.
+                world.spawn(SequenceItems(seq.ids.clone()));
+
+                seq
             }
         }
 
@@ -45,8 +68,8 @@ macro_rules! seq_frag {
                 writer: &mut EventWriter<DialogueEvent>,
                 commands: &mut Commands,
             ) {
-                // TODO: I'm not quite sure what to do heere yet.
-                todo!();
+                let ($($ty,)*) = &mut self.fragments;
+                $($ty.emit(selected_id, writer, commands);)*
             }
 
             fn id(&self) -> &[DialogueId] {

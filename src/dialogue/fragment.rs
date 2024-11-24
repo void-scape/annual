@@ -1,19 +1,23 @@
-use super::evaluate::EvaluatedDialogue;
 use crate::dialogue::{DialogueEvent, DialogueId};
-use bevy::{ecs::system::SystemId, prelude::*};
+use bevy::prelude::*;
 use std::marker::PhantomData;
 
 mod dynamic;
 mod eval;
+mod limit;
 mod sequence;
 mod string;
 mod trigger;
 
 pub use dynamic::{dynamic, Dynamic};
 pub use eval::Evaluated;
+pub use limit::Limit;
 pub use sequence::{sequence, Sequence};
 pub use string::StringFragment;
 pub use trigger::Trigger;
+
+pub(crate) use limit::update_limit_items;
+pub(crate) use sequence::update_sequence_items;
 
 /// A wrapper for typestate management.
 pub struct Unregistered<T>(T);
@@ -92,5 +96,28 @@ pub trait IntoFragment {
             evaluation: Unregistered(IntoSystem::into_system(system)),
             _marker: PhantomData,
         }
+    }
+
+    /// Limit this fragment to `n` triggers.
+    fn limit(self, n: usize) -> Limit<Unregistered<Self>>
+    where
+        Self: Sized,
+    {
+        Limit::new(self, n)
+    }
+}
+
+/// A convenience trait for setting a fragment's limit to 1.
+pub trait Once: Sized {
+    /// Set this fragment's limit to 1.
+    fn once(self) -> Limit<Unregistered<Self>>;
+}
+
+impl<T> Once for T
+where
+    T: IntoFragment,
+{
+    fn once(self) -> Limit<Unregistered<Self>> {
+        self.limit(1)
     }
 }

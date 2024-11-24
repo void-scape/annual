@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use evaluate::DialogueStates;
 use rand::Rng;
 
 pub mod evaluate;
@@ -19,13 +20,37 @@ pub struct DialogueEvent {
     pub id: DialogueId,
 }
 
+impl DialogueEvent {
+    pub fn end(&self) -> DialogueEndEvent {
+        DialogueEndEvent { id: self.id }
+    }
+}
+
+#[derive(Debug, Event)]
+pub struct DialogueEndEvent {
+    pub id: DialogueId,
+}
+
 pub struct DialoguePlugin;
 
 impl Plugin for DialoguePlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(evaluate::EvaluatedDialogue::default())
+            .insert_resource(evaluate::DialogueStates::default())
             .add_event::<DialogueEvent>()
-            .add_systems(PostUpdate, handle_fragments);
+            .add_event::<DialogueEndEvent>()
+            .add_systems(
+                PostUpdate,
+                (
+                    (
+                        fragment::update_sequence_items,
+                        fragment::update_limit_items,
+                    ),
+                    handle_fragments,
+                    watch_events,
+                )
+                    .chain(),
+            );
     }
 }
 
@@ -48,4 +73,23 @@ pub fn handle_fragments(
     }
 
     evaluated_dialogue.clear();
+}
+
+pub fn watch_events(
+    mut start: EventReader<DialogueEvent>,
+    mut end: EventReader<DialogueEndEvent>,
+    mut state: ResMut<DialogueStates>,
+) {
+    for start in start.read() {
+        let entry = state.state.entry(start.id).or_default();
+
+        entry.triggered += 1;
+        entry.active = true;
+    }
+
+    for end in end.read() {
+        let entry = state.state.entry(end.id).or_default();
+
+        entry.active = false;
+    }
 }

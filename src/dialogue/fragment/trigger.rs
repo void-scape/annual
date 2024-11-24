@@ -53,6 +53,6 @@ where
     }
 
     fn id(&self) -> &[DialogueId] {
-        self.id()
+        self.fragment.id()
     }
 }

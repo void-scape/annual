@@ -1,6 +1,5 @@
 use crate::dialogue::DialogueId;
 use bevy::prelude::*;
-use rand::Rng;
 use std::collections::{hash_map::Entry, HashMap};
 
 pub trait Evaluate: sealed::Sealed {
@@ -62,7 +61,7 @@ impl Evaluation {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct DialogueState {
     pub triggered: usize,
     pub active: bool,
@@ -71,6 +70,22 @@ pub struct DialogueState {
 #[derive(Resource, Debug, Default)]
 pub struct DialogueStates {
     pub state: HashMap<DialogueId, DialogueState>,
+}
+
+impl DialogueStates {
+    pub fn is_done(&self, id: DialogueId) -> bool {
+        self.state
+            .get(&id)
+            .is_some_and(|s| s.triggered >= 1 && !s.active)
+    }
+
+    pub fn is_active(&self, id: DialogueId) -> bool {
+        self.state.get(&id).is_some_and(|s| s.active)
+    }
+
+    pub fn has_triggered(&self, id: DialogueId) -> bool {
+        self.state.get(&id).is_some_and(|s| s.triggered > 0)
+    }
 }
 
 #[derive(Resource, Debug, Default)]
@@ -92,8 +107,4 @@ impl EvaluatedDialogue {
     pub fn clear(&mut self) {
         self.evaluations.clear();
     }
-}
-
-pub fn clear_evaluated_dialogue(mut evaluated_dialogue: ResMut<EvaluatedDialogue>) {
-    evaluated_dialogue.clear();
 }
