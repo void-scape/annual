@@ -55,7 +55,7 @@ where
     fn into_fragment(self, world: &mut World) -> Self::Fragment {
         let fragment = self.fragment.0.into_fragment(world);
         world.spawn(LimitItems {
-            ids: fragment.id().iter().copied().collect(),
+            ids: fragment.id().to_vec(),
             limit: self.limit,
         });
 
@@ -72,7 +72,7 @@ where
 {
     type Fragment = Self;
 
-    fn into_fragment(self, world: &mut World) -> Self::Fragment {
+    fn into_fragment(self, _world: &mut World) -> Self::Fragment {
         self
     }
 }

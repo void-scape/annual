@@ -35,6 +35,7 @@ macro_rules! seq_frag {
             type Fragment = Sequence<($($ty::Fragment,)*)>;
 
             fn into_fragment(self, world: &mut World) -> Self::Fragment {
+                #[allow(unused_mut)]
                 let mut ids = self.ids;
                 let ($($ty,)*) = self.fragments;
 
@@ -62,6 +63,7 @@ macro_rules! seq_frag {
         where
             $($ty: Fragment),*
         {
+            #[allow(unused)]
             fn emit(
                 &mut self,
                 selected_id: DialogueId,

@@ -25,7 +25,7 @@ where
 {
     type Fragment = Self;
 
-    fn into_fragment(self, world: &mut World) -> Self::Fragment {
+    fn into_fragment(self, _world: &mut World) -> Self::Fragment {
         self
     }
 }
@@ -53,7 +53,7 @@ where
         &mut self,
         selected_id: DialogueId,
         writer: &mut EventWriter<DialogueEvent>,
-        commands: &mut Commands,
+        _commands: &mut Commands,
     ) {
         if selected_id == self.id {
             writer.send(DialogueEvent {
@@ -71,8 +71,9 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::dialogue::EvaluatedDialogue;
+    use crate::dialogue::evaluate::EvaluatedDialogue;
 
+    #[test]
     fn test() {
         let world = bevy::app::App::new().add_systems(Startup, |world: &mut World| {
             let fragment1 = "Hello, world!"

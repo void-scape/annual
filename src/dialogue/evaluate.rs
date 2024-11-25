@@ -72,6 +72,7 @@ pub struct DialogueStates {
     pub state: HashMap<DialogueId, DialogueState>,
 }
 
+#[allow(unused)]
 impl DialogueStates {
     pub fn is_done(&self, id: DialogueId) -> bool {
         self.state

@@ -46,7 +46,7 @@ where
 impl IntoFragment for Dynamic<SystemId> {
     type Fragment = Self;
 
-    fn into_fragment(self, world: &mut World) -> Self::Fragment {
+    fn into_fragment(self, _world: &mut World) -> Self::Fragment {
         self
     }
 }
@@ -55,7 +55,7 @@ impl Fragment for Dynamic<SystemId> {
     fn emit(
         &mut self,
         selected_id: DialogueId,
-        writer: &mut EventWriter<DialogueEvent>,
+        _writer: &mut EventWriter<DialogueEvent>,
         commands: &mut Commands,
     ) {
         if selected_id == self.id {

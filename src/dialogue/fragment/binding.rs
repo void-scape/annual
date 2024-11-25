@@ -1,42 +1,31 @@
-use super::{Fragment, IntoFragment, Unregistered};
+use super::{Fragment, IntoFragment};
 use crate::dialogue::{DialogueEvent, DialogueId};
-use bevy::ecs::system::SystemId;
 use bevy::prelude::*;
 
-pub struct Trigger<F, T> {
+pub struct Binding<F, E> {
     pub(super) fragment: F,
-    pub(super) on_trigger: T,
+    pub(super) event: Box<dyn Fn(DialogueId) -> E + Send + Sync>,
 }
 
-impl<F, T> IntoFragment for Trigger<F, Unregistered<T>>
+impl<F, E> IntoFragment for Binding<F, E>
 where
     F: IntoFragment,
-    T: System<In = (), Out = ()>,
+    E: Event + Clone,
 {
-    type Fragment = Trigger<F::Fragment, SystemId>;
+    type Fragment = Binding<F::Fragment, E>;
 
     fn into_fragment(self, world: &mut World) -> Self::Fragment {
-        Trigger {
+        Binding {
             fragment: self.fragment.into_fragment(world),
-            on_trigger: world.register_system(self.on_trigger.0),
+            event: self.event,
         }
     }
 }
 
-impl<F> IntoFragment for Trigger<F, SystemId>
+impl<F, E> Fragment for Binding<F, E>
 where
     F: Fragment,
-{
-    type Fragment = Trigger<F, SystemId>;
-
-    fn into_fragment(self, _world: &mut World) -> Self::Fragment {
-        self
-    }
-}
-
-impl<F> Fragment for Trigger<F, SystemId>
-where
-    F: Fragment,
+    E: Event + Clone,
 {
     fn emit(
         &mut self,
@@ -48,7 +37,10 @@ where
 
         // Run triggers whenever any children are selected.
         if self.id().iter().any(|id| *id == selected_id) {
-            commands.run_system(self.on_trigger);
+            let event = (self.event)(selected_id);
+            commands.add(|world: &mut World| {
+                world.send_event(event);
+            });
         }
     }
 

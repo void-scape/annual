@@ -1,7 +1,9 @@
 use crate::dialogue::{DialogueEvent, DialogueId};
 use bevy::prelude::*;
+use binding::Binding;
 use std::marker::PhantomData;
 
+mod binding;
 mod dynamic;
 mod eval;
 mod limit;
@@ -9,11 +11,10 @@ mod sequence;
 mod string;
 mod trigger;
 
-pub use dynamic::{dynamic, Dynamic};
+pub use dynamic::dynamic;
 pub use eval::Evaluated;
 pub use limit::Limit;
-pub use sequence::{sequence, Sequence};
-pub use string::StringFragment;
+pub use sequence::sequence;
 pub use trigger::Trigger;
 
 pub(crate) use limit::update_limit_items;
@@ -68,6 +69,7 @@ where
     }
 }
 
+#[allow(unused)]
 pub trait IntoFragment {
     type Fragment: Fragment;
 
@@ -82,6 +84,18 @@ pub trait IntoFragment {
         Trigger {
             fragment: self,
             on_trigger: Unregistered(IntoSystem::into_system(system)),
+        }
+    }
+
+    /// Provide a binding to an event.
+    fn bind<E>(self, event: impl Fn(DialogueId) -> E + Send + Sync + 'static) -> Binding<Self, E>
+    where
+        E: Event,
+        Self: Sized,
+    {
+        Binding {
+            fragment: self,
+            event: Box::new(event),
         }
     }
 
