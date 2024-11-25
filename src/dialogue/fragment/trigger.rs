@@ -1,4 +1,4 @@
-use super::{Fragment, IntoFragment, Unregistered};
+use super::{Emitted, Fragment, IntoFragment, StackList, Unregistered};
 use crate::dialogue::{DialogueEvent, DialogueId};
 use bevy::ecs::system::SystemId;
 use bevy::prelude::*;
@@ -15,10 +15,10 @@ where
 {
     type Fragment = Trigger<F::Fragment, SystemId>;
 
-    fn into_fragment(self, world: &mut World) -> Self::Fragment {
+    fn into_fragment(self, commands: &mut Commands) -> Self::Fragment {
         Trigger {
-            fragment: self.fragment.into_fragment(world),
-            on_trigger: world.register_system(self.on_trigger.0),
+            fragment: self.fragment.into_fragment(commands),
+            on_trigger: commands.register_one_shot_system(self.on_trigger.0),
         }
     }
 }
@@ -29,7 +29,7 @@ where
 {
     type Fragment = Trigger<F, SystemId>;
 
-    fn into_fragment(self, _world: &mut World) -> Self::Fragment {
+    fn into_fragment(self, _world: &mut Commands) -> Self::Fragment {
         self
     }
 }
@@ -41,18 +41,25 @@ where
     fn emit(
         &mut self,
         selected_id: DialogueId,
+        parent: Option<&StackList<DialogueId>>,
         writer: &mut EventWriter<DialogueEvent>,
         commands: &mut Commands,
-    ) {
-        self.fragment.emit(selected_id, writer, commands);
+    ) -> Emitted {
+        let id = *self.id();
+        let node = StackList::new(parent, &id);
+        let emitted = self
+            .fragment
+            .emit(selected_id, Some(&node), writer, commands);
 
         // Run triggers whenever any children are selected.
-        if self.id().iter().any(|id| *id == selected_id) {
+        if emitted.did_emit() {
             commands.run_system(self.on_trigger);
         }
+
+        emitted
     }
 
-    fn id(&self) -> &[DialogueId] {
+    fn id(&self) -> &DialogueId {
         self.fragment.id()
     }
 }

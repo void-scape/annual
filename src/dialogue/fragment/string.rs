@@ -1,4 +1,4 @@
-use super::{Fragment, IntoFragment};
+use super::{Emitted, Fragment, IntoFragment, StackList};
 use crate::dialogue::{DialogueEvent, DialogueId};
 use bevy::prelude::*;
 
@@ -25,7 +25,7 @@ where
 {
     type Fragment = Self;
 
-    fn into_fragment(self, _world: &mut World) -> Self::Fragment {
+    fn into_fragment(self, _world: &mut Commands) -> Self::Fragment {
         self
     }
 }
@@ -35,7 +35,7 @@ macro_rules! string {
         impl IntoFragment for $ty {
             type Fragment = StringFragment<$ty>;
 
-            fn into_fragment(self, _: &mut World) -> Self::Fragment {
+            fn into_fragment(self, _: &mut Commands) -> Self::Fragment {
                 StringFragment::new(self)
             }
         }
@@ -52,19 +52,26 @@ where
     fn emit(
         &mut self,
         selected_id: DialogueId,
+        parent: Option<&StackList<DialogueId>>,
         writer: &mut EventWriter<DialogueEvent>,
         _commands: &mut Commands,
-    ) {
+    ) -> Emitted {
         if selected_id == self.id {
+            let node = StackList::new(parent, self.id());
+
             writer.send(DialogueEvent {
                 dialogue: self.string.as_ref().to_owned(),
-                id: self.id,
+                id_path: node.into(),
             });
+
+            Emitted::Emitted
+        } else {
+            Emitted::NotEmitted
         }
     }
 
-    fn id(&self) -> &[DialogueId] {
-        core::slice::from_ref(&self.id)
+    fn id(&self) -> &DialogueId {
+        &self.id
     }
 }
 
@@ -75,12 +82,12 @@ mod test {
 
     #[test]
     fn test() {
-        let world = bevy::app::App::new().add_systems(Startup, |world: &mut World| {
+        let world = bevy::app::App::new().add_systems(Startup, |mut world: Commands| {
             let fragment1 = "Hello, world!"
                 .eval(|| [true, true])
                 .on_trigger(|idk: ResMut<EvaluatedDialogue>| println!("idk: {:#?}", idk))
-                .into_fragment(world);
-            let fragment2 = String::from("Hello, world!").into_fragment(world);
+                .into_fragment(&mut world);
+            let fragment2 = String::from("Hello, world!").into_fragment(&mut world);
         });
     }
 }

@@ -1,6 +1,6 @@
 use super::{Fragment, IntoFragment, Unregistered};
 use crate::dialogue::evaluate::{Evaluate, EvaluatedDialogue};
-use crate::dialogue::{DialogueEvent, DialogueId};
+use crate::dialogue::FragmentUpdate;
 use bevy::prelude::*;
 use std::marker::PhantomData;
 
@@ -16,49 +16,25 @@ where
     T: System<In = (), Out = O>,
     O: Evaluate + Send + 'static,
 {
-    type Fragment = Evaluated<F::Fragment, (), O>;
+    type Fragment = F::Fragment;
 
-    fn into_fragment(self, world: &mut World) -> Self::Fragment {
-        let fragment = self.fragment.into_fragment(world);
+    fn into_fragment(self, commands: &mut Commands) -> Self::Fragment {
+        let fragment = self.fragment.into_fragment(commands);
         let id = fragment.id().to_owned();
 
-        let mut schedules = world.resource_mut::<Schedules>();
-        schedules.add_systems(
-            Update,
-            self.evaluation.0.pipe(
-                move |eval: In<O>, mut evaluated_dialogue: ResMut<EvaluatedDialogue>| {
-                    // TODO: clearly these evaluations should be additive, not simply clear each
-                    // other out.
-                    let eval = eval.0.evaluate();
-                    for id in id.iter() {
-                        evaluated_dialogue.insert(*id, eval);
-                    }
-                },
-            ),
-        );
+        commands.add(move |world: &mut World| {
+            let mut schedules = world.resource_mut::<Schedules>();
+            schedules.add_systems(
+                FragmentUpdate,
+                self.evaluation.0.pipe(
+                    move |eval: In<O>, mut evaluated_dialogue: ResMut<EvaluatedDialogue>| {
+                        let eval = eval.0.evaluate();
+                        evaluated_dialogue.insert(id, eval);
+                    },
+                ),
+            );
+        });
 
-        Evaluated {
-            fragment,
-            evaluation: (),
-            _marker: self._marker,
-        }
-    }
-}
-
-impl<F, O> Fragment for Evaluated<F, (), O>
-where
-    F: Fragment,
-{
-    fn emit(
-        &mut self,
-        selected_id: DialogueId,
-        writer: &mut EventWriter<DialogueEvent>,
-        commands: &mut Commands,
-    ) {
-        self.fragment.emit(selected_id, writer, commands);
-    }
-
-    fn id(&self) -> &[DialogueId] {
-        self.fragment.id()
+        fragment
     }
 }

@@ -12,28 +12,68 @@ impl DialogueId {
     pub fn random() -> Self {
         Self(rand::thread_rng().gen())
     }
+}
 
-    pub fn end(self) -> DialogueEndEvent {
-        DialogueEndEvent { id: self }
+/// The full path of IDs for a particular event.
+///
+/// The path cannot be constructed without at least one
+/// ID, so the path can always produce a leaf ID.
+///
+/// Since fragments are organized in a tree structure,
+/// this path provides information for the entire branch.
+#[derive(Debug, Clone, Component)]
+pub struct IdPath(Vec<DialogueId>);
+
+impl AsRef<[DialogueId]> for IdPath {
+    fn as_ref(&self) -> &[DialogueId] {
+        &self.0
     }
 }
 
-#[derive(Debug, Event)]
+impl core::ops::Deref for IdPath {
+    type Target = [DialogueId];
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl IdPath {
+    pub fn new(path: Vec<DialogueId>) -> Self {
+        assert!(!path.is_empty(), "An ID path must have at least one node.");
+
+        Self(path)
+    }
+
+    pub fn leaf(&self) -> &DialogueId {
+        self.first().unwrap()
+    }
+
+    pub fn end(&self) -> DialogueEndEvent {
+        DialogueEndEvent {
+            id_path: self.clone(),
+        }
+    }
+}
+
+#[derive(Debug, Event, Clone)]
 pub struct DialogueEvent {
     pub dialogue: String,
-    pub id: DialogueId,
+    pub id_path: IdPath,
 }
 
 #[allow(unused)]
 impl DialogueEvent {
     pub fn end(&self) -> DialogueEndEvent {
-        DialogueEndEvent { id: self.id }
+        DialogueEndEvent {
+            id_path: self.id_path.clone(),
+        }
     }
 }
 
 #[derive(Debug, Event)]
 pub struct DialogueEndEvent {
-    pub id: DialogueId,
+    pub id_path: IdPath,
 }
 
 pub struct DialoguePlugin;
@@ -82,7 +122,10 @@ pub fn handle_fragments(
         .find_map(|(hash, eval)| eval.result.then_some(hash))
     {
         for mut fragment in fragments.iter_mut() {
-            fragment.0.as_mut().emit(*hash, &mut writer, &mut commands);
+            fragment
+                .0
+                .as_mut()
+                .emit(*hash, None, &mut writer, &mut commands);
         }
     }
 
@@ -95,14 +138,14 @@ pub fn watch_events(
     mut state: ResMut<DialogueStates>,
 ) {
     for start in start.read() {
-        let entry = state.state.entry(start.id).or_default();
+        let entry = state.state.entry(*start.id_path.leaf()).or_default();
 
         entry.triggered += 1;
         entry.active = true;
     }
 
     for end in end.read() {
-        let entry = state.state.entry(end.id).or_default();
+        let entry = state.state.entry(*end.id_path.leaf()).or_default();
 
         entry.active = false;
     }

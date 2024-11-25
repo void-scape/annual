@@ -1,4 +1,4 @@
-use super::{Fragment, IntoFragment};
+use super::{Emitted, Fragment, IntoFragment, StackList};
 use crate::dialogue::evaluate::{DialogueStates, EvaluatedDialogue};
 use crate::dialogue::{DialogueEvent, DialogueId};
 use bevy::prelude::*;
@@ -22,37 +22,39 @@ pub fn update_sequence_items(
 
 pub struct Sequence<F> {
     fragments: F,
-    ids: Vec<DialogueId>,
+    id: DialogueId,
 }
 
 macro_rules! seq_frag {
     ($($ty:ident),*) => {
         #[allow(non_snake_case)]
-        impl<$($ty),*> IntoFragment for Sequence<($($ty,)*)>
+        impl<$($ty),*> IntoFragment for ($($ty,)*)
         where
             $($ty: IntoFragment),*
         {
             type Fragment = Sequence<($($ty::Fragment,)*)>;
 
-            fn into_fragment(self, world: &mut World) -> Self::Fragment {
+            fn into_fragment(self, commands: &mut Commands) -> Self::Fragment {
                 #[allow(unused_mut)]
-                let mut ids = self.ids;
-                let ($($ty,)*) = self.fragments;
+                let mut ids = Vec::new();
+                let ($($ty,)*) = self;
 
                 let seq = Sequence {
                     fragments: (
-                        $({
-                            let frag = $ty.into_fragment(world);
-                            ids.extend(frag.id());
-                            frag
-                        },)*
+                        $(
+                            {
+                                let frag = $ty.into_fragment(commands);
+                                ids.push(*frag.id());
+                                frag
+                            },
+                        )*
                     ),
-                    ids,
+                    id: DialogueId::random(),
                 };
 
                 // TODO: this is basically a leak. It would be nice if we could
                 // remove this when this sequene is no longer active.
-                world.spawn(SequenceItems(seq.ids.clone()));
+                commands.spawn(SequenceItems(ids));
 
                 seq
             }
@@ -67,25 +69,24 @@ macro_rules! seq_frag {
             fn emit(
                 &mut self,
                 selected_id: DialogueId,
+                parent: Option<&StackList<DialogueId>>,
                 writer: &mut EventWriter<DialogueEvent>,
                 commands: &mut Commands,
-            ) {
+            ) -> Emitted {
+                let id = *self.id();
+                let node = StackList::new(parent, &id);
+                let mut emitted = Emitted::NotEmitted;
+
                 let ($($ty,)*) = &mut self.fragments;
-                $($ty.emit(selected_id, writer, commands);)*
+                $(emitted |= $ty.emit(selected_id, Some(&node), writer, commands);)*
+                emitted
             }
 
-            fn id(&self) -> &[DialogueId] {
-                &self.ids
+            fn id(&self) -> &DialogueId {
+                &self.id
             }
         }
     };
 }
 
 all_tuples!(seq_frag, 0, 15, T);
-
-pub fn sequence<F>(fragments: F) -> Sequence<F> {
-    Sequence {
-        fragments,
-        ids: Vec::new(),
-    }
-}

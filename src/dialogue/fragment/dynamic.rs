@@ -1,4 +1,4 @@
-use super::{Fragment, IntoFragment, Unregistered};
+use super::{Emitted, Fragment, IntoFragment, StackList, Unregistered};
 use crate::dialogue::{DialogueEvent, DialogueId};
 use bevy::ecs::system::SystemId;
 use bevy::prelude::*;
@@ -22,7 +22,7 @@ where
             move |dialogue: In<String>, mut writer: EventWriter<DialogueEvent>| {
                 writer.send(DialogueEvent {
                     dialogue: dialogue.0,
-                    id,
+                    id_path: todo!(),
                 });
             },
         ))),
@@ -35,19 +35,11 @@ where
 {
     type Fragment = Dynamic<SystemId>;
 
-    fn into_fragment(self, world: &mut World) -> Self::Fragment {
+    fn into_fragment(self, commands: &mut Commands) -> Self::Fragment {
         Dynamic {
             id: self.id,
-            system: world.register_system(self.system.0),
+            system: commands.register_one_shot_system(self.system.0),
         }
-    }
-}
-
-impl IntoFragment for Dynamic<SystemId> {
-    type Fragment = Self;
-
-    fn into_fragment(self, _world: &mut World) -> Self::Fragment {
-        self
     }
 }
 
@@ -55,15 +47,22 @@ impl Fragment for Dynamic<SystemId> {
     fn emit(
         &mut self,
         selected_id: DialogueId,
+        parent: Option<&StackList<DialogueId>>,
         _writer: &mut EventWriter<DialogueEvent>,
         commands: &mut Commands,
-    ) {
+    ) -> Emitted {
+        let node = StackList::new(parent, self.id());
+
+        // TODO: how to pass in id path??
         if selected_id == self.id {
-            commands.run_system(self.system)
+            commands.run_system(self.system);
+            Emitted::Emitted
+        } else {
+            Emitted::NotEmitted
         }
     }
 
-    fn id(&self) -> &[DialogueId] {
-        core::slice::from_ref(&self.id)
+    fn id(&self) -> &DialogueId {
+        &self.id
     }
 }
