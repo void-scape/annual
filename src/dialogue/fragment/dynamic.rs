@@ -1,4 +1,5 @@
-use super::{Fragment, IntoFragment, Unregistered};
+use super::{End, Fragment, FragmentNode, IntoFragment, Start, Unregistered};
+use crate::dialogue::evaluate::DialogueStates;
 use crate::dialogue::{DialogueEvent, DialogueId};
 use bevy::ecs::system::SystemId;
 use bevy::prelude::*;
@@ -35,35 +36,51 @@ where
 {
     type Fragment = Dynamic<SystemId>;
 
-    fn into_fragment(self, world: &mut World) -> Self::Fragment {
-        Dynamic {
-            id: self.id,
-            system: world.register_system(self.system.0),
-        }
-    }
-}
-
-impl IntoFragment for Dynamic<SystemId> {
-    type Fragment = Self;
-
-    fn into_fragment(self, _world: &mut World) -> Self::Fragment {
-        self
+    fn into_fragment(self, commands: &mut Commands) -> (Self::Fragment, FragmentNode) {
+        (
+            Dynamic {
+                id: self.id,
+                system: commands.register_one_shot_system(self.system.0),
+            },
+            FragmentNode::leaf(self.id),
+        )
     }
 }
 
 impl Fragment for Dynamic<SystemId> {
-    fn emit(
+    fn start(
         &mut self,
-        selected_id: DialogueId,
+        id: DialogueId,
+        state: &mut DialogueStates,
         _writer: &mut EventWriter<DialogueEvent>,
         commands: &mut Commands,
-    ) {
-        if selected_id == self.id {
-            commands.run_system(self.system)
+    ) -> Start {
+        if id == self.id {
+            commands.run_system(self.system);
+
+            let state = state.update(id);
+            state.triggered += 1;
+            state.active = true;
+
+            Start::Entered
+        } else {
+            Start::Unvisited
         }
     }
 
-    fn id(&self) -> &[DialogueId] {
-        core::slice::from_ref(&self.id)
+    fn end(&mut self, id: DialogueId, state: &mut DialogueStates, _commands: &mut Commands) -> End {
+        if id == self.id {
+            let state = state.update(id);
+            state.completed += 1;
+            state.active = false;
+
+            End::Exited
+        } else {
+            End::Unvisited
+        }
+    }
+
+    fn id(&self) -> &DialogueId {
+        &self.id
     }
 }

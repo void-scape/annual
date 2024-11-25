@@ -94,8 +94,8 @@ fn update_type_writers(
                     text.sections[0].value = type_writer.revealed_text_with_line_wrap();
                 })
                 .on_finish(|| {
-                    info!("finished dialogue event: {id:?}");
-                    info!("awaiting user input...");
+                    // info!("finished dialogue event: {id:?}");
+                    // info!("awaiting user input...");
                     commands.entity(entity).insert(AwaitingInput);
                 });
         }
