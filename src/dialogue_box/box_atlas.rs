@@ -130,7 +130,7 @@ fn handle_show_dialogue_box(
     mut registry: ResMut<DialogueBoxRegistry>,
 ) {
     for event in reader.read() {
-        info!("showing dialogue box: {:?}", event.id);
+        // info!("showing dialogue box: {:?}", event.id);
 
         registry.register(
             event.id,

@@ -1,31 +1,29 @@
-use super::{Fragment, IntoFragment, Unregistered};
+use super::{Fragment, FragmentNode, IntoFragment};
 use crate::dialogue::{
     evaluate::{DialogueStates, EvaluatedDialogue},
-    DialogueEvent, DialogueId,
+    DialogueId,
 };
 use bevy::prelude::*;
 
 #[derive(Debug, Component)]
-pub struct LimitItems {
-    ids: Vec<DialogueId>,
+pub struct LimitItem {
+    id: DialogueId,
     limit: usize,
 }
 
 pub fn update_limit_items(
-    q: Query<&LimitItems>,
+    q: Query<&LimitItem>,
     state: Res<DialogueStates>,
     mut evals: ResMut<EvaluatedDialogue>,
 ) {
-    for items in q.iter() {
-        for id in items.ids.iter() {
-            let eval = state
-                .state
-                .get(id)
-                .map(|c| c.triggered < items.limit && !c.active)
-                .unwrap_or(true);
+    for LimitItem { id, limit } in q.iter() {
+        let eval = state
+            .state
+            .get(id)
+            .map(|c| c.completed < *limit)
+            .unwrap_or(true);
 
-            evals.insert(*id, eval);
-        }
+        evals.insert(*id, eval);
     }
 }
 
@@ -34,63 +32,28 @@ pub struct Limit<F> {
     limit: usize,
 }
 
-impl<F> Limit<Unregistered<F>>
+impl<F> Limit<F>
 where
     F: IntoFragment,
 {
     pub fn new(fragment: F, limit: usize) -> Self {
-        Self {
-            fragment: Unregistered(fragment),
-            limit,
-        }
-    }
-}
-
-impl<F> IntoFragment for Limit<Unregistered<F>>
-where
-    F: IntoFragment,
-{
-    type Fragment = Limit<F::Fragment>;
-
-    fn into_fragment(self, world: &mut World) -> Self::Fragment {
-        let fragment = self.fragment.0.into_fragment(world);
-        world.spawn(LimitItems {
-            ids: fragment.id().to_vec(),
-            limit: self.limit,
-        });
-
-        Limit {
-            limit: self.limit,
-            fragment,
-        }
+        Self { fragment, limit }
     }
 }
 
 impl<F> IntoFragment for Limit<F>
 where
-    F: Fragment,
+    F: IntoFragment,
 {
-    type Fragment = Self;
+    type Fragment = F::Fragment;
 
-    fn into_fragment(self, _world: &mut World) -> Self::Fragment {
-        self
-    }
-}
+    fn into_fragment(self, commands: &mut Commands) -> (Self::Fragment, FragmentNode) {
+        let (fragment, node) = self.fragment.into_fragment(commands);
+        commands.spawn(LimitItem {
+            id: *fragment.id(),
+            limit: self.limit,
+        });
 
-impl<F> Fragment for Limit<F>
-where
-    F: Fragment,
-{
-    fn emit(
-        &mut self,
-        selected_id: DialogueId,
-        writer: &mut EventWriter<DialogueEvent>,
-        commands: &mut Commands,
-    ) {
-        self.fragment.emit(selected_id, writer, commands);
-    }
-
-    fn id(&self) -> &[DialogueId] {
-        self.fragment.id()
+        (fragment, node)
     }
 }

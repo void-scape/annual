@@ -155,16 +155,16 @@ fn init_effect_material<E: TextMaterial + Asset + Material2d, const LAYER: usize
     let material_handle = custom_materials.add(E::init(effect_target_image.clone()));
 
     // Read from the target texture into a mesh
-    commands.spawn((
-        MaterialMesh2dBundle {
-            material: material_handle,
-            // TODO: delete?
-            mesh: meshes.add(Rectangle::default()).into(),
-            ..Default::default()
-        },
-        effect_target_image,
-        TextEffect,
-    ));
+    // commands.spawn((
+    //     MaterialMesh2dBundle {
+    //         material: material_handle,
+    //         // TODO: delete?
+    //         mesh: meshes.add(Rectangle::default()).into(),
+    //         ..Default::default()
+    //     },
+    //     effect_target_image,
+    //     TextEffect,
+    // ));
 }
 
 fn resize_text_effect_textures(
@@ -281,7 +281,7 @@ fn update_type_writers(
     mut commands: Commands,
     time: Res<Time>,
     mut type_writers: Query<
-        (Entity, &mut TypeWriter, &mut Text, &DialogueId, &Children),
+        (Entity, &mut TypeWriter, &mut Text, &DialogueId),
         (Without<AwaitingInput>, With<DialogueText>),
     >,
     finished_type_writers: Query<(Entity, &DialogueId), With<AwaitingInput>>,
@@ -295,25 +295,31 @@ fn update_type_writers(
         }
     }
 
-    for (entity, mut type_writer, mut text, id, children) in type_writers.iter_mut() {
+    for (entity, mut type_writer, mut text, id) in type_writers.iter_mut() {
         if input_received {
             type_writer.reveal_all_text();
         } else {
             type_writer
                 .tick(&time, |type_writer| {
-                    let sections = type_writer.revealed_text_with_line_wrap();
-                    if sections
-                        .iter()
-                        .any(|s| s.effect.is_some_and(|e| e.requires_shader()))
-                    {
-                        commands
-                            .entity(entity)
-                            .with_children(|parent| parent.spawn(Text2dBundle {}));
-                    }
+                    text.sections = type_writer
+                        .revealed_text_with_line_wrap()
+                        .into_iter()
+                        .map(|t| t.section)
+                        .collect();
+
+                    // let sections = type_writer.revealed_text_with_line_wrap();
+                    // if sections
+                    //     .iter()
+                    //     .any(|s| s.effect.is_some_and(|e| e.requires_shader()))
+                    // {
+                    //     commands
+                    //         .entity(entity)
+                    //         .with_children(|parent| parent.spawn(Text2dBundle {}));
+                    // }
                 })
                 .on_finish(|| {
-                    info!("finished dialogue event: {id:?}");
-                    info!("awaiting user input...");
+                    // info!("finished dialogue event: {id:?}");
+                    // info!("awaiting user input...");
                     commands.entity(entity).insert(AwaitingInput);
                 });
         }

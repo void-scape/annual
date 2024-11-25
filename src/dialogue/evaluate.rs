@@ -64,6 +64,7 @@ impl Evaluation {
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct DialogueState {
     pub triggered: usize,
+    pub completed: usize,
     pub active: bool,
 }
 
@@ -74,10 +75,14 @@ pub struct DialogueStates {
 
 #[allow(unused)]
 impl DialogueStates {
+    pub fn update(&mut self, id: DialogueId) -> &mut DialogueState {
+        self.state.entry(id).or_default()
+    }
+
     pub fn is_done(&self, id: DialogueId) -> bool {
         self.state
             .get(&id)
-            .is_some_and(|s| s.triggered >= 1 && !s.active)
+            .is_some_and(|s| s.completed >= 1 && !s.active)
     }
 
     pub fn is_active(&self, id: DialogueId) -> bool {
@@ -103,6 +108,20 @@ impl EvaluatedDialogue {
             }
             Entry::Occupied(mut e) => e.get_mut().merge(eval),
         }
+    }
+
+    pub fn get(&self, id: DialogueId) -> Option<Evaluation> {
+        self.evaluations.get(&id).copied()
+    }
+
+    /// Returns whether the provided ID should be further evaulated.
+    ///
+    /// An ID not in the set will always return false.
+    pub fn is_candidate(&self, id: DialogueId) -> bool {
+        self.evaluations
+            .get(&id)
+            .map(|e| e.result)
+            .unwrap_or_default()
     }
 
     pub fn clear(&mut self) {
