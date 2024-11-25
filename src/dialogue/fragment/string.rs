@@ -1,5 +1,5 @@
-use super::{Emitted, Fragment, IntoFragment, StackList};
-use crate::dialogue::{DialogueEvent, DialogueId};
+use super::{End, Fragment, FragmentNode, IntoFragment, Start};
+use crate::dialogue::{evaluate::DialogueStates, DialogueEvent, DialogueId};
 use bevy::prelude::*;
 
 pub struct StringFragment<S> {
@@ -19,24 +19,16 @@ where
     }
 }
 
-impl<S> IntoFragment for StringFragment<S>
-where
-    Self: Fragment,
-{
-    type Fragment = Self;
-
-    fn into_fragment(self, _world: &mut Commands) -> Self::Fragment {
-        self
-    }
-}
-
 macro_rules! string {
     ($ty:ty) => {
         impl IntoFragment for $ty {
             type Fragment = StringFragment<$ty>;
 
-            fn into_fragment(self, _: &mut Commands) -> Self::Fragment {
-                StringFragment::new(self)
+            fn into_fragment(self, _: &mut Commands) -> (Self::Fragment, FragmentNode) {
+                let fragment = StringFragment::new(self);
+                let node = FragmentNode::leaf(fragment.id);
+
+                (fragment, node)
             }
         }
     };
@@ -49,24 +41,38 @@ impl<S> Fragment for StringFragment<S>
 where
     S: AsRef<str>,
 {
-    fn emit(
+    fn start(
         &mut self,
-        selected_id: DialogueId,
-        parent: Option<&StackList<DialogueId>>,
+        id: DialogueId,
+        state: &mut DialogueStates,
         writer: &mut EventWriter<DialogueEvent>,
         _commands: &mut Commands,
-    ) -> Emitted {
-        if selected_id == self.id {
-            let node = StackList::new(parent, self.id());
-
+    ) -> Start {
+        if id == self.id {
             writer.send(DialogueEvent {
                 dialogue: self.string.as_ref().to_owned(),
-                id_path: node.into(),
+                id: self.id,
             });
 
-            Emitted::Emitted
+            let state = state.update(id);
+            state.triggered += 1;
+            state.active = true;
+
+            Start::Entered
         } else {
-            Emitted::NotEmitted
+            Start::Unvisited
+        }
+    }
+
+    fn end(&mut self, id: DialogueId, state: &mut DialogueStates, _commands: &mut Commands) -> End {
+        if id == self.id {
+            let state = state.update(id);
+            state.completed += 1;
+            state.active = false;
+
+            End::Exited
+        } else {
+            End::Unvisited
         }
     }
 
@@ -85,7 +91,7 @@ mod test {
         let world = bevy::app::App::new().add_systems(Startup, |mut world: Commands| {
             let fragment1 = "Hello, world!"
                 .eval(|| [true, true])
-                .on_trigger(|idk: ResMut<EvaluatedDialogue>| println!("idk: {:#?}", idk))
+                .on_visit(|idk: ResMut<EvaluatedDialogue>| println!("idk: {:#?}", idk))
                 .into_fragment(&mut world);
             let fragment2 = String::from("Hello, world!").into_fragment(&mut world);
         });

@@ -1,4 +1,4 @@
-use super::{Fragment, IntoFragment};
+use super::{Fragment, FragmentNode, IntoFragment};
 use crate::dialogue::{
     evaluate::{DialogueStates, EvaluatedDialogue},
     DialogueId,
@@ -20,7 +20,7 @@ pub fn update_limit_items(
         let eval = state
             .state
             .get(id)
-            .map(|c| c.triggered < *limit && !c.active)
+            .map(|c| c.completed < *limit)
             .unwrap_or(true);
 
         evals.insert(*id, eval);
@@ -47,13 +47,13 @@ where
 {
     type Fragment = F::Fragment;
 
-    fn into_fragment(self, commands: &mut Commands) -> Self::Fragment {
-        let fragment = self.fragment.into_fragment(commands);
+    fn into_fragment(self, commands: &mut Commands) -> (Self::Fragment, FragmentNode) {
+        let (fragment, node) = self.fragment.into_fragment(commands);
         commands.spawn(LimitItem {
             id: *fragment.id(),
             limit: self.limit,
         });
 
-        fragment
+        (fragment, node)
     }
 }

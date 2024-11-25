@@ -100,7 +100,7 @@ fn handle_show_dialogue_box(
     atlas: Res<DialogueBoxAtlas>,
 ) {
     for event in reader.read() {
-        info!("showing dialogue box: {:?}", event.id);
+        // info!("showing dialogue box: {:?}", event.id);
 
         let width = 2 + event.inner_width;
         let height = 2 + event.inner_height;

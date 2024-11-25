@@ -1,4 +1,4 @@
-use super::{Fragment, IntoFragment};
+use super::{FragmentNode, IntoFragment};
 use crate::dialogue::{DialogueEvent, FragmentUpdate};
 use bevy::{ecs::event::EventRegistry, prelude::*};
 use std::marker::PhantomData;
@@ -18,10 +18,10 @@ where
 {
     type Fragment = F::Fragment;
 
-    fn into_fragment(self, commands: &mut Commands) -> Self::Fragment {
-        let fragment = self.fragment.into_fragment(commands);
+    fn into_fragment(self, commands: &mut Commands) -> (Self::Fragment, FragmentNode) {
+        let (fragment, node) = self.fragment.into_fragment(commands);
 
-        let id = *fragment.id();
+        let leaves = node.leaves();
         let mut map = self.event;
         commands.add(move |world: &mut World| {
             if !world.contains_resource::<Events<E>>() {
@@ -33,7 +33,7 @@ where
                 FragmentUpdate,
                 move |mut raw_events: EventReader<DialogueEvent>, mut wrapped: EventWriter<E>| {
                     for event in raw_events.read() {
-                        if event.id_path.contains(&id) {
+                        if leaves.contains(&event.id) {
                             wrapped.send(map(event));
                         }
                     }
@@ -41,6 +41,6 @@ where
             );
         });
 
-        fragment
+        (fragment, node)
     }
 }

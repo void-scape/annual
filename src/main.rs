@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use dialogue::{DialogueEvent, IdPath};
+use dialogue::{DialogueEvent, DialogueId};
 
 mod dialogue;
 mod dialogue_box;
@@ -16,25 +16,34 @@ fn scene(mut commands: Commands) {
     use dialogue::fragment::*;
 
     let box_id = dialogue_box::DialogueBoxId::random();
-    #[allow(clippy::redundant_closure)]
-    let fragment = (
-        "Hello, world!"
-            .on_trigger(|mut state: ResMut<SceneState>| {
-                *state = SceneState::Start;
-            })
-            .on_trigger(dialogue_box::show_dialogue_box(
-                box_id,
-                Transform::default().with_scale(Vec3::new(3.0, 3.0, 1.0)),
-                dialogue_box::DialogueBoxDimensions::new(5, 2),
-            ))
-            .map_event(|event| FinishedEvent(event.id_path.clone())),
+
+    // ("Lorem", "Ipsum", "Dolor")
+    //     .once()
+    //     .on_start(dialogue_box::show_dialogue_box(
+    //         box_id,
+    //         Transform::default().with_scale(Vec3::new(3.0, 3.0, 1.0)),
+    //         dialogue_box::DialogueBoxDimensions::new(5, 2),
+    //     ))
+    //     .on_end(dialogue_box::hide_dialogue_box(box_id))
+    //     .spawn(&mut commands);
+
+    (
+        "Hello, world!".on_visit(|mut state: ResMut<SceneState>| {
+            *state = SceneState::Start;
+        }),
         dynamic(|state: Res<SceneState>| format!(r#"The scene state is "{:?}"!"#, *state)),
-        "Lorem ipsum".on_trigger(|mut state: ResMut<SceneState>| *state = SceneState::End),
+        "Lorem ipsum".on_visit(|mut state: ResMut<SceneState>| *state = SceneState::End),
         dynamic(|state: Res<SceneState>| format!(r#"And now the scene state is "{:?}"!"#, *state)),
-        "Dolor".on_trigger(dialogue_box::hide_dialogue_box(box_id)),
+        "Dolor",
     )
         .once()
-        .into_fragment(&mut commands);
+        .on_start(dialogue_box::show_dialogue_box(
+            box_id,
+            Transform::default().with_scale(Vec3::new(3.0, 3.0, 1.0)),
+            dialogue_box::DialogueBoxDimensions::new(5, 2),
+        ))
+        .on_end(dialogue_box::hide_dialogue_box(box_id))
+        .spawn(&mut commands);
 
     // spawn(
     //     world,
@@ -44,7 +53,6 @@ fn scene(mut commands: Commands) {
     //     dialogue_box::DialogueBoxDimensions::new(5, 2),
     // );
 
-    commands.spawn(ErasedFragment(fragment.boxed()));
     commands.spawn(Camera2dBundle::default());
 }
 
@@ -71,7 +79,7 @@ fn look_for_finished_event(
 }
 
 #[derive(Event, Debug, Clone)]
-struct FinishedEvent(IdPath);
+struct FinishedEvent(DialogueId);
 
 fn main() {
     App::default()

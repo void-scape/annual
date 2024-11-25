@@ -1,4 +1,2 @@
-warning:/Users/corvus/Documents/github/pers/annual/src/dialogue/fragment/dynamic.rs:23:29:unreachable expression
-warning:/Users/corvus/Documents/github/pers/annual/src/dialogue/fragment/dynamic.rs:54:13:unused variable: `node`
-warning:/Users/corvus/Documents/github/pers/annual/src/main.rs:74:22:field `0` is never read
-warning:/Users/corvus/Documents/github/pers/annual/src/dialogue/fragment/dynamic.rs:25:30:sub-expression diverges
+warning:/Users/corvus/Documents/github/pers/annual/src/main.rs:82:22:field `0` is never read
+warning:/Users/corvus/Documents/github/pers/annual/src/dialogue/evaluate.rs:113:12:method `get` is never used

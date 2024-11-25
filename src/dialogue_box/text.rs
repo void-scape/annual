@@ -59,7 +59,7 @@ fn start_type_writers(
                 },
             ),
             TypeWriter::new_start(event.dialogue.clone(), 10.0),
-            *event.id_path.leaf(),
+            event.id,
         ));
     }
 }
@@ -70,8 +70,11 @@ struct AwaitingInput;
 fn update_type_writers(
     mut commands: Commands,
     time: Res<Time>,
-    mut type_writers: Query<(Entity, &mut TypeWriter, &mut Text, &IdPath), Without<AwaitingInput>>,
-    finished_type_writers: Query<(Entity, &IdPath), With<AwaitingInput>>,
+    mut type_writers: Query<
+        (Entity, &mut TypeWriter, &mut Text, &DialogueId),
+        Without<AwaitingInput>,
+    >,
+    finished_type_writers: Query<(Entity, &DialogueId), With<AwaitingInput>>,
     mut writer: EventWriter<DialogueEndEvent>,
     mut reader: EventReader<KeyboardInput>,
 ) {
@@ -91,8 +94,8 @@ fn update_type_writers(
                     text.sections[0].value = type_writer.revealed_text_with_line_wrap();
                 })
                 .on_finish(|| {
-                    info!("finished dialogue event: {id:?}");
-                    info!("awaiting user input...");
+                    // info!("finished dialogue event: {id:?}");
+                    // info!("awaiting user input...");
                     commands.entity(entity).insert(AwaitingInput);
                 });
         }

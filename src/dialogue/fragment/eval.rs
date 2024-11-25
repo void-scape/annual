@@ -1,4 +1,4 @@
-use super::{Fragment, IntoFragment, Unregistered};
+use super::{Fragment, FragmentNode, IntoFragment, Unregistered};
 use crate::dialogue::evaluate::{Evaluate, EvaluatedDialogue};
 use crate::dialogue::FragmentUpdate;
 use bevy::prelude::*;
@@ -18,9 +18,9 @@ where
 {
     type Fragment = F::Fragment;
 
-    fn into_fragment(self, commands: &mut Commands) -> Self::Fragment {
-        let fragment = self.fragment.into_fragment(commands);
-        let id = fragment.id().to_owned();
+    fn into_fragment(self, commands: &mut Commands) -> (Self::Fragment, FragmentNode) {
+        let (fragment, node) = self.fragment.into_fragment(commands);
+        let id = *fragment.id();
 
         commands.add(move |world: &mut World| {
             let mut schedules = world.resource_mut::<Schedules>();
@@ -35,6 +35,6 @@ where
             );
         });
 
-        fragment
+        (fragment, node)
     }
 }
