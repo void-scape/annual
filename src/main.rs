@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use dialogue_box::DialogueBoxEvent;
 
 mod dialogue;
 mod dialogue_box;
@@ -34,7 +35,7 @@ fn scene(mut commands: Commands) {
 
     let box_id = dialogue_box::DialogueBoxId::random();
     (
-        "Hello, world!".on_visit(|mut state: ResMut<SceneState>| {
+        "[Hello](wave), [world!](red)".on_visit(|mut state: ResMut<SceneState>| {
             *state = SceneState::Start;
         }),
         dynamic(|state: Res<SceneState>| format!(r#"The scene state is "{:?}"!"#, *state)),
@@ -43,6 +44,7 @@ fn scene(mut commands: Commands) {
         "Dolor",
     )
         .once()
+        .map_event(move |event| DialogueBoxEvent(event.clone(), box_id))
         .on_start(dialogue_box::show_dialogue_box(
             box_id,
             Transform::default().with_scale(Vec3::new(3.0, 3.0, 1.0)),

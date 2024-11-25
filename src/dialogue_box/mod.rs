@@ -67,16 +67,16 @@ pub struct DialogueBoxDescriptor {
 
 #[allow(clippy::type_complexity)]
 fn bind_text_to_box(
-    mut text: Query<(&mut Transform, &DialogueBoxId), (With<Text>, With<DialogueText>)>,
+    mut text: Query<(&mut Transform, &DialogueBoxId), With<DialogueText>>,
     registery: Res<DialogueBoxRegistry>,
 ) {
-    for (id, desc) in registery.table.iter() {
-        for (mut transform, text_dialogue_id) in text.iter_mut() {
-            if id == text_dialogue_id {
-                transform.translation = desc.transform.translation;
-            }
-        }
-    }
+    // for (id, desc) in registery.table.iter() {
+    //     for (mut transform, text_dialogue_id) in text.iter_mut() {
+    //         if id == text_dialogue_id {
+    //             transform.translation = desc.transform.translation;
+    //         }
+    //     }
+    // }
 }
 
 fn test_dialogue_box_events(

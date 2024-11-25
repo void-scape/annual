@@ -1,4 +1,5 @@
-use bevy::prelude::*;
+use crate::dialogue_box::WAVE_MATERIAL_LAYER;
+use bevy::{prelude::*, render::view::RenderLayers};
 use winnow::{
     error::{ErrMode, ErrorKind, ParserError},
     prelude::*,
@@ -13,11 +14,7 @@ pub struct DialogueTextSection {
 }
 
 /// Effects can be applied to text using the format: [<text-to-affect>](<effect>), where the effect
-/// can be any one of:
-///     Color(<f32>, <f32>, <f32>),
-///     Red,
-///     Green,
-///     Blue
+/// can be an [`Effect`] (snake_case, e.g. (<text>)[[wave]]).
 pub fn parse_dialogue(input: &mut &str, style: TextStyle) -> Vec<DialogueTextSection> {
     let mut sections = Vec::new();
     while let Ok(section) = parse_text(input, style.clone()) {
@@ -27,21 +24,40 @@ pub fn parse_dialogue(input: &mut &str, style: TextStyle) -> Vec<DialogueTextSec
     sections
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Effect {
+    ColorEffect(ColorEffect),
+    ShaderEffect(ShaderEffect),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+#[allow(unused)]
+pub enum ColorEffect {
     Color(f32, f32, f32),
     Red,
     Green,
     Blue,
+}
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum ShaderEffect {
     Wave,
 }
 
 impl Effect {
     pub fn requires_shader(&self) -> bool {
         match self {
-            Self::Wave => true,
+            Self::ShaderEffect(_) => true,
             _ => false,
+        }
+    }
+
+    pub fn render_layer(&self) -> RenderLayers {
+        match self {
+            Self::ShaderEffect(effect) => match effect {
+                ShaderEffect::Wave => RenderLayers::layer(WAVE_MATERIAL_LAYER),
+            },
+            val => panic!("should not request layer for non shader effects: {val:?}"),
         }
     }
 }
@@ -56,9 +72,10 @@ fn parse_effect_desc(input: &mut &str) -> PResult<Effect> {
         todo!();
     } else {
         Ok(match desc {
-            "Red" => Effect::Red,
-            "Green" => Effect::Green,
-            "Blue" => Effect::Blue,
+            "red" => Effect::ColorEffect(ColorEffect::Red),
+            "green" => Effect::ColorEffect(ColorEffect::Green),
+            "blue" => Effect::ColorEffect(ColorEffect::Blue),
+            "wave" => Effect::ShaderEffect(ShaderEffect::Wave),
             _ => unimplemented!(),
         })
     }
@@ -78,11 +95,13 @@ fn parse_effect(
 
     let mut color = Color::WHITE;
     match effect {
-        Effect::Red => color = Color::linear_rgb(1.0, 0.0, 0.0),
-        Effect::Green => color = Color::linear_rgb(0.0, 1.0, 0.0),
-        Effect::Blue => color = Color::linear_rgb(0.0, 0.0, 1.0),
-        Effect::Color(r, g, b) => color = Color::linear_rgb(r, g, b),
-        Effect::Wave => {}
+        Effect::ColorEffect(effect) => match effect {
+            ColorEffect::Red => color = Color::linear_rgb(1.0, 0.0, 0.0),
+            ColorEffect::Green => color = Color::linear_rgb(0.0, 1.0, 0.0),
+            ColorEffect::Blue => color = Color::linear_rgb(0.0, 0.0, 1.0),
+            ColorEffect::Color(r, g, b) => color = Color::linear_rgb(r, g, b),
+        },
+        Effect::ShaderEffect(_) => {}
     }
 
     Ok(DialogueTextSection {

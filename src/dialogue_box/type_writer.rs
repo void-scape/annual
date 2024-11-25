@@ -35,6 +35,12 @@ impl TypeWriter {
         slf
     }
 
+    #[inline]
+    pub fn sections(&self) -> &[DialogueTextSection] {
+        &self.sections
+    }
+
+    #[inline]
     fn total_len(&self) -> usize {
         let mut total_len = 0;
         for section in self.sections.iter() {

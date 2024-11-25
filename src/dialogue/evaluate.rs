@@ -99,6 +99,7 @@ pub struct EvaluatedDialogue {
     pub(super) evaluations: HashMap<DialogueId, Evaluation>,
 }
 
+#[allow(unused)]
 impl EvaluatedDialogue {
     pub fn insert<E: Evaluate>(&mut self, id: DialogueId, evaluation: E) {
         let eval = evaluation.evaluate();
