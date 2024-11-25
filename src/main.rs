@@ -1,8 +1,9 @@
 use bevy::prelude::*;
-use dialogue::{DialogueEvent, DialogueId};
+use dialogue_box::WhichBox;
 
 mod dialogue;
 mod dialogue_box;
+mod dialogue_parser;
 
 // This is just an example.
 #[derive(Debug, Resource, PartialEq, Eq)]
@@ -18,7 +19,7 @@ fn scene(world: &mut World) {
     let box_id = dialogue_box::DialogueBoxId::random();
     #[allow(clippy::redundant_closure)]
     let fragment = sequence((
-        "Hello, world!"
+        "Hello, [world!](wave)"
             .on_trigger(|mut state: ResMut<SceneState>| {
                 *state = SceneState::Start;
             })
@@ -27,55 +28,57 @@ fn scene(world: &mut World) {
                 Transform::default().with_scale(Vec3::new(3.0, 3.0, 1.0)),
                 dialogue_box::DialogueBoxDimensions::new(5, 2),
             ))
-            .once()
-            .bind(|id| FinishedEvent(id)),
+            .once(),
         dynamic(|state: Res<SceneState>| format!(r#"The scene state is "{:?}"!"#, *state)),
         "Lorem ipsum".on_trigger(|mut state: ResMut<SceneState>| *state = SceneState::End),
         dynamic(|state: Res<SceneState>| format!(r#"And now the scene state is "{:?}"!"#, *state)),
         "Dollor".on_trigger(dialogue_box::hide_dialogue_box(box_id)),
     ))
+    .bind(move |id| WhichBox(id, box_id))
     .into_fragment(world);
+
+    let font = world.load_asset("joystix monospace.otf");
+
+    world.commands().spawn((Text2dBundle {
+        text: Text::from_sections([
+            TextSection::new(
+                "Hello, ",
+                TextStyle {
+                    font: font.clone(),
+                    font_size: 32.0,
+                    color: Color::WHITE,
+                },
+            ),
+            TextSection::new(
+                "World!",
+                TextStyle {
+                    font: font.clone(),
+                    font_size: 32.0,
+                    color: Color::BLACK,
+                },
+            ),
+        ]),
+        transform: Transform::default().with_translation(Vec3::splat(-200.0)),
+        ..Default::default()
+    },));
 
     world.spawn(ErasedFragment(fragment.boxed()));
     world.spawn(Camera2dBundle::default());
 }
 
-fn look_for_finished_event(
-    mut reader: EventReader<FinishedEvent>,
-    mut events: EventReader<DialogueEvent>,
-) {
-    let mut found_first = false;
-    let mut found_second = false;
-
-    for event in events.read() {
-        found_first = true;
-        info!("dialogue: {event:?}");
-    }
-
-    for event in reader.read() {
-        found_second = true;
-        info!("finished: {event:?}");
-    }
-
-    if found_first && found_second {
-        info!("Found both at once!!!")
-    }
-}
-
-#[derive(Event, Debug, Clone, Copy)]
-struct FinishedEvent(DialogueId);
-
 fn main() {
     App::default()
-        .add_event::<FinishedEvent>()
         .add_plugins(DefaultPlugins.set(ImagePlugin::default_nearest()))
         .add_plugins((
             dialogue::DialoguePlugin,
-            dialogue_box::DialogueBoxPlugin::new("Wasted-Vindey.ttf"),
+            dialogue_box::DialogueBoxPlugin::new(
+                "joystix monospace.otf",
+                "Scalable txt screen x1.png",
+                UVec2::splat(16),
+            ),
         ))
         .insert_resource(SceneState::None)
         .add_systems(Startup, scene)
         .add_systems(Update, bevy_bits::close_on_escape)
-        .add_systems(Update, look_for_finished_event)
         .run();
 }

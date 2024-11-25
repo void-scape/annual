@@ -5,9 +5,18 @@ edition = "2021"
 
 [dependencies]
 bevy_bits = { path = "bevy_bits" }
-bevy = { version = "0.14.1", features = ["wav", "mp3"] }
 paste = "1.0.15"
 rand = "0.8.5"
+winnow = "0.6.20"
+
+[dependencies.bevy]
+version = "0.14.1"
+features = ["dynamic_linking", "wav", "mp3"]
+
+[dependencies.pulldown-cmark]
+version = "0.12.2"
+default-features = false
+features = ["simd"]
 
 # Enable a small amount of optimization in the dev profile.
 [profile.dev]

@@ -1,12 +1,34 @@
+use super::DialogueBoxRegistry;
+use crate::dialogue_box::DialogueBoxDescriptor;
 use bevy::prelude::*;
 use rand::Rng;
+use std::path::Path;
 
-pub struct BoxPlugin;
+pub struct BoxPlugin {
+    box_atlas_path: String,
+    tile_size: UVec2,
+}
+
+impl BoxPlugin {
+    pub fn new<P: AsRef<Path>>(box_atlas_path: &P, tile_size: UVec2) -> Self {
+        Self {
+            box_atlas_path: String::from(
+                box_atlas_path
+                    .as_ref()
+                    .to_str()
+                    .expect("invalid atlas path"),
+            ),
+            tile_size,
+        }
+    }
+}
 
 impl Plugin for BoxPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<ShowDialogueBox>()
             .add_event::<HideDialogueBox>()
+            .insert_resource(DialogueBoxAtlasPath(self.box_atlas_path.clone()))
+            .insert_resource(DialogueBoxAtlasTileSize(self.tile_size))
             .add_systems(Startup, setup_atlas)
             .add_systems(Update, (handle_show_dialogue_box, handle_hide_dialogue_box));
     }
@@ -19,25 +41,32 @@ struct DialogueBoxAtlas {
     tile_size: UVec2,
 }
 
+#[derive(Resource)]
+pub struct DialogueBoxAtlasPath(String);
+
+#[derive(Resource)]
+pub struct DialogueBoxAtlasTileSize(UVec2);
+
 fn setup_atlas(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     mut texture_atlases: ResMut<Assets<TextureAtlasLayout>>,
+    atlas_path: Res<DialogueBoxAtlasPath>,
+    atlas_tile_size: Res<DialogueBoxAtlasTileSize>,
 ) {
-    let tile_size = UVec2::splat(16);
-    let texture_atlas = TextureAtlasLayout::from_grid(tile_size, 3, 3, None, None);
+    let texture_atlas = TextureAtlasLayout::from_grid(atlas_tile_size.0, 3, 3, None, None);
     let texture_atlas_handle = texture_atlases.add(texture_atlas);
 
     let atlas = DialogueBoxAtlas {
-        tile_size,
-        texture: asset_server.load("Scalable txt screen x1.png"),
+        tile_size: atlas_tile_size.0,
+        texture: asset_server.load(&atlas_path.0),
         atlas_layout: texture_atlas_handle.clone(),
     };
 
     commands.insert_resource(atlas);
 }
 
-#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct DialogueBoxId(pub(super) u64);
 
 impl DialogueBoxId {
@@ -60,8 +89,8 @@ pub struct HideDialogueBox {
 }
 
 pub struct DialogueBoxDimensions {
-    inner_width: usize,
-    inner_height: usize,
+    pub inner_width: usize,
+    pub inner_height: usize,
 }
 
 impl DialogueBoxDimensions {
@@ -98,9 +127,19 @@ fn handle_show_dialogue_box(
     mut commands: Commands,
     mut reader: EventReader<ShowDialogueBox>,
     atlas: Res<DialogueBoxAtlas>,
+    mut registry: ResMut<DialogueBoxRegistry>,
 ) {
     for event in reader.read() {
         info!("showing dialogue box: {:?}", event.id);
+
+        registry.register(
+            event.id,
+            DialogueBoxDescriptor {
+                dimensions: DialogueBoxDimensions::new(event.inner_width, event.inner_height),
+                tile_size: atlas.tile_size,
+                transform: event.transform,
+            },
+        );
 
         let width = 2 + event.inner_width;
         let height = 2 + event.inner_height;
@@ -162,9 +201,12 @@ fn handle_hide_dialogue_box(
     mut commands: Commands,
     mut reader: EventReader<HideDialogueBox>,
     components: Query<(Entity, &DialogueBoxId)>,
+    mut registry: ResMut<DialogueBoxRegistry>,
 ) {
     for event in reader.read() {
         info!("hiding dialogue box: {:?}", event.id);
+
+        registry.remove(&event.id);
 
         for (entity, id) in components.iter() {
             if *id == event.id {
