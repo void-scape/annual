@@ -1,19 +1,19 @@
-use super::{End, Fragment, FragmentNode, IntoFragment, Start};
-use crate::dialogue::evaluate::{DialogueStates, EvaluatedDialogue};
-use crate::dialogue::{DialogueEvent, DialogueId};
+use super::{End, Fragment, FragmentData, FragmentNode, IntoFragment, Start};
+use crate::dialogue::evaluate::{EvaluatedFragments, FragmentStates};
+use crate::dialogue::{FragmentEvent, FragmentId};
 use bevy::prelude::*;
 use bevy::utils::all_tuples;
 
 #[derive(Debug, Component)]
 pub struct SequenceItems {
-    id: DialogueId,
-    children: Vec<DialogueId>,
+    id: FragmentId,
+    children: Vec<FragmentId>,
 }
 
 pub fn update_sequence_items(
     q: Query<&SequenceItems>,
-    state: Res<DialogueStates>,
-    mut evals: ResMut<EvaluatedDialogue>,
+    state: Res<FragmentStates>,
+    mut evals: ResMut<EvaluatedFragments>,
 ) {
     for SequenceItems { id, children } in q.iter() {
         let outer_finished = state.state.get(id).map(|s| s.completed).unwrap_or_default();
@@ -43,21 +43,22 @@ pub fn update_sequence_items(
 
 pub struct Sequence<F> {
     fragments: F,
-    id: DialogueId,
+    id: FragmentId,
 }
 
 macro_rules! seq_frag {
     ($($ty:ident),*) => {
         #[allow(non_snake_case)]
-        impl<$($ty),*> IntoFragment for ($($ty,)*)
+        impl<Data, $($ty),*> IntoFragment<Data> for ($($ty,)*)
         where
-            $($ty: IntoFragment),*
+            Data: FragmentData,
+            $($ty: IntoFragment<Data>),*
         {
             type Fragment = Sequence<($($ty::Fragment,)*)>;
 
             #[allow(unused_mut)]
             fn into_fragment(self, commands: &mut Commands) -> (Self::Fragment, FragmentNode) {
-                let id = DialogueId::random();
+                let id = FragmentId::random();
                 let mut ids = Vec::new();
                 let mut node = FragmentNode::new(id, Vec::new());
                 let ($($ty,)*) = self;
@@ -85,16 +86,17 @@ macro_rules! seq_frag {
         }
 
         #[allow(non_snake_case)]
-        impl<$($ty),*> Fragment for Sequence<($($ty,)*)>
+        impl<Data, $($ty),*> Fragment<Data> for Sequence<($($ty,)*)>
         where
-            $($ty: Fragment),*
+            Data: FragmentData,
+            $($ty: Fragment<Data>),*
         {
             #[allow(unused)]
             fn start(
                 &mut self,
-                id: DialogueId,
-                state: &mut DialogueStates,
-                writer: &mut EventWriter<DialogueEvent>,
+                id: FragmentId,
+                state: &mut FragmentStates,
+                writer: &mut EventWriter<FragmentEvent<Data>>,
                 commands: &mut Commands,
             ) -> Start {
                 let mut states = Vec::<Start>::new();
@@ -115,8 +117,8 @@ macro_rules! seq_frag {
             #[allow(unused)]
             fn end(
                 &mut self,
-                id: DialogueId,
-                state: &mut DialogueStates,
+                id: FragmentId,
+                state: &mut FragmentStates,
                 commands: &mut Commands
             ) -> End {
                 let mut states = Vec::<End>::new();
@@ -134,7 +136,7 @@ macro_rules! seq_frag {
                 }
             }
 
-            fn id(&self) -> &DialogueId {
+            fn id(&self) -> &FragmentId {
                 &self.id
             }
         }
@@ -142,3 +144,189 @@ macro_rules! seq_frag {
 }
 
 all_tuples!(seq_frag, 0, 15, T);
+
+impl<Data, T> IntoFragment<Data> for Vec<T>
+where
+    T: IntoFragment<Data>,
+    Data: FragmentData,
+{
+    type Fragment = Sequence<Vec<T::Fragment>>;
+
+    fn into_fragment(self, commands: &mut Commands) -> (Self::Fragment, FragmentNode) {
+        let id = FragmentId::random();
+        let mut ids = Vec::new();
+        let mut node = FragmentNode::new(id, Vec::new());
+
+        let fragments = self
+            .into_iter()
+            .map(|frag| {
+                let (frag, n) = frag.into_fragment(commands);
+                ids.push(*frag.id());
+                node.push(n);
+                frag
+            })
+            .collect();
+
+        let seq = Sequence { fragments, id };
+
+        commands.spawn(SequenceItems {
+            id: seq.id,
+            children: ids,
+        });
+
+        (seq, node)
+    }
+}
+
+impl<Data, T, const LEN: usize> IntoFragment<Data> for [T; LEN]
+where
+    Data: FragmentData,
+    T: IntoFragment<Data>,
+{
+    type Fragment = Sequence<[T::Fragment; LEN]>;
+
+    fn into_fragment(self, commands: &mut Commands) -> (Self::Fragment, FragmentNode) {
+        let id = FragmentId::random();
+        let mut ids = Vec::new();
+        let mut node = FragmentNode::new(id, Vec::new());
+
+        let mut fragments = self.into_iter();
+        let fragments = core::array::from_fn(|_| {
+            let (frag, n) = fragments.next().unwrap().into_fragment(commands);
+            ids.push(*frag.id());
+            node.push(n);
+            frag
+        });
+
+        let seq = Sequence { fragments, id };
+
+        commands.spawn(SequenceItems {
+            id: seq.id,
+            children: ids,
+        });
+
+        (seq, node)
+    }
+}
+
+macro_rules! impl_iterable {
+    ($ty:ident, $col:ty) => {
+        impl<Data, $ty> Fragment<Data> for Sequence<$col>
+        where
+            Data: FragmentData,
+            $ty: Fragment<Data>,
+        {
+            fn start(
+                &mut self,
+                id: FragmentId,
+                state: &mut FragmentStates,
+                writer: &mut EventWriter<FragmentEvent<Data>>,
+                commands: &mut Commands,
+            ) -> Start {
+                let mut start = Start::Unvisited;
+
+                for (i, frag) in self.fragments.iter_mut().enumerate() {
+                    let frag_start = frag.start(id, state, writer, commands);
+
+                    if i == 0 && frag_start.entered() {
+                        state.update(self.id).triggered += 1;
+                        start = Start::Entered;
+                    }
+
+                    if frag_start.visited() && start == Start::Unvisited {
+                        start = Start::Visited;
+                    }
+                }
+
+                start
+            }
+
+            fn end(
+                &mut self,
+                id: FragmentId,
+                state: &mut FragmentStates,
+                commands: &mut Commands,
+            ) -> End {
+                let mut end = End::Unvisited;
+                let len = self.fragments.len();
+
+                for (i, frag) in self.fragments.iter_mut().enumerate() {
+                    let frag_end = frag.end(id, state, commands);
+
+                    if i == len - 1 && frag_end.exited() {
+                        state.update(self.id).completed += 1;
+                        end = End::Exited;
+                    }
+
+                    if frag_end.visited() && end == End::Unvisited {
+                        end = End::Visited;
+                    }
+                }
+
+                end
+            }
+
+            fn id(&self) -> &FragmentId {
+                &self.id
+            }
+        }
+    };
+}
+
+impl_iterable!(T, Vec<T>);
+
+// TODO: consolidate this somehow
+impl<Data, T, const LEN: usize> Fragment<Data> for Sequence<[T; LEN]>
+where
+    Data: FragmentData,
+    T: Fragment<Data>,
+{
+    fn start(
+        &mut self,
+        id: FragmentId,
+        state: &mut FragmentStates,
+        writer: &mut EventWriter<FragmentEvent<Data>>,
+        commands: &mut Commands,
+    ) -> Start {
+        let mut start = Start::Unvisited;
+
+        for (i, frag) in self.fragments.iter_mut().enumerate() {
+            let frag_start = frag.start(id, state, writer, commands);
+
+            if i == 0 && frag_start.entered() {
+                state.update(self.id).triggered += 1;
+                start = Start::Entered;
+            }
+
+            if frag_start.visited() && start == Start::Unvisited {
+                start = Start::Visited;
+            }
+        }
+
+        start
+    }
+
+    fn end(&mut self, id: FragmentId, state: &mut FragmentStates, commands: &mut Commands) -> End {
+        let mut end = End::Unvisited;
+        let len = self.fragments.len();
+
+        for (i, frag) in self.fragments.iter_mut().enumerate() {
+            let frag_end = frag.end(id, state, commands);
+
+            if i == len - 1 && frag_end.exited() {
+                state.update(self.id).completed += 1;
+                end = End::Exited;
+            }
+
+            if frag_end.visited() && end == End::Unvisited {
+                end = End::Visited;
+            }
+        }
+
+        end
+    }
+
+    fn id(&self) -> &FragmentId {
+        &self.id
+    }
+}

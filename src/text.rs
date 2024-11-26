@@ -73,7 +73,7 @@ impl IntoTextToken for &'static str {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum TextToken {
     Section(TextSection),
     Command(TextCommand),
@@ -109,7 +109,7 @@ impl From<String> for TextToken {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum TextCommand {
     Wave,
     Speed(f32),

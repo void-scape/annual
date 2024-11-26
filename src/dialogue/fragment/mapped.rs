@@ -1,5 +1,5 @@
-use super::{FragmentNode, IntoFragment};
-use crate::dialogue::{DialogueEvent, FragmentUpdate};
+use super::{FragmentData, FragmentNode, IntoFragment};
+use crate::dialogue::{FragmentEvent, FragmentUpdate};
 use bevy::{ecs::event::EventRegistry, prelude::*};
 use std::marker::PhantomData;
 
@@ -10,10 +10,11 @@ pub struct Mapped<F, S, E> {
     pub(super) _marker: PhantomData<fn() -> (S, E)>,
 }
 
-impl<F, S, E> IntoFragment for Mapped<F, S, E>
+impl<Data, F, S, E> IntoFragment<Data> for Mapped<F, S, E>
 where
-    F: IntoFragment,
-    S: FnMut(&DialogueEvent) -> E + Send + Sync + 'static,
+    Data: FragmentData,
+    F: IntoFragment<Data>,
+    S: FnMut(&FragmentEvent<Data>) -> E + Send + Sync + 'static,
     E: Event + Clone,
 {
     type Fragment = F::Fragment;
@@ -31,7 +32,8 @@ where
             let mut schedules = world.resource_mut::<Schedules>();
             schedules.add_systems(
                 FragmentUpdate,
-                move |mut raw_events: EventReader<DialogueEvent>, mut wrapped: EventWriter<E>| {
+                move |mut raw_events: EventReader<FragmentEvent<Data>>,
+                      mut wrapped: EventWriter<E>| {
                     for event in raw_events.read() {
                         if leaves.contains(&event.id) {
                             wrapped.send(map(event));

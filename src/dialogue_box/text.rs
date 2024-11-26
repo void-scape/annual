@@ -98,7 +98,7 @@ fn setup_font(
 }
 
 #[derive(Event, Clone)]
-pub struct DialogueBoxEvent(pub DialogueEvent, pub DialogueBoxId);
+pub struct DialogueBoxEvent(pub FragmentEvent<crate::text::TextToken>, pub DialogueBoxId);
 
 // TODO: this method can lead to duplication of shader text entities if mutliple sections use the
 // same shader effect
@@ -106,7 +106,7 @@ fn start_type_writers(
     mut commands: Commands,
     font: Res<DialogueBoxFont>,
     mut reader: EventReader<DialogueBoxEvent>,
-    mut writer: EventWriter<DialogueEndEvent>,
+    mut writer: EventWriter<FragmentEndEvent>,
     registry: Res<DialogueBoxRegistry>,
 ) {
     for DialogueBoxEvent(event, box_id) in reader.read() {
@@ -119,17 +119,7 @@ fn start_type_writers(
         };
 
         commands.spawn((
-            TypeWriter::new_start(
-                dialogue_parser::parse_dialogue(
-                    &mut &*event.dialogue.clone(),
-                    TextStyle {
-                        font: font.0.clone(),
-                        font_size: 32.0,
-                        color: Color::WHITE,
-                    },
-                ),
-                10.0,
-            ),
+            TypeWriter::new_start(event.data.clone(), 20.0),
             DialogueText {
                 text: None,
                 text_effects: Vec::new(),
@@ -256,12 +246,12 @@ fn update_type_writers(
     mut commands: Commands,
     time: Res<Time>,
     mut type_writers: Query<
-        (Entity, &mut TypeWriter, &DialogueId, &mut DialogueText),
+        (Entity, &mut TypeWriter, &FragmentId, &mut DialogueText),
         Without<AwaitingInput>,
     >,
     mut text: Query<&mut Text>,
-    finished_type_writers: Query<(Entity, &DialogueId), With<AwaitingInput>>,
-    mut writer: EventWriter<DialogueEndEvent>,
+    finished_type_writers: Query<(Entity, &FragmentId), With<AwaitingInput>>,
+    mut writer: EventWriter<FragmentEndEvent>,
     mut reader: EventReader<KeyboardInput>,
 ) {
     let mut input_received = false;

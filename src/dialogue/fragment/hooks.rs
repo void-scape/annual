@@ -1,5 +1,5 @@
-use super::{DialogueStates, End, Fragment, FragmentNode, IntoFragment, Start};
-use crate::dialogue::{DialogueEvent, DialogueId};
+use super::{End, Fragment, FragmentData, FragmentNode, FragmentStates, IntoFragment, Start};
+use crate::dialogue::{FragmentEvent, FragmentId};
 use bevy::ecs::system::SystemId;
 use bevy::prelude::*;
 
@@ -8,10 +8,11 @@ pub struct OnVisit<F, T> {
     pub(super) on_trigger: T,
 }
 
-impl<F, T> IntoFragment for OnVisit<F, T>
+impl<Data, F, T> IntoFragment<Data> for OnVisit<F, T>
 where
-    F: IntoFragment,
+    F: IntoFragment<Data>,
     T: System<In = (), Out = ()>,
+    Data: FragmentData,
 {
     type Fragment = OnVisit<F::Fragment, SystemId>;
 
@@ -28,15 +29,16 @@ where
     }
 }
 
-impl<F> Fragment for OnVisit<F, SystemId>
+impl<Data, F> Fragment<Data> for OnVisit<F, SystemId>
 where
-    F: Fragment,
+    F: Fragment<Data>,
+    Data: FragmentData,
 {
     fn start(
         &mut self,
-        selected_id: DialogueId,
-        state: &mut DialogueStates,
-        writer: &mut EventWriter<DialogueEvent>,
+        selected_id: FragmentId,
+        state: &mut FragmentStates,
+        writer: &mut EventWriter<FragmentEvent<Data>>,
         commands: &mut Commands,
     ) -> Start {
         let start = self.fragment.start(selected_id, state, writer, commands);
@@ -49,11 +51,11 @@ where
         start
     }
 
-    fn end(&mut self, id: DialogueId, state: &mut DialogueStates, commands: &mut Commands) -> End {
+    fn end(&mut self, id: FragmentId, state: &mut FragmentStates, commands: &mut Commands) -> End {
         self.fragment.end(id, state, commands)
     }
 
-    fn id(&self) -> &DialogueId {
+    fn id(&self) -> &FragmentId {
         self.fragment.id()
     }
 }
@@ -63,10 +65,11 @@ pub struct OnStart<F, T> {
     pub(super) on_trigger: T,
 }
 
-impl<F, T> IntoFragment for OnStart<F, T>
+impl<Data, F, T> IntoFragment<Data> for OnStart<F, T>
 where
-    F: IntoFragment,
+    F: IntoFragment<Data>,
     T: System<In = (), Out = ()>,
+    Data: FragmentData,
 {
     type Fragment = OnStart<F::Fragment, SystemId>;
 
@@ -83,15 +86,16 @@ where
     }
 }
 
-impl<F> Fragment for OnStart<F, SystemId>
+impl<Data, F> Fragment<Data> for OnStart<F, SystemId>
 where
-    F: Fragment,
+    F: Fragment<Data>,
+    Data: FragmentData,
 {
     fn start(
         &mut self,
-        selected_id: DialogueId,
-        state: &mut DialogueStates,
-        writer: &mut EventWriter<DialogueEvent>,
+        selected_id: FragmentId,
+        state: &mut FragmentStates,
+        writer: &mut EventWriter<FragmentEvent<Data>>,
         commands: &mut Commands,
     ) -> Start {
         let start = self.fragment.start(selected_id, state, writer, commands);
@@ -103,11 +107,11 @@ where
         start
     }
 
-    fn end(&mut self, id: DialogueId, state: &mut DialogueStates, commands: &mut Commands) -> End {
+    fn end(&mut self, id: FragmentId, state: &mut FragmentStates, commands: &mut Commands) -> End {
         self.fragment.end(id, state, commands)
     }
 
-    fn id(&self) -> &DialogueId {
+    fn id(&self) -> &FragmentId {
         self.fragment.id()
     }
 }
@@ -117,10 +121,11 @@ pub struct OnEnd<F, T> {
     pub(super) on_trigger: T,
 }
 
-impl<F, T> IntoFragment for OnEnd<F, T>
+impl<Data, F, T> IntoFragment<Data> for OnEnd<F, T>
 where
-    F: IntoFragment,
+    F: IntoFragment<Data>,
     T: System<In = (), Out = ()>,
+    Data: FragmentData,
 {
     type Fragment = OnEnd<F::Fragment, SystemId>;
 
@@ -137,21 +142,22 @@ where
     }
 }
 
-impl<F> Fragment for OnEnd<F, SystemId>
+impl<Data, F> Fragment<Data> for OnEnd<F, SystemId>
 where
-    F: Fragment,
+    F: Fragment<Data>,
+    Data: FragmentData,
 {
     fn start(
         &mut self,
-        id: DialogueId,
-        state: &mut DialogueStates,
-        writer: &mut EventWriter<DialogueEvent>,
+        id: FragmentId,
+        state: &mut FragmentStates,
+        writer: &mut EventWriter<FragmentEvent<Data>>,
         commands: &mut Commands,
     ) -> Start {
         self.fragment.start(id, state, writer, commands)
     }
 
-    fn end(&mut self, id: DialogueId, state: &mut DialogueStates, commands: &mut Commands) -> End {
+    fn end(&mut self, id: FragmentId, state: &mut FragmentStates, commands: &mut Commands) -> End {
         let end = self.fragment.end(id, state, commands);
 
         if end.exited() {
@@ -161,7 +167,7 @@ where
         end
     }
 
-    fn id(&self) -> &DialogueId {
+    fn id(&self) -> &FragmentId {
         self.fragment.id()
     }
 }

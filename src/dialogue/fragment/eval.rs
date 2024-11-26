@@ -1,5 +1,5 @@
-use super::{Fragment, FragmentNode, IntoFragment, Unregistered};
-use crate::dialogue::evaluate::{Evaluate, EvaluatedDialogue};
+use super::{Fragment, FragmentData, FragmentNode, IntoFragment, Unregistered};
+use crate::dialogue::evaluate::{Evaluate, EvaluatedFragments};
 use crate::dialogue::FragmentUpdate;
 use bevy::prelude::*;
 use std::marker::PhantomData;
@@ -10,11 +10,12 @@ pub struct Evaluated<F, T, O> {
     pub(super) _marker: PhantomData<fn() -> O>,
 }
 
-impl<F, T, O> IntoFragment for Evaluated<F, Unregistered<T>, O>
+impl<Data, F, T, O> IntoFragment<Data> for Evaluated<F, Unregistered<T>, O>
 where
-    F: IntoFragment,
+    F: IntoFragment<Data>,
     T: System<In = (), Out = O>,
     O: Evaluate + Send + 'static,
+    Data: FragmentData,
 {
     type Fragment = F::Fragment;
 
@@ -27,7 +28,7 @@ where
             schedules.add_systems(
                 FragmentUpdate,
                 self.evaluation.0.pipe(
-                    move |eval: In<O>, mut evaluated_dialogue: ResMut<EvaluatedDialogue>| {
+                    move |eval: In<O>, mut evaluated_dialogue: ResMut<EvaluatedFragments>| {
                         let eval = eval.0.evaluate();
                         evaluated_dialogue.insert(id, eval);
                     },

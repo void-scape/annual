@@ -1,20 +1,22 @@
-use super::{Fragment, FragmentNode, IntoFragment};
+use std::marker::PhantomData;
+
+use super::{Fragment, FragmentData, FragmentNode, IntoFragment};
 use crate::dialogue::{
-    evaluate::{DialogueStates, EvaluatedDialogue},
-    DialogueId,
+    evaluate::{EvaluatedFragments, FragmentStates},
+    FragmentId,
 };
 use bevy::prelude::*;
 
 #[derive(Debug, Component)]
 pub struct LimitItem {
-    id: DialogueId,
+    id: FragmentId,
     limit: usize,
 }
 
 pub fn update_limit_items(
     q: Query<&LimitItem>,
-    state: Res<DialogueStates>,
-    mut evals: ResMut<EvaluatedDialogue>,
+    state: Res<FragmentStates>,
+    mut evals: ResMut<EvaluatedFragments>,
 ) {
     for LimitItem { id, limit } in q.iter() {
         let eval = state
@@ -32,18 +34,16 @@ pub struct Limit<F> {
     limit: usize,
 }
 
-impl<F> Limit<F>
-where
-    F: IntoFragment,
-{
+impl<F> Limit<F> {
     pub fn new(fragment: F, limit: usize) -> Self {
         Self { fragment, limit }
     }
 }
 
-impl<F> IntoFragment for Limit<F>
+impl<F, Data> IntoFragment<Data> for Limit<F>
 where
-    F: IntoFragment,
+    F: IntoFragment<Data>,
+    Data: FragmentData,
 {
     type Fragment = F::Fragment;
 

@@ -1,4 +1,4 @@
-use crate::dialogue::{DialogueEvent, DialogueId};
+use crate::dialogue::{FragmentEvent, FragmentId};
 use bevy::prelude::*;
 use std::marker::PhantomData;
 
@@ -19,14 +19,14 @@ pub use mapped::Mapped;
 pub(crate) use limit::update_limit_items;
 pub(crate) use sequence::update_sequence_items;
 
-use super::evaluate::DialogueStates;
+use super::evaluate::FragmentStates;
 
 /// A wrapper for typestate management.
 pub struct Unregistered<T>(T);
 
 /// A type-erased fragment component.
 #[derive(Component)]
-pub struct ErasedFragment(pub Box<dyn Fragment + Send + Sync>);
+pub struct ErasedFragment<Data>(pub Box<dyn Fragment<Data> + Send + Sync>);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Start {
@@ -66,16 +66,16 @@ impl End {
 
 #[derive(Debug, Clone)]
 pub struct FragmentNode {
-    pub id: DialogueId,
+    pub id: FragmentId,
     pub children: Vec<FragmentNode>,
 }
 
 impl FragmentNode {
-    pub fn new(id: DialogueId, children: Vec<FragmentNode>) -> Self {
+    pub fn new(id: FragmentId, children: Vec<FragmentNode>) -> Self {
         Self { id, children }
     }
 
-    pub fn leaf(id: DialogueId) -> Self {
+    pub fn leaf(id: FragmentId) -> Self {
         Self {
             id,
             children: Vec::new(),
@@ -92,14 +92,14 @@ impl FragmentNode {
     /// Otherwise, we descend this node's children to find all the leaves.
     ///
     /// The traversal is depth-first.
-    pub fn leaves(&self) -> Vec<DialogueId> {
+    pub fn leaves(&self) -> Vec<FragmentId> {
         let mut leaves = Vec::new();
         self.leaves_recursive(&mut leaves);
 
         leaves
     }
 
-    fn leaves_recursive(&self, leaves: &mut Vec<DialogueId>) {
+    fn leaves_recursive(&self, leaves: &mut Vec<FragmentId>) {
         if self.children.is_empty() {
             leaves.push(self.id);
         } else {
@@ -116,6 +116,10 @@ pub struct DialogueTree {
     pub fragment: Entity,
 }
 
+pub trait FragmentData: Send + Sync + 'static {}
+
+impl<T> FragmentData for T where T: Send + Sync + 'static {}
+
 /// A dialogue fragment.
 ///
 /// Fragments represent nodes in a dialogue tree. Leaf nodes
@@ -126,62 +130,62 @@ pub struct DialogueTree {
 /// This is intentionally type-eraseable. We can
 /// store top-level fragments as `Box<dyn Fragment>` in entities and
 /// call their `emit` method any time a [DialogueId] is selected.
-pub trait Fragment {
+pub trait Fragment<Data: FragmentData> {
     /// React to a leaf node being selected.
     fn start(
         &mut self,
-        id: DialogueId,
-        state: &mut DialogueStates,
-        writer: &mut EventWriter<DialogueEvent>,
+        id: FragmentId,
+        state: &mut FragmentStates,
+        writer: &mut EventWriter<FragmentEvent<Data>>,
         commands: &mut Commands,
     ) -> Start;
 
     /// React to a leaf node being selected.
-    fn end(&mut self, id: DialogueId, state: &mut DialogueStates, commands: &mut Commands) -> End;
+    fn end(&mut self, id: FragmentId, state: &mut FragmentStates, commands: &mut Commands) -> End;
 
     /// This fragment's ID.
     ///
     /// This should be stable over the lifetime of the application.
-    fn id(&self) -> &DialogueId;
+    fn id(&self) -> &FragmentId;
 }
 
 /// A convenience trait for type-erasing fragments.
-pub trait BoxedFragment {
-    fn boxed(self) -> Box<dyn Fragment + Send + Sync>;
+pub trait BoxedFragment<Data> {
+    fn boxed(self) -> Box<dyn Fragment<Data> + Send + Sync>;
 }
 
-impl<T> BoxedFragment for T
+impl<T, Data> BoxedFragment<Data> for T
 where
-    T: Fragment + Send + Sync + 'static,
+    T: Fragment<Data> + Send + Sync + 'static,
+    Data: FragmentData,
 {
-    fn boxed(self) -> Box<dyn Fragment + Send + Sync> {
+    fn boxed(self) -> Box<dyn Fragment<Data> + Send + Sync> {
         Box::new(self)
     }
 }
 
-pub trait SpawnFragment: Sized {
-    fn spawn(self, commands: &mut Commands);
-}
+// pub trait SpawnFragment: Sized {
+//     fn spawn(self, commands: &mut Commands);
+// }
+//
+// impl<T> SpawnFragment for T
+// where
+//     T: IntoFragment,
+//     T::Fragment: Send + Sync + 'static,
+// {
+//     fn spawn(self, commands: &mut Commands) {
+//         let (fragment, tree) = self.into_fragment(commands);
+//
+//         let associated_frag = commands.spawn(ErasedFragment(fragment.boxed())).id();
+//         commands.spawn(DialogueTree {
+//             tree,
+//             fragment: associated_frag,
+//         });
+//     }
+// }
 
-impl<T> SpawnFragment for T
-where
-    T: IntoFragment,
-    T::Fragment: Send + Sync + 'static,
-{
-    fn spawn(self, commands: &mut Commands) {
-        let (fragment, tree) = self.into_fragment(commands);
-
-        let associated_frag = commands.spawn(ErasedFragment(fragment.boxed())).id();
-        commands.spawn(DialogueTree {
-            tree,
-            fragment: associated_frag,
-        });
-    }
-}
-
-#[allow(unused)]
-pub trait IntoFragment {
-    type Fragment: Fragment;
+pub trait IntoFragment<Data: FragmentData> {
+    type Fragment: Fragment<Data>;
 
     fn into_fragment(self, commands: &mut Commands) -> (Self::Fragment, FragmentNode);
 
@@ -222,10 +226,10 @@ pub trait IntoFragment {
     }
 
     /// Map a dialogue event.
-    fn map_event<S, E>(self, event: S) -> Mapped<Self, S, E>
+    fn map_event<S, M>(self, event: S) -> Mapped<Self, S, M>
     where
-        E: Event,
-        S: FnMut(&DialogueEvent) -> E + Send + Sync + 'static,
+        M: Event,
+        S: FnMut(&FragmentEvent<Data>) -> M + Send + Sync + 'static,
         Self: Sized,
     {
         Mapped {
@@ -258,14 +262,15 @@ pub trait IntoFragment {
 }
 
 /// A convenience trait for setting a fragment's limit to 1.
-pub trait Once: Sized {
+pub trait Once<Data: FragmentData>: Sized {
     /// Set this fragment's limit to 1.
     fn once(self) -> Limit<Self>;
 }
 
-impl<T> Once for T
+impl<T, Data> Once<Data> for T
 where
-    T: IntoFragment,
+    T: IntoFragment<Data>,
+    Data: FragmentData,
 {
     fn once(self) -> Limit<Self> {
         self.limit(1)

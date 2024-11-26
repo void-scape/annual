@@ -1,21 +1,21 @@
 use bevy::{app::MainScheduleOrder, ecs::schedule::ScheduleLabel, prelude::*};
-use evaluate::DialogueStates;
-use fragment::DialogueTree;
+use evaluate::FragmentStates;
+use fragment::{DialogueTree, FragmentData};
 use rand::Rng;
 
 pub mod evaluate;
 pub mod fragment;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Component)]
-pub struct DialogueId(u64);
+pub struct FragmentId(u64);
 
-impl DialogueId {
+impl FragmentId {
     pub fn random() -> Self {
         Self(rand::thread_rng().gen())
     }
 
-    pub fn end(&self) -> DialogueEndEvent {
-        DialogueEndEvent { id: *self }
+    pub fn end(&self) -> FragmentEndEvent {
+        FragmentEndEvent { id: *self }
     }
 }
 
@@ -27,16 +27,16 @@ impl DialogueId {
 /// Since fragments are organized in a tree structure,
 /// this path provides information for the entire branch.
 #[derive(Debug, Clone, Component)]
-pub struct IdPath(Vec<DialogueId>);
+pub struct IdPath(Vec<FragmentId>);
 
-impl AsRef<[DialogueId]> for IdPath {
-    fn as_ref(&self) -> &[DialogueId] {
+impl AsRef<[FragmentId]> for IdPath {
+    fn as_ref(&self) -> &[FragmentId] {
         &self.0
     }
 }
 
 impl core::ops::Deref for IdPath {
-    type Target = [DialogueId];
+    type Target = [FragmentId];
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -45,33 +45,33 @@ impl core::ops::Deref for IdPath {
 
 #[allow(dead_code)]
 impl IdPath {
-    pub fn new(path: Vec<DialogueId>) -> Self {
+    pub fn new(path: Vec<FragmentId>) -> Self {
         assert!(!path.is_empty(), "An ID path must have at least one node.");
 
         Self(path)
     }
 
-    pub fn leaf(&self) -> &DialogueId {
+    pub fn leaf(&self) -> &FragmentId {
         self.first().unwrap()
     }
 }
 
 #[derive(Debug, Event, Clone)]
-pub struct DialogueEvent {
-    pub dialogue: String,
-    pub id: DialogueId,
+pub struct FragmentEvent<Data> {
+    pub id: FragmentId,
+    pub data: Data,
 }
 
 #[allow(unused)]
-impl DialogueEvent {
-    pub fn end(&self) -> DialogueEndEvent {
-        DialogueEndEvent { id: self.id }
+impl<E> FragmentEvent<E> {
+    pub fn end(&self) -> FragmentEndEvent {
+        FragmentEndEvent { id: self.id }
     }
 }
 
 #[derive(Debug, Event)]
-pub struct DialogueEndEvent {
-    pub id: DialogueId,
+pub struct FragmentEndEvent {
+    pub id: FragmentId,
 }
 
 pub struct DialoguePlugin;
@@ -83,10 +83,10 @@ impl Plugin for DialoguePlugin {
             .resource_mut::<MainScheduleOrder>()
             .insert_before(PreUpdate, FragmentUpdate);
 
-        app.insert_resource(evaluate::EvaluatedDialogue::default())
-            .insert_resource(evaluate::DialogueStates::default())
-            .add_event::<DialogueEvent>()
-            .add_event::<DialogueEndEvent>()
+        app.insert_resource(evaluate::EvaluatedFragments::default())
+            .insert_resource(evaluate::FragmentStates::default())
+            // .add_event::<FragmentEvent>()
+            .add_event::<FragmentEndEvent>()
             .add_systems(
                 FragmentUpdate,
                 (
@@ -94,8 +94,9 @@ impl Plugin for DialoguePlugin {
                         fragment::update_sequence_items,
                         fragment::update_limit_items,
                     ),
-                    evaluated_fragments,
-                    watch_events,
+                    // TODO: add these when a new FragmentEvent is introduced
+                    // evaluated_fragments,
+                    // watch_events,
                 )
                     .chain(),
             );
@@ -109,8 +110,8 @@ struct FragmentUpdate;
 fn descend_tree(
     node: &fragment::FragmentNode,
     fragment: Entity,
-    evaluations: &mut evaluate::EvaluatedDialogue,
-    leaves: &mut Vec<(DialogueId, Entity)>,
+    evaluations: &mut evaluate::EvaluatedFragments,
+    leaves: &mut Vec<(FragmentId, Entity)>,
 ) {
     if node.children.is_empty() {
         leaves.push((node.id, fragment));
@@ -128,13 +129,13 @@ fn descend_tree(
     }
 }
 
-// sometehing like this
-fn evaluated_fragments(
-    mut fragments: Query<&mut fragment::ErasedFragment>,
+// TODO: update so this is inserted for every unique event type.
+fn evaluated_fragments<Data: FragmentData>(
+    mut fragments: Query<&mut fragment::ErasedFragment<Data>>,
     trees: Query<&DialogueTree>,
-    mut writer: EventWriter<DialogueEvent>,
-    mut evaluated_dialogue: ResMut<evaluate::EvaluatedDialogue>,
-    mut state: ResMut<DialogueStates>,
+    mut writer: EventWriter<FragmentEvent<Data>>,
+    mut evaluated_dialogue: ResMut<evaluate::EvaluatedFragments>,
+    mut state: ResMut<FragmentStates>,
     mut commands: Commands,
 ) {
     // traverse trees to build up full evaluatinos
@@ -171,10 +172,10 @@ fn evaluated_fragments(
     evaluated_dialogue.clear();
 }
 
-fn watch_events(
-    mut fragments: Query<&mut fragment::ErasedFragment>,
-    mut end: EventReader<DialogueEndEvent>,
-    mut state: ResMut<DialogueStates>,
+fn watch_events<Data: FragmentData>(
+    mut fragments: Query<&mut fragment::ErasedFragment<Data>>,
+    mut end: EventReader<FragmentEndEvent>,
+    mut state: ResMut<FragmentStates>,
     mut commands: Commands,
 ) {
     for end in end.read() {
