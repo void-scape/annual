@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+macros = { path = "macros" }
 bevy_bits = { path = "bevy_bits" }
 paste = "1.0.15"
 rand = "0.8.5"

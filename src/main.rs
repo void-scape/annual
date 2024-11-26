@@ -1,9 +1,12 @@
 use bevy::prelude::*;
 use dialogue_box::DialogueBoxEvent;
+use macros::tokens;
+use text::*;
 
 mod dialogue;
 mod dialogue_box;
 mod dialogue_parser;
+mod text;
 
 fn main() {
     App::default()
@@ -18,6 +21,7 @@ fn main() {
         ))
         .insert_resource(SceneState::None)
         .add_systems(Startup, scene)
+        // .add_systems(Startup, test)
         .add_systems(Update, bevy_bits::close_on_escape)
         .run();
 }
@@ -32,6 +36,9 @@ enum SceneState {
 
 fn scene(mut commands: Commands) {
     use dialogue::fragment::*;
+
+    let val = tokens!("Hello, World! My name is [Nic](red). How are [you](wave) doing?");
+    println!("{val:#?}");
 
     let box_id = dialogue_box::DialogueBoxId::random();
     (
