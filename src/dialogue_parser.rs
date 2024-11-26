@@ -18,7 +18,7 @@ pub struct DialogueTextSection {
 pub fn parse_dialogue(input: &mut &str, style: TextStyle) -> Vec<DialogueTextSection> {
     let mut sections = Vec::new();
     while let Ok(section) = parse_text(input, style.clone()) {
-        sections.push(section);
+        sections.extend(section);
     }
 
     sections
@@ -28,6 +28,13 @@ pub fn parse_dialogue(input: &mut &str, style: TextStyle) -> Vec<DialogueTextSec
 pub enum Effect {
     ColorEffect(ColorEffect),
     ShaderEffect(ShaderEffect),
+    TypeWriterEffect(TypeWriterEffect),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum TypeWriterEffect {
+    Pause(f32),
+    Speed(f32),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -60,6 +67,13 @@ impl Effect {
             val => panic!("should not request layer for non shader effects: {val:?}"),
         }
     }
+
+    pub fn is_type_writer_effect(&self) -> bool {
+        match self {
+            Self::TypeWriterEffect(_) => true,
+            _ => false,
+        }
+    }
 }
 
 fn parse_effect_text<'s>(input: &mut &'s str) -> PResult<&'s str> {
@@ -76,6 +90,8 @@ fn parse_effect_desc(input: &mut &str) -> PResult<Effect> {
             "green" => Effect::ColorEffect(ColorEffect::Green),
             "blue" => Effect::ColorEffect(ColorEffect::Blue),
             "wave" => Effect::ShaderEffect(ShaderEffect::Wave),
+            "pause" => Effect::TypeWriterEffect(TypeWriterEffect::Pause(0.0)),
+            "speed" => Effect::TypeWriterEffect(TypeWriterEffect::Speed(0.0)),
             _ => unimplemented!(),
         })
     }
@@ -85,43 +101,80 @@ fn parse_effect(
     input: &mut &str,
     font: Handle<Font>,
     font_size: f32,
-) -> PResult<DialogueTextSection> {
+) -> PResult<Vec<DialogueTextSection>> {
     '['.parse_next(input)?;
     let effect_text = parse_effect_text(input)?;
     ']'.parse_next(input)?;
     '('.parse_next(input)?;
-    let effect = parse_effect_desc(input)?;
+    let mut effect = parse_effect_desc(input)?;
     ')'.parse_next(input)?;
 
     let mut color = Color::WHITE;
-    match effect {
-        Effect::ColorEffect(effect) => match effect {
-            ColorEffect::Red => color = Color::linear_rgb(1.0, 0.0, 0.0),
-            ColorEffect::Green => color = Color::linear_rgb(0.0, 1.0, 0.0),
-            ColorEffect::Blue => color = Color::linear_rgb(0.0, 0.0, 1.0),
-            ColorEffect::Color(r, g, b) => color = Color::linear_rgb(r, g, b),
-        },
-        Effect::ShaderEffect(_) => {}
-    }
+    match &mut effect {
+        Effect::ColorEffect(ce) => {
+            match ce {
+                ColorEffect::Red => color = Color::linear_rgb(1.0, 0.0, 0.0),
+                ColorEffect::Green => color = Color::linear_rgb(0.0, 1.0, 0.0),
+                ColorEffect::Blue => color = Color::linear_rgb(0.0, 0.0, 1.0),
+                ColorEffect::Color(r, g, b) => color = Color::linear_rgb(*r, *g, *b),
+            };
 
-    Ok(DialogueTextSection {
-        section: TextSection::new(
-            effect_text,
-            TextStyle {
-                font,
-                font_size,
-                color,
-            },
-        ),
-        effect: Some(effect),
-    })
+            Ok(vec![DialogueTextSection {
+                section: TextSection::new(
+                    effect_text,
+                    TextStyle {
+                        font,
+                        font_size,
+                        color,
+                    },
+                ),
+                effect: Some(effect),
+            }])
+        }
+        Effect::ShaderEffect(_) => Ok(effect_text
+            .chars()
+            .map(|c| DialogueTextSection {
+                section: TextSection::new(
+                    c.to_owned(),
+                    TextStyle {
+                        font: font.clone(),
+                        font_size,
+                        color,
+                    },
+                ),
+                effect: Some(effect),
+            })
+            .collect()),
+        Effect::TypeWriterEffect(te) => {
+            match te {
+                TypeWriterEffect::Pause(dur) => {
+                    *dur = effect_text.parse::<f32>().expect("invalid pause argument");
+                }
+                TypeWriterEffect::Speed(speed) => {
+                    *speed = effect_text.parse::<f32>().expect("invalid speed argument");
+                }
+            };
+
+            Ok(vec![DialogueTextSection {
+                section: TextSection::new(
+                    " ",
+                    TextStyle {
+                        font,
+                        font_size,
+                        color,
+                    },
+                ),
+                effect: Some(effect),
+            }])
+        }
+    }
 }
 
-fn parse_text(input: &mut &str, style: TextStyle) -> PResult<DialogueTextSection> {
+fn parse_text(input: &mut &str, style: TextStyle) -> PResult<Vec<DialogueTextSection>> {
     if let Some((_, token)) = input.peek_token() {
         match token {
             '[' => parse_effect(input, style.font.clone(), style.font_size),
-            _ => Ok(DialogueTextSection {
+            _ => Ok(vec![DialogueTextSection {
                 section: TextSection::new(
                     take_while(1.., |token: char| token != '[')
                         .parse_next(input)?
@@ -129,7 +182,7 @@ fn parse_text(input: &mut &str, style: TextStyle) -> PResult<DialogueTextSection
                     style,
                 ),
                 effect: None,
-            }),
+            }]),
         }
     } else {
         Err(ErrMode::from_error_kind(input, ErrorKind::Complete))

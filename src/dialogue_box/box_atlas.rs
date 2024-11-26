@@ -175,8 +175,8 @@ fn handle_show_dialogue_box(
 
                 let mut transform = event.transform;
                 transform.translation += Vec3::new(
-                    x as f32 * atlas.tile_size.x as f32 * event.transform.scale.x,
-                    -(y as i32) as f32 * atlas.tile_size.y as f32 * event.transform.scale.y,
+                    (x as f32 * atlas.tile_size.x as f32) * event.transform.scale.x,
+                    (-(y as i32) as f32 * atlas.tile_size.y as f32) * event.transform.scale.y,
                     0.0,
                 );
 

@@ -78,30 +78,3 @@ fn bind_text_to_box(
     //     }
     // }
 }
-
-fn test_dialogue_box_events(
-    mut show: EventWriter<ShowDialogueBox>,
-    mut hide: EventWriter<HideDialogueBox>,
-    mut reader: EventReader<KeyboardInput>,
-) {
-    for event in reader.read() {
-        let id = DialogueBoxId(0);
-
-        if event.state == ButtonState::Pressed {
-            match event.key_code {
-                KeyCode::KeyS => {
-                    show.send(ShowDialogueBox {
-                        id,
-                        transform: Transform::default().with_scale(Vec3::new(2.0, 2.0, 1.0)),
-                        inner_width: 2,
-                        inner_height: 1,
-                    });
-                }
-                KeyCode::KeyH => {
-                    hide.send(HideDialogueBox { id });
-                }
-                _ => {}
-            }
-        }
-    }
-}

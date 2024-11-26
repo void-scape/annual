@@ -1,4 +1,4 @@
-use crate::dialogue_parser::DialogueTextSection;
+use crate::dialogue_parser::{DialogueTextSection, Effect, TypeWriterEffect};
 use bevy::prelude::*;
 use std::time::Duration;
 
@@ -8,6 +8,8 @@ pub struct TypeWriter {
     timer: Timer,
     sections: Vec<DialogueTextSection>,
     index: usize,
+    pause: Option<f32>,
+    tokens: Vec<TypeWriterToken>,
 }
 
 impl TypeWriter {
@@ -20,10 +22,12 @@ impl TypeWriter {
         timer.pause();
 
         Self {
+            tokens: Self::gen_tokens(&sections),
             timer,
             sections,
             index: 0,
             finished: false,
+            pause: None,
         }
     }
 
@@ -33,6 +37,16 @@ impl TypeWriter {
         slf.start();
 
         slf
+    }
+
+    #[inline]
+    pub fn awaiting_pause_timeout(&self) -> bool {
+        self.pause.is_some()
+    }
+
+    #[inline]
+    pub fn pause_for(&mut self, duration: f32) {
+        self.pause = Some(duration);
     }
 
     #[inline]
@@ -52,17 +66,25 @@ impl TypeWriter {
 
     #[inline]
     pub fn tick(&mut self, time: &Time, on_increment: impl FnOnce(&mut TypeWriter)) -> &mut Self {
-        self.timer.tick(time.delta());
+        if let Some(dur) = &mut self.pause {
+            *dur -= time.delta_seconds();
 
-        if self.timer.just_finished() {
-            if self.index >= self.total_len() {
-                self.finished = true;
-                self.timer.pause();
-            } else {
-                self.index += 1;
+            if *dur <= 0.0 {
+                self.pause = None;
             }
+        } else {
+            self.timer.tick(time.delta());
 
-            on_increment(self);
+            if self.timer.just_finished() {
+                if self.index >= self.total_len() {
+                    self.finished = true;
+                    self.timer.pause();
+                } else {
+                    self.index += 1;
+                }
+
+                on_increment(self);
+            }
         }
 
         self
@@ -144,42 +166,68 @@ impl TypeWriter {
     }
 
     #[inline]
-    pub fn revealed_text_with_line_wrap(&self) -> Vec<DialogueTextSection> {
-        let mut remaining_len = self.index;
-        let mut sections = Vec::new();
+    pub fn revealed_text_with_line_wrap(&self) -> Vec<TypeWriterToken> {
+        let mut len = self.index;
+        let mut tokens = Vec::new();
 
-        for section in self.sections.iter() {
-            if section.section.value.len() > remaining_len {
-                let mut i = 0;
-                if section.section.value.as_bytes()[remaining_len.saturating_sub(1)] != b' ' {
-                    while section
-                        .section
-                        .value
-                        .as_bytes()
-                        .get(remaining_len + i)
-                        .is_some_and(|v| *v != b' ')
+        for token in self.tokens.iter() {
+            if let TypeWriterToken::Command(TypeWriterEffect::Pause(dur)) = token {
+                if len == 1 {
+                    tokens.push(token.clone());
+                    break;
+                }
+            }
+
+            if let TypeWriterToken::Dialogue(section) = &token {
+                let section_len = section.section.value.len();
+
+                if len < section_len {
+                    let mut section = section.clone();
+                    let mut i = 0;
+                    while len + i < section_len
+                        && section.section.value.as_bytes()[(len + i).saturating_sub(1)] != b' '
                     {
                         i += 1;
                     }
+                    section.section.value = section.section.value[..len].to_owned();
+                    for _ in 0..i {
+                        section.section.value.push(' ');
+                    }
+                    tokens.push(TypeWriterToken::Dialogue(section));
+
+                    break;
+                } else {
+                    len -= section_len;
                 }
+            }
 
-                let mut buf = section.section.value[..remaining_len].to_owned();
-                for _ in 0..i {
-                    buf.push(' ');
-                }
+            tokens.push(token.clone());
+        }
 
-                sections.push(DialogueTextSection {
-                    section: TextSection::new(buf, section.section.style.clone()),
-                    effect: section.effect,
-                });
+        tokens
+    }
 
-                break;
+    #[inline]
+    fn gen_tokens(sections: &[DialogueTextSection]) -> Vec<TypeWriterToken> {
+        let mut tokens = Vec::new();
+
+        for section in sections.iter() {
+            if section.effect.is_some_and(|e| e.is_type_writer_effect()) {
+                tokens.push(TypeWriterToken::Command(match section.effect.unwrap() {
+                    Effect::TypeWriterEffect(e) => e,
+                    _ => unreachable!(),
+                }));
             } else {
-                remaining_len -= section.section.value.len();
-                sections.push(section.clone());
+                tokens.push(TypeWriterToken::Dialogue(section.clone()));
             }
         }
 
-        sections
+        tokens
     }
+}
+
+#[derive(Debug, Clone)]
+pub enum TypeWriterToken {
+    Dialogue(DialogueTextSection),
+    Command(TypeWriterEffect),
 }

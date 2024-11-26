@@ -35,9 +35,12 @@ fn scene(mut commands: Commands) {
 
     let box_id = dialogue_box::DialogueBoxId::random();
     (
-        "[Hello](wave), [world!](red)".on_visit(|mut state: ResMut<SceneState>| {
-            *state = SceneState::Start;
-        }),
+        "[10.0](speed)Absence of light. [15.0](speed)[2.0](pause)Notions of shapes[0.5](pause) - both big and small[0.25](pause), dense and fluid.[0.5](pause) \
+         There is no separation of self and ship. [1.0](pause)[10.0](speed)Time itself slips through your [5.0](speed)\
+         [inanimate structure](red)..."
+            .on_visit(|mut state: ResMut<SceneState>| {
+                *state = SceneState::Start;
+            }),
         dynamic(|state: Res<SceneState>| format!(r#"The scene state is "{:?}"!"#, *state)),
         "Lorem ipsum".on_visit(|mut state: ResMut<SceneState>| *state = SceneState::End),
         dynamic(|state: Res<SceneState>| format!(r#"And now the scene state is "{:?}"!"#, *state)),
@@ -47,8 +50,10 @@ fn scene(mut commands: Commands) {
         .map_event(move |event| DialogueBoxEvent(event.clone(), box_id))
         .on_start(dialogue_box::show_dialogue_box(
             box_id,
-            Transform::default().with_scale(Vec3::new(3.0, 3.0, 1.0)),
-            dialogue_box::DialogueBoxDimensions::new(5, 2),
+            Transform::default()
+                .with_scale(Vec3::new(3.0, 3.0, 1.0))
+                .with_translation(Vec3::new(-500.0, 0.0, 0.0)),
+            dialogue_box::DialogueBoxDimensions::new(20, 4),
         ))
         .on_end(dialogue_box::hide_dialogue_box(box_id))
         .spawn(&mut commands);

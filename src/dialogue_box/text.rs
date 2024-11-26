@@ -1,6 +1,6 @@
-use super::{DialogueBoxId, DialogueBoxRegistry};
+use super::{type_writer, DialogueBoxId, DialogueBoxRegistry, TypeWriterToken};
 use crate::dialogue_box::type_writer::TypeWriter;
-use crate::dialogue_parser::{DialogueTextSection, Effect, ShaderEffect};
+use crate::dialogue_parser::{DialogueTextSection, Effect, ShaderEffect, TypeWriterEffect};
 use crate::{dialogue::*, dialogue_parser};
 use bevy::{
     input::{keyboard::KeyboardInput, ButtonState},
@@ -146,6 +146,8 @@ fn start_type_writers(
                                 * box_desc.transform.scale.x,
                         ),
                     },
+                    transform: Transform::default()
+                        .with_translation(box_desc.transform.translation),
                     ..Default::default()
                 },
             },
@@ -173,11 +175,11 @@ impl DialogueText {
     pub fn display_dialogue(
         &mut self,
         commands: &mut Commands,
-        sections: &[DialogueTextSection],
+        sections: &[&DialogueTextSection],
         dialogue_text: &mut Query<&mut Text>,
         parent: Entity,
     ) {
-        for section in sections.iter() {
+        for (i, section) in sections.iter().enumerate() {
             if let Some(effect) = section
                 .effect
                 .and_then(|e| e.requires_shader().then_some(e))
@@ -275,12 +277,37 @@ fn update_type_writers(
         } else {
             type_writer
                 .tick(&time, |type_writer| {
-                    dialogue_text.display_dialogue(
-                        &mut commands,
-                        &type_writer.revealed_text_with_line_wrap(),
-                        &mut text,
-                        entity,
-                    );
+                    let mut tokens = type_writer.revealed_text_with_line_wrap();
+
+                    if let Some(TypeWriterToken::Command(command)) = tokens.last() {
+                        match *command {
+                            TypeWriterEffect::Pause(duration) => {
+                                type_writer.pause_for(duration);
+                                return;
+                            }
+                            _ => {}
+                        }
+                    }
+
+                    for token in tokens.iter() {
+                        if let TypeWriterToken::Command(command) = token {
+                            match *command {
+                                TypeWriterEffect::Speed(speed) => {
+                                    type_writer.with_speed(speed);
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
+
+                    let tokens = tokens
+                        .iter()
+                        .filter_map(|t| match t {
+                            TypeWriterToken::Dialogue(d) => Some(d),
+                            _ => None,
+                        })
+                        .collect::<Vec<_>>();
+                    dialogue_text.display_dialogue(&mut commands, &tokens, &mut text, entity);
                 })
                 .on_finish(|| {
                     commands.entity(entity).insert(AwaitingInput);
