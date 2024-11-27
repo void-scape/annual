@@ -2,7 +2,7 @@ use super::{End, Fragment, FragmentData, FragmentNode, IntoFragment, Start};
 use crate::dialogue::evaluate::{EvaluatedFragments, FragmentStates};
 use crate::dialogue::{FragmentEvent, FragmentId};
 use bevy::prelude::*;
-use bevy::utils::all_tuples;
+use bevy::utils::{all_tuples, all_tuples_with_size};
 
 #[derive(Debug, Component)]
 pub struct SequenceItems {
@@ -47,7 +47,7 @@ pub struct Sequence<F> {
 }
 
 macro_rules! seq_frag {
-    ($($ty:ident),*) => {
+    ($count:literal, $($ty:ident),*) => {
         #[allow(non_snake_case)]
         impl<Data, $($ty),*> IntoFragment<Data> for ($($ty,)*)
         where
@@ -60,7 +60,15 @@ macro_rules! seq_frag {
             fn into_fragment(self, commands: &mut Commands) -> (Self::Fragment, FragmentNode) {
                 let id = FragmentId::random();
                 let mut ids = Vec::new();
-                let mut node = FragmentNode::new(id, Vec::new());
+                ids.reserve_exact($count);
+                let mut node = FragmentNode::new(
+                    id,
+                    {
+                        let mut children = Vec::new();
+                        children.reserve_exact($count);
+                        children
+                    }
+                );
                 let ($($ty,)*) = self;
 
                 let seq = Sequence {
@@ -99,10 +107,10 @@ macro_rules! seq_frag {
                 writer: &mut EventWriter<FragmentEvent<Data>>,
                 commands: &mut Commands,
             ) -> Start {
-                let mut states = Vec::<Start>::new();
-
                 let ($($ty,)*) = &mut self.fragments;
-                $(states.push($ty.start(id, state, writer, commands));)*
+                let states: [Start; $count] = [
+                    $($ty.start(id, state, writer, commands)),*
+                ];
 
                 if states.first().is_some_and(|f| f.entered()) {
                     state.update(self.id).triggered += 1;
@@ -121,10 +129,10 @@ macro_rules! seq_frag {
                 state: &mut FragmentStates,
                 commands: &mut Commands
             ) -> End {
-                let mut states = Vec::<End>::new();
-
                 let ($($ty,)*) = &mut self.fragments;
-                $(states.push($ty.end(id, state, commands));)*
+                let states: [End; $count] = [
+                    $($ty.end(id, state, commands)),*
+                ];
 
                 if states.last().is_some_and(|f| f.exited()) {
                     state.update(self.id).completed += 1;
@@ -143,7 +151,7 @@ macro_rules! seq_frag {
     };
 }
 
-all_tuples!(seq_frag, 0, 15, T);
+all_tuples_with_size!(seq_frag, 0, 15, T);
 
 impl<Data, T> IntoFragment<Data> for Vec<T>
 where
