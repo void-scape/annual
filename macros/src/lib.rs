@@ -34,19 +34,27 @@ pub fn derive_fragment(input: TokenStream) -> TokenStream {
 pub fn tokens(input: TokenStream) -> TokenStream {
     let input_str = parse_macro_input!(input as LitStr).value();
     let mut result = Vec::new();
-    let path = quote! { crate::text };
 
     let input = &mut &*input_str;
 
     while let Ok(text) = parse_normal(input) {
-        result.push(quote! { #text.into_token() });
-        if let Ok(commands) = parse_commands(input, path.clone()) {
-            result.extend(commands);
+        if !text.is_empty() {
+            result.push(quote! { #text.into_token() });
+        }
+
+        if input.peek_token().is_some() {
+            match parse_commands(input) {
+                Ok(commands) => result.extend(commands),
+                Err(e) => panic!("{e}"),
+            }
+        } else {
+            break;
         }
     }
 
     let output = quote! {
         {
+            use crate::dialogue_box::IntoDialogueBoxToken;
             [#(#result),*]
         }
     };
@@ -55,29 +63,20 @@ pub fn tokens(input: TokenStream) -> TokenStream {
 }
 
 fn parse_normal<'a>(input: &mut &'a str) -> PResult<&'a str> {
-    take_while(1.., |c| c != '[').parse_next(input)
+    take_while(0.., |c| c != '[').parse_next(input)
 }
 
-fn parse_commands(
-    input: &mut &str,
-    text_path: proc_macro2::TokenStream,
-) -> PResult<Vec<proc_macro2::TokenStream>> {
+fn parse_commands(input: &mut &str) -> PResult<Vec<proc_macro2::TokenStream>> {
     let mut commands = Vec::new();
 
-    // TODO: recursive effets might not be the best solution, don't work here anyway
     '['.parse_next(input)?;
-    if let Some((_, token)) = input.peek_token() {
-        if token == '[' {
-            commands.extend(parse_commands(input, text_path.clone())?);
-        }
-    }
     let args = take_while(1.., |c| c != ']').parse_next(input)?;
     ']'.parse_next(input)?;
     '('.parse_next(input)?;
     let cmd = take_while(1.., |c| c != ')').parse_next(input)?;
     ')'.parse_next(input)?;
 
-    commands.push(quote! { #text_path::TextToken::parse_command(#args, #cmd) });
+    commands.push(quote! { crate::dialogue_box::DialogueBoxToken::parse_command(#args, #cmd) });
 
     Ok(commands)
 }

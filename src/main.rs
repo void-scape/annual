@@ -1,12 +1,8 @@
 use bevy::prelude::*;
-use dialogue_box::DialogueBoxEvent;
 use macros::tokens;
-use text::*;
 
 mod dialogue;
 mod dialogue_box;
-mod dialogue_parser;
-mod text;
 
 fn main() {
     App::default()
@@ -19,42 +15,63 @@ fn main() {
                 UVec2::splat(16),
             ),
         ))
-        .insert_resource(SceneState::Start)
         .add_systems(Startup, scene)
-        // .add_systems(Startup, test)
         .add_systems(Update, bevy_bits::close_on_escape)
         .run();
 }
 
-// This is just an example.
-#[derive(Debug, Resource, PartialEq, Eq)]
-enum SceneState {
-    None,
-    Start,
-    End,
-}
-
-fn scene(mut commands: Commands) {
+fn scene(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    mut texture_atlases: ResMut<Assets<TextureAtlasLayout>>,
+) {
     use dialogue::fragment::*;
 
-    let box_id = dialogue_box::DialogueBoxId::random();
+    let box_entity = commands.spawn_empty().id();
     (
-        tokens!("Hello, World! My name is [Nic](red). How are [you](wave) doing?"),
-        dynamic(|state: Res<SceneState>| format!(r#"The scene state is "{:?}"!"#, *state)),
-        "Lorem ipsum".on_visit(|mut state: ResMut<SceneState>| *state = SceneState::End),
-        dynamic(|state: Res<SceneState>| format!(r#"And now the scene state is "{:?}"!"#, *state)),
-        "Dolor",
+        "Hello...",
+        tokens!("[1.0](speed)..."),
+        "What are you looking for?",
+        tokens!("D-did you... [1.0](pause)I mean, [0.5](pause)are you a..."),
+        "Is something wrong?",
+        "Are you... talking?",
+        "Well, are you?",
+        tokens!("But you're a [1.0](speed)!"),
+        "Oh, I guess so...",
     )
         .once()
-        .on_start(dialogue_box::show_dialogue_box(
-            box_id,
-            Transform::default()
-                .with_scale(Vec3::new(3.0, 3.0, 1.0))
-                .with_translation(Vec3::new(-500.0, 0.0, 0.0)),
-            dialogue_box::DialogueBoxDimensions::new(20, 4),
+        .on_start(dialogue_box::spawn_dialogue_box(
+            box_entity,
+            dialogue_box::DialogueBoxBundle {
+                atlas: dialogue_box::DialogueBoxAtlas::new(
+                    &asset_server,
+                    &mut texture_atlases,
+                    "Scalable txt screen x1.png",
+                    UVec2::new(16, 16),
+                ),
+                dimensions: dialogue_box::DialogueBoxDimensions::new(20, 4),
+                font: dialogue_box::DialogueBoxFont {
+                    font: asset_server.load("joystix monospace.otf"),
+                    font_size: 32.0,
+                    default_color: bevy::color::Color::WHITE,
+                },
+                spatial: SpatialBundle::from_transform(
+                    Transform::default()
+                        .with_scale(Vec3::new(3.0, 3.0, 1.0))
+                        .with_translation(Vec3::new(-500.0, 0.0, 0.0)),
+                ),
+            },
         ))
-        .on_end(dialogue_box::hide_dialogue_box(box_id))
-        .spawn_fragment::<TextToken>(&mut commands);
+        .on_end(dialogue_box::despawn_dialogue_box(box_entity))
+        .map_event(
+            move |event: &dialogue::FragmentEvent<dialogue_box::DialogueBoxToken>| {
+                dialogue_box::DialogueBoxEvent {
+                    event: event.clone(),
+                    entity: box_entity,
+                }
+            },
+        )
+        .spawn_fragment::<dialogue_box::DialogueBoxToken>(&mut commands);
 
     commands.spawn(Camera2dBundle::default());
 }
