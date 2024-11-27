@@ -24,8 +24,8 @@ pub fn handle_dialogue_box_events(
             for child in text_box.iter() {
                 match event.event.data.clone() {
                     bevy_bits::DialogueBoxToken::Section(section) => {
-                        if let Ok((mut text, mut state, _)) = type_writers.get_mut(*child) {
-                            state.push_section(section, event.event.id);
+                        if let Ok((mut text, mut state, box_font)) = type_writers.get_mut(*child) {
+                            state.push_section(section, event.event.id, box_font);
                         }
                     }
                     bevy_bits::DialogueBoxToken::Command(cmd) => {
@@ -38,44 +38,14 @@ pub fn handle_dialogue_box_events(
         }
     }
 
-    for (mut text, mut state, box_font) in type_writers.iter_mut() {
+    for (i, (mut text, mut state, box_font)) in type_writers.iter_mut().enumerate() {
         // TODO: this will be cheap in the custom pipeline
-        if let Some(section) = state.tick(&time) {
-            match section {
-                SectionOccurance::First(section) => {
-                    text.sections.push(bevy::text::TextSection::new(
-                        section.text.to_string(),
-                        bevy::text::TextStyle {
-                            font_size: box_font.font_size,
-                            font: box_font.font.clone(),
-                            color: section
-                                .color
-                                .as_ref()
-                                .map(|c| c.bevy_color())
-                                .unwrap_or_else(|| box_font.default_color),
-                            // color: if section.effects.is_empty() {
-                            //     section
-                            //         .color
-                            //         .as_ref()
-                            //         .map(|c| c.bevy_color())
-                            //         .unwrap_or_else(|| box_font.default_color)
-                            // } else {
-                            //     bevy::color::Color::NONE
-                            // },
-                        },
-                    ))
-                }
-                SectionOccurance::Repeated(updated_text) => {
-                    text.sections.last_mut().as_mut().unwrap().value =
-                        updated_text.as_ref().to_owned();
-                }
-                SectionOccurance::End => {}
-            }
-        }
 
-        if state.finished(&mut input, &mut text) {
-            if let Some(id) = state.fragment_id() {
-                writer.send(id.end());
+        if let Some(end) = state.tick(&time, &mut input, &mut text, box_font) {
+            // HACK: There is one typewriter per material + 1 for none. All of them update, but we only
+            // want to send the end event once.
+            if i == 0 {
+                writer.send(end);
             }
         }
     }

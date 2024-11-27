@@ -1,5 +1,5 @@
 #![allow(unused)]
-use crate::dialogue::{FragmentEvent, FragmentId};
+use crate::dialogue::{FragmentEndEvent, FragmentEvent, FragmentId};
 use bevy::{
     asset::AssetPath,
     input::{keyboard::KeyboardInput, ButtonState},
@@ -150,21 +150,17 @@ pub struct TypeWriterBundle {
 
 #[derive(Component, Clone)]
 pub struct TypeWriterState {
-    timer: Timer,
-    pause_timer: Timer,
-    clear: bool,
-    section_buf: Option<TypeWriterSectionBuffer>,
-    id: Option<FragmentId>,
+    chars_per_sec: f32,
+    state: State,
+    force_update: bool,
 }
 
 impl Default for TypeWriterState {
     fn default() -> Self {
         Self {
-            timer: Timer::new(Duration::from_secs_f32(1.0 / 10.0), TimerMode::Repeating),
-            pause_timer: Timer::new(Duration::default(), TimerMode::Once),
-            clear: false,
-            section_buf: None,
-            id: None,
+            chars_per_sec: 20.0,
+            state: State::Ready,
+            force_update: false,
         }
     }
 }
@@ -172,151 +168,256 @@ impl Default for TypeWriterState {
 impl TypeWriterState {
     pub fn new(chars_per_sec: f32) -> Self {
         Self {
-            timer: Timer::new(
-                Duration::from_secs_f32(1.0 / chars_per_sec),
-                TimerMode::Repeating,
-            ),
-            pause_timer: Timer::new(Duration::default(), TimerMode::Once),
+            chars_per_sec,
             ..Default::default()
         }
     }
 
-    pub fn push_section(&mut self, section: bevy_bits::tokens::TextSection, id: FragmentId) {
-        self.section_buf = Some(TypeWriterSectionBuffer::new(section));
-        self.id = Some(id);
+    pub fn push_section(
+        &mut self,
+        section: bevy_bits::tokens::TextSection,
+        id: FragmentId,
+        font: &DialogueBoxFont,
+    ) {
+        self.state = State::Section {
+            id,
+            section: TypeWriterSectionBuffer::new(section, font),
+            timer: Timer::new(
+                Duration::from_secs_f32(1.0 / self.chars_per_sec),
+                TimerMode::Repeating,
+            ),
+        };
     }
 
-    pub fn push_cmd(&mut self, cmd: TextCommand, id: FragmentId) {
-        self.id = Some(id);
-
-        match cmd {
-            TextCommand::Speed(speed) => {
-                self.timer
-                    .set_duration(Duration::from_secs_f32(1.0 / speed));
-                self.timer.reset();
-            }
-            TextCommand::Pause(duration) => {
-                self.pause_timer
-                    .set_duration(Duration::from_secs_f32(duration));
-                self.pause_timer.reset();
-            }
-            TextCommand::Clear => {
-                self.clear = true;
-            }
-        }
+    pub fn push_cmd(&mut self, command: TextCommand, id: FragmentId) {
+        self.state = State::Command { id, command };
     }
 
-    pub fn tick(&mut self, time: &Time) -> Option<SectionOccurance<'_>> {
-        if !self.pause_timer.finished() {
-            self.pause_timer.tick(time.delta());
-            return None;
+    pub fn tick(
+        &mut self,
+        time: &Time,
+        reader: &mut EventReader<KeyboardInput>,
+        text: &mut Text,
+        box_font: &DialogueBoxFont,
+    ) -> Option<FragmentEndEvent> {
+        let mut end_event = None;
+        let received_input = reader
+            .read()
+            .next()
+            .is_some_and(|i| i.state == ButtonState::Pressed);
+
+        let new_state = match &mut self.state {
+            State::Ready => None,
+            State::Section { section, id, .. } => {
+                if received_input {
+                    section.finish();
+                    self.force_update = true;
+                    None
+                } else {
+                    section.finished().then(|| {
+                        end_event = Some(id.end());
+                        State::Ready
+                    })
+                }
+            }
+            State::Command { command, id } => match command {
+                TextCommand::Clear => Some(State::AwaitingClear(*id)),
+                TextCommand::Speed(speed) => {
+                    self.chars_per_sec = *speed;
+                    end_event = Some(id.end());
+                    Some(State::Ready)
+                }
+                TextCommand::Pause(duration) => Some(State::Paused {
+                    duration: Timer::new(Duration::from_secs_f32(*duration), TimerMode::Once),
+                    id: *id,
+                }),
+            },
+            State::Paused { duration, id } => {
+                if self.force_update {
+                    end_event = Some(id.end());
+                    Some(State::Ready)
+                } else {
+                    duration.tick(time.delta());
+                    duration.finished().then(|| {
+                        end_event = Some(id.end());
+                        State::Ready
+                    })
+                }
+            }
+            State::AwaitingClear(id) => {
+                self.force_update = false;
+                received_input.then(|| {
+                    text.sections.clear();
+                    end_event = Some(id.end());
+                    State::Ready
+                })
+            }
+        };
+
+        if let Some(new_state) = new_state {
+            self.state = new_state;
         }
 
-        self.timer.tick(time.delta());
-        if self.section_buf.as_ref().is_some_and(|b| b.finished()) {
-            self.section_buf = None;
-        }
-
-        if self.timer.finished() {
-            self.section_buf.as_mut().map(|b| b.advance())
-        } else {
-            None
-        }
-    }
-
-    pub fn finished(&mut self, input: &mut EventReader<KeyboardInput>, text: &mut Text) -> bool {
-        if !self.pause_timer.finished() {
-            false
-        } else if self.clear {
-            if input.read().next().is_some() {
-                self.clear = false;
-                text.sections.clear();
-
-                true
+        if let State::Section { section, timer, .. } = &mut self.state {
+            if self.force_update {
+                Self::update_text(text, box_font, section.advance());
             } else {
-                false
+                timer.tick(time.delta());
+                // already checked if the section is finished
+                if let Some(section) = timer.finished().then(|| section.advance()) {
+                    Self::update_text(text, box_font, section);
+                }
             }
-        } else {
-            self.section_buf.is_none()
+        }
+
+        end_event
+    }
+
+    fn update_text(text: &mut Text, box_font: &DialogueBoxFont, section: SectionOccurance) {
+        match section {
+            SectionOccurance::First(section) => {
+                println!("[{}]", &section.value);
+                text.sections.push(section);
+            }
+            SectionOccurance::Repeated(section) => {
+                println!("[{}]", &section.value);
+                text.sections.pop();
+                text.sections.push(section);
+            }
+            SectionOccurance::End(section) => {
+                println!("[{}]", &section.value);
+                text.sections.pop();
+                text.sections.push(section);
+            }
         }
     }
-
-    pub fn fragment_id(&self) -> Option<FragmentId> {
-        self.id
-    }
 }
 
-#[derive(Component, Clone)]
+#[derive(Debug, Clone)]
+enum State {
+    Ready,
+    Command {
+        id: FragmentId,
+        command: TextCommand,
+    },
+    Section {
+        id: FragmentId,
+        section: TypeWriterSectionBuffer,
+        timer: Timer,
+    },
+    Paused {
+        id: FragmentId,
+        duration: Timer,
+    },
+    AwaitingClear(FragmentId),
+}
+
+#[derive(Component, Debug, Clone)]
 struct TypeWriterSectionBuffer {
-    section: bevy_bits::tokens::TextSection,
-    in_progress: bevy_bits::tokens::TextSection,
-    index: usize,
-    finished: bool,
+    state: SectionBufferState,
 }
 
-pub enum SectionOccurance<'a> {
-    First(&'a bevy_bits::tokens::TextSection),
-    Repeated(Cow<'a, str>),
-    End,
+pub enum SectionOccurance {
+    First(TextSection),
+    Repeated(TextSection),
+    End(TextSection),
+}
+
+#[derive(Debug, Clone)]
+enum SectionBufferState {
+    First { section: TextSection },
+    Repeated { section: TextSection, index: usize },
+    End { section: TextSection },
 }
 
 impl TypeWriterSectionBuffer {
-    pub fn new(section: bevy_bits::tokens::TextSection) -> Self {
-        let in_progress = bevy_bits::tokens::TextSection {
-            text: std::borrow::Cow::Owned(String::with_capacity(section.text.len())),
-            color: section.color.clone(),
-            effects: section.effects.clone(),
-        };
+    pub fn new(section: bevy_bits::tokens::TextSection, font: &DialogueBoxFont) -> Self {
+        let section = section.bevy_section(font.font.clone(), font.font_size, font.default_color);
 
         Self {
-            index: 0,
-            finished: false,
-            section,
-            in_progress,
+            state: SectionBufferState::First { section },
         }
     }
 
-    pub fn advance(&mut self) -> SectionOccurance<'_> {
-        if !self.finished() {
-            self.in_progress
-                .text
-                .to_mut()
-                .push_str(&self.section.text[self.index..self.index + 1]);
-            self.index += 1;
+    pub fn advance(&mut self) -> SectionOccurance {
+        let section = match &mut self.state {
+            SectionBufferState::First { section } => SectionOccurance::First({
+                let space = section.value.find(" ").unwrap_or(section.value.len() - 1);
+                let mut value = String::with_capacity(space);
+                value.push_str(&section.value[..1]);
+                for _ in 0..space {
+                    value.push(' ');
+                }
 
-            let section = if self.index == 1 {
-                SectionOccurance::First(&self.in_progress)
-            } else {
-                let str = if self.in_progress.text.as_bytes()[self.index.saturating_sub(1)] != b' '
-                {
-                    let mut buf = self.in_progress.text[0..self.index].to_owned();
-                    if let Some(space) = self.section.text[self.index..].find(" ") {
+                TextSection {
+                    style: section.style.clone(),
+                    value,
+                }
+            }),
+            SectionBufferState::Repeated { section, index } => {
+                *index += 1;
+
+                let value = if section.value.as_bytes()[index.saturating_sub(1)] != b' ' {
+                    let mut buf = section.value[..*index].to_owned();
+                    if let Some(space) = section.value[*index..].find(" ") {
                         for _ in 0..space + 1 {
                             buf.push(' ');
                         }
                     } else {
-                        for _ in self.index..self.section.text.len() {
+                        for _ in *index..section.value.len() {
                             buf.push(' ');
                         }
                     }
-                    Cow::Owned(buf)
+                    buf
                 } else {
-                    Cow::Borrowed(&self.section.text[..self.index])
+                    section.value[..*index].to_owned()
                 };
 
-                SectionOccurance::Repeated(str)
-            };
+                SectionOccurance::Repeated(TextSection {
+                    value,
+                    style: section.style.clone(),
+                })
+            }
+            SectionBufferState::End { section } => SectionOccurance::End(section.clone()),
+        };
 
-            section
-        } else {
-            self.finished = true;
+        let new_state = match &self.state {
+            SectionBufferState::First { section } => {
+                if section.value.len() == 1 {
+                    Some(SectionBufferState::End {
+                        section: section.clone(),
+                    })
+                } else {
+                    Some(SectionBufferState::Repeated {
+                        section: section.clone(),
+                        index: 1,
+                    })
+                }
+            }
+            SectionBufferState::Repeated { section, index } => (section.value.len() == *index)
+                .then(|| SectionBufferState::End {
+                    section: section.clone(),
+                }),
+            _ => None,
+        };
 
-            SectionOccurance::End
+        if let Some(new_state) = new_state {
+            self.state = new_state;
+        }
+
+        section
+    }
+
+    pub fn finish(&mut self) {
+        self.state = match self.state.clone() {
+            SectionBufferState::First { section } => SectionBufferState::End { section },
+            SectionBufferState::Repeated { section, .. } => SectionBufferState::End { section },
+            SectionBufferState::End { section } => SectionBufferState::End { section },
         }
     }
 
     pub fn finished(&self) -> bool {
-        self.finished || self.section.text.len() == self.in_progress.text.len()
+        matches!(self.state, SectionBufferState::End { .. })
     }
 }
 
