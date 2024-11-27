@@ -11,11 +11,9 @@ use std::path::Path;
 
 mod material;
 mod text;
-mod tokens;
 // mod type_writer;
 
 pub use text::*;
-pub use tokens::*;
 // pub use type_writer::*;
 
 use crate::dialogue::FragmentEvent;
@@ -64,7 +62,7 @@ impl<P: AsRef<Path> + Send + Sync + 'static> Plugin for DialogueBoxPlugin<P> {
 #[derive(Event, Clone)]
 pub struct DialogueBoxEvent {
     pub entity: Entity,
-    pub event: FragmentEvent<DialogueBoxToken>,
+    pub event: FragmentEvent<bevy_bits::DialogueBoxToken>,
 }
 
 /// Spawns a dialogue box with a texture atlas, font, and position.
@@ -219,5 +217,19 @@ impl DialogueBoxComponent {
             Self::Bottom => 7,
             Self::BottomRight => 8,
         }
+    }
+}
+
+impl crate::dialogue::fragment::IntoFragment for bevy_bits::DialogueBoxToken {
+    type Fragment<Data> = crate::dialogue::fragment::Leaf<bevy_bits::DialogueBoxToken>;
+
+    fn into_fragment<Data>(
+        self,
+        _: &mut bevy::prelude::Commands,
+    ) -> (
+        Self::Fragment<Data>,
+        crate::dialogue::fragment::FragmentNode,
+    ) {
+        crate::dialogue::fragment::Leaf::new(self)
     }
 }

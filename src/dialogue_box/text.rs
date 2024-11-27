@@ -15,57 +15,6 @@ use bevy::{
 };
 use std::path::Path;
 
-#[derive(Debug, Clone)]
-pub enum TextCommand {
-    Speed(f32),
-    Pause(f32),
-}
-
-#[derive(Debug, Clone)]
-pub struct TextSection {
-    pub text: RawText,
-    pub color: Option<TextColor>,
-    pub effects: Vec<TextEffect>,
-}
-
-impl From<&'static str> for TextSection {
-    fn from(value: &'static str) -> Self {
-        TextSection {
-            text: RawText::Str(value),
-            color: None,
-            effects: Vec::new(),
-        }
-    }
-}
-
-impl From<String> for TextSection {
-    fn from(value: String) -> Self {
-        TextSection {
-            text: RawText::String(value),
-            color: None,
-            effects: Vec::new(),
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub enum RawText {
-    Str(&'static str),
-    String(String),
-}
-
-#[derive(Debug, Clone)]
-pub enum TextEffect {
-    Wave,
-}
-
-#[derive(Debug, Clone)]
-pub enum TextColor {
-    Red,
-    Green,
-    Blue,
-}
-
 // TODO: this method can lead to duplication of shader text entities if mutliple sections use the
 // same shader effect
 // fn start_type_writers(

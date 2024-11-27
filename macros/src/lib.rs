@@ -1,5 +1,5 @@
 use proc_macro::TokenStream;
-use quote::quote;
+use quote::{quote, TokenStreamExt};
 use syn::{parse_macro_input, LitStr};
 use winnow::{stream::Stream, token::take_while, PResult, Parser};
 
@@ -38,13 +38,17 @@ pub fn tokens(input: TokenStream) -> TokenStream {
     let input = &mut &*input_str;
 
     while let Ok(text) = parse_normal(input) {
+        let token = bevy_bits::DialogueBoxToken::Section(bevy_bits::tokens::TextSection::from(
+            text.to_owned(),
+        ));
+
         if !text.is_empty() {
-            result.push(quote! { #text.into_token() });
+            result.push(token);
         }
 
         if input.peek_token().is_some() {
-            match parse_commands(input) {
-                Ok(commands) => result.extend(commands),
+            match parse_command(input) {
+                Ok(command) => result.push(command),
                 Err(e) => panic!("{e}"),
             }
         } else {
@@ -52,9 +56,10 @@ pub fn tokens(input: TokenStream) -> TokenStream {
         }
     }
 
+    let result = result.into_iter().map(WrapperToken).collect::<Vec<_>>();
+
     let output = quote! {
         {
-            use crate::dialogue_box::IntoDialogueBoxToken;
             [#(#result),*]
         }
     };
@@ -66,9 +71,7 @@ fn parse_normal<'a>(input: &mut &'a str) -> PResult<&'a str> {
     take_while(0.., |c| c != '[').parse_next(input)
 }
 
-fn parse_commands(input: &mut &str) -> PResult<Vec<proc_macro2::TokenStream>> {
-    let mut commands = Vec::new();
-
+fn parse_command(input: &mut &str) -> PResult<bevy_bits::DialogueBoxToken> {
     '['.parse_next(input)?;
     let args = take_while(1.., |c| c != ']').parse_next(input)?;
     ']'.parse_next(input)?;
@@ -76,7 +79,65 @@ fn parse_commands(input: &mut &str) -> PResult<Vec<proc_macro2::TokenStream>> {
     let cmd = take_while(1.., |c| c != ')').parse_next(input)?;
     ')'.parse_next(input)?;
 
-    commands.push(quote! { crate::dialogue_box::DialogueBoxToken::parse_command(#args, #cmd) });
+    Ok(bevy_bits::DialogueBoxToken::parse_command(args, cmd))
+}
 
-    Ok(commands)
+struct WrapperToken(bevy_bits::DialogueBoxToken);
+struct WrapperEffect<'a>(&'a bevy_bits::TextEffect);
+struct WrapperColor<'a>(&'a bevy_bits::TextColor);
+
+impl quote::ToTokens for WrapperEffect<'_> {
+    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+        tokens.append_all(quote! { bevy_bits::TextEffect:: });
+        tokens.append_all(match &self.0 {
+            bevy_bits::TextEffect::Wave => quote! { Wave },
+        });
+    }
+}
+
+impl quote::ToTokens for WrapperColor<'_> {
+    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+        match &self.0 {
+            bevy_bits::TextColor::Red => tokens.append_all(quote! { bevy_bits::TextColor::Red }),
+            bevy_bits::TextColor::Green => {
+                tokens.append_all(quote! { bevy_bits::TextColor::Green })
+            }
+            bevy_bits::TextColor::Blue => tokens.append_all(quote! { bevy_bits::TextColor::Blue }),
+        }
+    }
+}
+
+impl quote::ToTokens for WrapperToken {
+    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+        // let token = self.0;
+        match &self.0 {
+            bevy_bits::DialogueBoxToken::Section(section) => {
+                let text = &section.text;
+                let color = &section.color.as_ref().map(WrapperColor);
+                let color = if let Some(color) = color {
+                    quote! { #color }
+                } else {
+                    quote! { None }
+                };
+                let effects = section.effects.iter().map(WrapperEffect).collect::<Vec<_>>();
+
+                tokens.append_all(quote! {
+                bevy_bits::DialogueBoxToken::Section(
+                    bevy_bits::tokens::TextSection {
+                        text: std::borrow::Cow::Borrowed(#text),
+                        color: #color,
+                        effects: std::borrow::Cow::Borrowed(&[#(#effects),*])
+                    })
+                });
+            }
+            bevy_bits::DialogueBoxToken::Command(cmd) => match &cmd {
+                bevy_bits::TextCommand::Speed(speed) => tokens.append_all(
+                    quote! { bevy_bits::DialogueBoxToken::Command(bevy_bits::tokens::TextCommand::Speed(#speed)) },
+                ),
+                bevy_bits::TextCommand::Pause(pause) => tokens.append_all(
+                    quote! { bevy_bits::DialogueBoxToken::Command(bevy_bits::tokens::TextCommand::Pause(#pause)) },
+                ),
+            },
+        }
+    }
 }

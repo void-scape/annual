@@ -36,7 +36,7 @@ fn scene(
         "Is something wrong?",
         "Are you... talking?",
         "Well, are you?",
-        tokens!("But you're a [1.0](speed)!"),
+        tokens!("But you're a [FLOWER](wave)!"),
         "Oh, I guess so...",
     )
         .once()
@@ -64,14 +64,14 @@ fn scene(
         ))
         .on_end(dialogue_box::despawn_dialogue_box(box_entity))
         .map_event(
-            move |event: &dialogue::FragmentEvent<dialogue_box::DialogueBoxToken>| {
+            move |event: &dialogue::FragmentEvent<bevy_bits::DialogueBoxToken>| {
                 dialogue_box::DialogueBoxEvent {
                     event: event.clone(),
                     entity: box_entity,
                 }
             },
         )
-        .spawn_fragment::<dialogue_box::DialogueBoxToken>(&mut commands);
+        .spawn_fragment::<bevy_bits::DialogueBoxToken>(&mut commands);
 
     commands.spawn(Camera2dBundle::default());
 }
