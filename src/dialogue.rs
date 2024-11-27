@@ -1,6 +1,4 @@
 use bevy::{app::MainScheduleOrder, ecs::schedule::ScheduleLabel, prelude::*};
-use evaluate::FragmentStates;
-use fragment::{DialogueTree, FragmentData};
 use rand::Rng;
 
 pub mod evaluate;
@@ -85,20 +83,14 @@ impl Plugin for DialoguePlugin {
 
         app.insert_resource(evaluate::EvaluatedFragments::default())
             .insert_resource(evaluate::FragmentStates::default())
-            // .add_event::<FragmentEvent>()
             .add_event::<FragmentEndEvent>()
             .add_systems(
                 FragmentUpdate,
                 (
-                    (
-                        fragment::update_sequence_items,
-                        fragment::update_limit_items,
-                    ),
-                    // TODO: add these when a new FragmentEvent is introduced
-                    // evaluated_fragments,
-                    // watch_events,
+                    fragment::update_sequence_items,
+                    fragment::update_limit_items,
                 )
-                    .chain(),
+                    .in_set(EvaluateSet),
             );
     }
 }
@@ -107,80 +99,5 @@ impl Plugin for DialoguePlugin {
 #[derive(ScheduleLabel, Debug, Clone, Copy, Hash, PartialEq, Eq)]
 struct FragmentUpdate;
 
-fn descend_tree(
-    node: &fragment::FragmentNode,
-    fragment: Entity,
-    evaluations: &mut evaluate::EvaluatedFragments,
-    leaves: &mut Vec<(FragmentId, Entity)>,
-) {
-    if node.children.is_empty() {
-        leaves.push((node.id, fragment));
-    } else {
-        for child in node.children.iter() {
-            // push the parent eval, if any
-            if let Some(eval) = evaluations.evaluations.get(&node.id).copied() {
-                evaluations.insert(child.id, eval);
-            }
-
-            if evaluations.is_candidate(child.id) {
-                descend_tree(child, fragment, evaluations, leaves);
-            }
-        }
-    }
-}
-
-// TODO: update so this is inserted for every unique event type.
-fn evaluated_fragments<Data: FragmentData>(
-    mut fragments: Query<&mut fragment::ErasedFragment<Data>>,
-    trees: Query<&DialogueTree>,
-    mut writer: EventWriter<FragmentEvent<Data>>,
-    mut evaluated_dialogue: ResMut<evaluate::EvaluatedFragments>,
-    mut state: ResMut<FragmentStates>,
-    mut commands: Commands,
-) {
-    // traverse trees to build up full evaluatinos
-    let mut leaves = Vec::new();
-    for DialogueTree { tree, fragment } in trees.iter() {
-        // info!("tree: {tree:#?}");
-        descend_tree(tree, *fragment, &mut evaluated_dialogue, &mut leaves);
-    }
-
-    // info!("leaves: {leaves:#?}");
-    // info!("evals: {evaluated_dialogue:#?}");
-
-    let mut evaluations: Vec<_> = leaves
-        .iter()
-        .flat_map(|(id, frag)| {
-            evaluated_dialogue
-                .evaluations
-                .get(id)
-                .map(|e| (id, *frag, e))
-        })
-        .filter(|(id, _, e)| e.result && !state.is_active(**id))
-        .collect();
-    evaluations.sort_by_key(|(_, _, e)| e.count);
-
-    if let Some((id, fragment, _)) = evaluations.first() {
-        if let Ok(mut fragment) = fragments.get_mut(*fragment) {
-            fragment
-                .0
-                .as_mut()
-                .start(**id, &mut state, &mut writer, &mut commands);
-        }
-    }
-
-    evaluated_dialogue.clear();
-}
-
-fn watch_events<Data: FragmentData>(
-    mut fragments: Query<&mut fragment::ErasedFragment<Data>>,
-    mut end: EventReader<FragmentEndEvent>,
-    mut state: ResMut<FragmentStates>,
-    mut commands: Commands,
-) {
-    for end in end.read() {
-        for mut fragment in fragments.iter_mut() {
-            fragment.0.as_mut().end(end.id, &mut state, &mut commands);
-        }
-    }
-}
+#[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
+struct EvaluateSet;

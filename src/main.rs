@@ -19,7 +19,7 @@ fn main() {
                 UVec2::splat(16),
             ),
         ))
-        .insert_resource(SceneState::None)
+        .insert_resource(SceneState::Start)
         .add_systems(Startup, scene)
         // .add_systems(Startup, test)
         .add_systems(Update, bevy_bits::close_on_escape)
@@ -37,33 +37,24 @@ enum SceneState {
 fn scene(mut commands: Commands) {
     use dialogue::fragment::*;
 
-    let val = tokens!("Hello, World! My name is [Nic](red). How are [you](wave) doing?");
-    println!("{val:#?}");
-
-    // let box_id = dialogue_box::DialogueBoxId::random();
-    // (
-    //     "[10.0](speed)Absence of light. [15.0](speed)[2.0](pause)Notions of shapes[0.5](pause) - both big and small[0.25](pause), dense and fluid.[0.5](pause) \
-    //      There is no separation of self and ship. [1.0](pause)[10.0](speed)Time itself slips through your [5.0](speed)\
-    //      [inanimate structure](red)..."
-    //         .on_visit(|mut state: ResMut<SceneState>| {
-    //             *state = SceneState::Start;
-    //         }),
-    //     dynamic(|state: Res<SceneState>| format!(r#"The scene state is "{:?}"!"#, *state)),
-    //     "Lorem ipsum".on_visit(|mut state: ResMut<SceneState>| *state = SceneState::End),
-    //     dynamic(|state: Res<SceneState>| format!(r#"And now the scene state is "{:?}"!"#, *state)),
-    //     "Dolor",
-    // )
-    //     .once()
-    //     .map_event(move |event| DialogueBoxEvent(event.clone(), box_id))
-    //     .on_start(dialogue_box::show_dialogue_box(
-    //         box_id,
-    //         Transform::default()
-    //             .with_scale(Vec3::new(3.0, 3.0, 1.0))
-    //             .with_translation(Vec3::new(-500.0, 0.0, 0.0)),
-    //         dialogue_box::DialogueBoxDimensions::new(20, 4),
-    //     ))
-    //     .on_end(dialogue_box::hide_dialogue_box(box_id))
-    //     .spawn(&mut commands);
+    let box_id = dialogue_box::DialogueBoxId::random();
+    (
+        tokens!("Hello, World! My name is [Nic](red). How are [you](wave) doing?"),
+        dynamic(|state: Res<SceneState>| format!(r#"The scene state is "{:?}"!"#, *state)),
+        "Lorem ipsum".on_visit(|mut state: ResMut<SceneState>| *state = SceneState::End),
+        dynamic(|state: Res<SceneState>| format!(r#"And now the scene state is "{:?}"!"#, *state)),
+        "Dolor",
+    )
+        .once()
+        .on_start(dialogue_box::show_dialogue_box(
+            box_id,
+            Transform::default()
+                .with_scale(Vec3::new(3.0, 3.0, 1.0))
+                .with_translation(Vec3::new(-500.0, 0.0, 0.0)),
+            dialogue_box::DialogueBoxDimensions::new(20, 4),
+        ))
+        .on_end(dialogue_box::hide_dialogue_box(box_id))
+        .spawn_fragment::<TextToken>(&mut commands);
 
     commands.spawn(Camera2dBundle::default());
 }

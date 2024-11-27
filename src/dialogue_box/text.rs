@@ -119,7 +119,8 @@ fn start_type_writers(
         };
 
         commands.spawn((
-            TypeWriter::new_start(event.data.clone(), 20.0),
+            (),
+            // TypeWriter::new_start(event.data.clone(), 20.0),
             DialogueText {
                 text: None,
                 text_effects: Vec::new(),

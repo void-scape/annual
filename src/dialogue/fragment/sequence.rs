@@ -49,15 +49,14 @@ pub struct Sequence<F> {
 macro_rules! seq_frag {
     ($($ty:ident),*) => {
         #[allow(non_snake_case)]
-        impl<Data, $($ty),*> IntoFragment<Data> for ($($ty,)*)
+        impl< $($ty),*> IntoFragment for ($($ty,)*)
         where
-            Data: FragmentData,
-            $($ty: IntoFragment<Data>),*
+            $($ty: IntoFragment),*
         {
-            type Fragment = Sequence<($($ty::Fragment,)*)>;
+            type Fragment<Data> = Sequence<($($ty::Fragment<Data>,)*)>;
 
             #[allow(unused_mut)]
-            fn into_fragment(self, commands: &mut Commands) -> (Self::Fragment, FragmentNode) {
+            fn into_fragment<Data>(self, commands: &mut Commands) -> (Self::Fragment<Data>, FragmentNode) {
                 let id = FragmentId::random();
                 let mut ids = Vec::new();
                 let mut node = FragmentNode::new(id, Vec::new());
@@ -68,7 +67,7 @@ macro_rules! seq_frag {
                         $(
                             {
                                 let (frag, n) = $ty.into_fragment(commands);
-                                ids.push(*frag.id());
+                                ids.push(n.id);
                                 node.push(n);
                                 frag
                             },
@@ -145,14 +144,13 @@ macro_rules! seq_frag {
 
 all_tuples!(seq_frag, 0, 15, T);
 
-impl<Data, T> IntoFragment<Data> for Vec<T>
+impl<T> IntoFragment for Vec<T>
 where
-    T: IntoFragment<Data>,
-    Data: FragmentData,
+    T: IntoFragment,
 {
-    type Fragment = Sequence<Vec<T::Fragment>>;
+    type Fragment<Data> = Sequence<Vec<T::Fragment<Data>>>;
 
-    fn into_fragment(self, commands: &mut Commands) -> (Self::Fragment, FragmentNode) {
+    fn into_fragment<Data>(self, commands: &mut Commands) -> (Self::Fragment<Data>, FragmentNode) {
         let id = FragmentId::random();
         let mut ids = Vec::new();
         let mut node = FragmentNode::new(id, Vec::new());
@@ -161,7 +159,7 @@ where
             .into_iter()
             .map(|frag| {
                 let (frag, n) = frag.into_fragment(commands);
-                ids.push(*frag.id());
+                ids.push(n.id);
                 node.push(n);
                 frag
             })
@@ -178,14 +176,13 @@ where
     }
 }
 
-impl<Data, T, const LEN: usize> IntoFragment<Data> for [T; LEN]
+impl<T, const LEN: usize> IntoFragment for [T; LEN]
 where
-    Data: FragmentData,
-    T: IntoFragment<Data>,
+    T: IntoFragment,
 {
-    type Fragment = Sequence<[T::Fragment; LEN]>;
+    type Fragment<Data> = Sequence<[T::Fragment<Data>; LEN]>;
 
-    fn into_fragment(self, commands: &mut Commands) -> (Self::Fragment, FragmentNode) {
+    fn into_fragment<Data>(self, commands: &mut Commands) -> (Self::Fragment<Data>, FragmentNode) {
         let id = FragmentId::random();
         let mut ids = Vec::new();
         let mut node = FragmentNode::new(id, Vec::new());
@@ -193,7 +190,7 @@ where
         let mut fragments = self.into_iter();
         let fragments = core::array::from_fn(|_| {
             let (frag, n) = fragments.next().unwrap().into_fragment(commands);
-            ids.push(*frag.id());
+            ids.push(n.id);
             node.push(n);
             frag
         });

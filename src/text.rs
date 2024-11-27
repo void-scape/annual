@@ -73,7 +73,7 @@ impl IntoTextToken for &'static str {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, macros::Fragment)]
 pub enum TextToken {
     Section(TextSection),
     Command(TextCommand),
@@ -105,7 +105,13 @@ impl IntoTextToken for TextToken {
 
 impl From<String> for TextToken {
     fn from(value: String) -> Self {
-        TextToken::Section(TextSection::from(value))
+        TextToken::Section(value.into())
+    }
+}
+
+impl From<&'static str> for TextToken {
+    fn from(value: &'static str) -> Self {
+        TextToken::Section(value.into())
     }
 }
 
