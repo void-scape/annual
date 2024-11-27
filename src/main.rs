@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use dialogue::fragment::*;
 use macros::tokens;
 
 mod dialogue;
@@ -20,32 +21,25 @@ fn main() {
         .run();
 }
 
-fn scene(
-    mut commands: Commands,
-    asset_server: Res<AssetServer>,
-    mut texture_atlases: ResMut<Assets<TextureAtlasLayout>>,
-) {
-    use dialogue::fragment::*;
-
+fn spawn_box<F>(
+    fragment: F,
+    commands: &mut Commands,
+    asset_server: &AssetServer,
+    texture_atlases: &mut Assets<TextureAtlasLayout>,
+) where
+    F: IntoFragment,
+    F::Fragment<bevy_bits::DialogueBoxToken>:
+        Fragment<bevy_bits::DialogueBoxToken> + Send + Sync + 'static,
+{
     let box_entity = commands.spawn_empty().id();
-    (
-        "Hello...",
-        tokens!("[1.0](speed)..."),
-        "What are you looking for?",
-        tokens!("D-did you... [1.0](pause)I mean, [0.5](pause)are you a..."),
-        "Is something wrong?",
-        "Are you... talking?",
-        "Well, are you?",
-        tokens!("But you're a [FLOWER](wave)!"),
-        "Oh, I guess so...",
-    )
+    fragment
         .once()
         .on_start(dialogue_box::spawn_dialogue_box(
             box_entity,
             dialogue_box::DialogueBoxBundle {
                 atlas: dialogue_box::DialogueBoxAtlas::new(
-                    &asset_server,
-                    &mut texture_atlases,
+                    asset_server,
+                    texture_atlases,
                     "Scalable txt screen x1.png",
                     UVec2::new(16, 16),
                 ),
@@ -71,7 +65,27 @@ fn scene(
                 }
             },
         )
-        .spawn_fragment::<bevy_bits::DialogueBoxToken>(&mut commands);
+        .spawn_fragment::<bevy_bits::DialogueBoxToken>(commands);
+}
+
+fn scene(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    mut texture_atlases: ResMut<Assets<TextureAtlasLayout>>,
+) {
+    let fragment = (
+        "Hello...",
+        tokens!("[1.0](speed)..."),
+        "What are you looking for?",
+        tokens!("D-did you... [1.0](pause)I mean, [0.5](pause)are you a..."),
+        "Is something wrong?",
+        "Are you... talking?",
+        "Well, are you?",
+        tokens!("But you're a [FLOWER](wave)!"),
+        "Oh, I guess so...",
+    );
+
+    spawn_box(fragment, &mut commands, &asset_server, &mut texture_atlases);
 
     commands.spawn(Camera2dBundle::default());
 }
