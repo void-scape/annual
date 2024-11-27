@@ -19,23 +19,9 @@ mod text;
 pub use text::*;
 
 /// Attaches to a [`crate::dialogue::FragmentEvent<DialogueBoxToken>`] and displays it in a dialogue box.
-pub struct DialogueBoxPlugin<P> {
-    font_path: P,
-    box_atlas_path: P,
-    box_atlas_tile_size: UVec2,
-}
+pub struct DialogueBoxPlugin;
 
-impl<P> DialogueBoxPlugin<P> {
-    pub fn new(font_path: P, box_atlas_path: P, box_atlas_tile_size: UVec2) -> Self {
-        Self {
-            font_path,
-            box_atlas_path,
-            box_atlas_tile_size,
-        }
-    }
-}
-
-impl<P: AsRef<Path> + Send + Sync + 'static> Plugin for DialogueBoxPlugin<P> {
+impl Plugin for DialogueBoxPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(Material2dPlugin::<WaveMaterial>::default())
             .add_systems(
@@ -162,13 +148,25 @@ pub struct TypeWriterBundle {
     pub sprite_source: SpriteSource,
 }
 
-#[derive(Component, Default, Clone)]
+#[derive(Component, Clone)]
 pub struct TypeWriterState {
     timer: Timer,
     pause_timer: Timer,
     clear: bool,
     section_buf: Option<TypeWriterSectionBuffer>,
     id: Option<FragmentId>,
+}
+
+impl Default for TypeWriterState {
+    fn default() -> Self {
+        Self {
+            timer: Timer::new(Duration::from_secs_f32(1.0 / 10.0), TimerMode::Repeating),
+            pause_timer: Timer::new(Duration::default(), TimerMode::Once),
+            clear: false,
+            section_buf: None,
+            id: None,
+        }
+    }
 }
 
 impl TypeWriterState {
@@ -195,6 +193,7 @@ impl TypeWriterState {
             TextCommand::Speed(speed) => {
                 self.timer
                     .set_duration(Duration::from_secs_f32(1.0 / speed));
+                self.timer.reset();
             }
             TextCommand::Pause(duration) => {
                 self.pause_timer
@@ -439,16 +438,16 @@ impl DialogueBoxComponent {
     }
 }
 
-impl crate::dialogue::fragment::IntoFragment for bevy_bits::DialogueBoxToken {
-    type Fragment<Data> = crate::dialogue::fragment::Leaf<bevy_bits::DialogueBoxToken>;
+impl<Data> crate::dialogue::fragment::IntoFragment<Data> for bevy_bits::DialogueBoxToken
+where
+    Data: From<bevy_bits::DialogueBoxToken> + crate::dialogue::fragment::FragmentData,
+{
+    type Fragment = crate::dialogue::fragment::Leaf<bevy_bits::DialogueBoxToken>;
 
-    fn into_fragment<Data>(
+    fn into_fragment(
         self,
         _: &mut bevy::prelude::Commands,
-    ) -> (
-        Self::Fragment<Data>,
-        crate::dialogue::fragment::FragmentNode,
-    ) {
+    ) -> (Self::Fragment, crate::dialogue::fragment::FragmentNode) {
         crate::dialogue::fragment::Leaf::new(self)
     }
 }

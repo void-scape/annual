@@ -1,4 +1,4 @@
-use super::{FragmentNode, IntoFragment};
+use super::{FragmentData, FragmentNode, IntoFragment};
 use crate::dialogue::{
     evaluate::{EvaluatedFragments, FragmentStates},
     FragmentId,
@@ -38,13 +38,14 @@ impl<F> Limit<F> {
     }
 }
 
-impl<F> IntoFragment for Limit<F>
+impl<Data, F> IntoFragment<Data> for Limit<F>
 where
-    F: IntoFragment,
+    F: IntoFragment<Data>,
+    Data: FragmentData,
 {
-    type Fragment<Data> = F::Fragment<Data>;
+    type Fragment = F::Fragment;
 
-    fn into_fragment<Data>(self, commands: &mut Commands) -> (Self::Fragment<Data>, FragmentNode) {
+    fn into_fragment(self, commands: &mut Commands) -> (Self::Fragment, FragmentNode) {
         let (fragment, node) = self.fragment.into_fragment(commands);
         commands.spawn(LimitItem {
             id: node.id,

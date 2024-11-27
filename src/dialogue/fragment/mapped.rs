@@ -10,16 +10,16 @@ pub struct Mapped<F, S, E, Data> {
     pub(super) _marker: PhantomData<fn() -> (S, E, Data)>,
 }
 
-impl<Data, F, S, E> IntoFragment for Mapped<F, S, E, Data>
+impl<Data, F, S, E> IntoFragment<Data> for Mapped<F, S, E, Data>
 where
-    F: IntoFragment,
+    F: IntoFragment<Data>,
     S: FnMut(&FragmentEvent<Data>) -> E + Send + Sync + 'static,
     E: Event + Clone,
     Data: FragmentData,
 {
-    type Fragment<D> = F::Fragment<D>;
+    type Fragment = F::Fragment;
 
-    fn into_fragment<D>(self, commands: &mut Commands) -> (Self::Fragment<D>, FragmentNode) {
+    fn into_fragment(self, commands: &mut Commands) -> (Self::Fragment, FragmentNode) {
         let (fragment, node) = self.fragment.into_fragment(commands);
 
         let leaves = node.leaves();

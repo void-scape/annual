@@ -1,4 +1,4 @@
-use super::{FragmentNode, IntoFragment, Unregistered};
+use super::{FragmentData, FragmentNode, IntoFragment, Unregistered};
 use crate::dialogue::evaluate::{Evaluate, EvaluatedFragments};
 use crate::dialogue::{EvaluateSet, FragmentUpdate};
 use bevy::prelude::*;
@@ -10,15 +10,16 @@ pub struct Evaluated<F, T, O> {
     pub(super) _marker: PhantomData<fn() -> O>,
 }
 
-impl<F, T, O> IntoFragment for Evaluated<F, Unregistered<T>, O>
+impl<Data, F, T, O> IntoFragment<Data> for Evaluated<F, Unregistered<T>, O>
 where
-    F: IntoFragment,
+    F: IntoFragment<Data>,
     T: System<In = (), Out = O>,
     O: Evaluate + Send + 'static,
+    Data: FragmentData,
 {
-    type Fragment<Data> = F::Fragment<Data>;
+    type Fragment = F::Fragment;
 
-    fn into_fragment<Data>(self, commands: &mut Commands) -> (Self::Fragment<Data>, FragmentNode) {
+    fn into_fragment(self, commands: &mut Commands) -> (Self::Fragment, FragmentNode) {
         let (fragment, node) = self.fragment.into_fragment(commands);
         let id = node.id;
 
