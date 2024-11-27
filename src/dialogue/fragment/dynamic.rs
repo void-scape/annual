@@ -4,61 +4,54 @@ use crate::dialogue::{FragmentEvent, FragmentId};
 use bevy::ecs::system::SystemId;
 use bevy::prelude::*;
 
-struct CachedSystem<S> {
-    system: Option<S>,
-    id: Option<SystemId>,
-}
-
 pub struct Dynamic<S> {
     id: FragmentId,
-    system: CachedSystem<S>,
+    system: S,
 }
 
 /// A dynamic text fragment.
 ///
 /// This takes any system that outputs a string.
-pub fn dynamic<S, M, O>(system: S) -> Dynamic<impl System<In = (), Out = O>>
+pub fn dynamic<S, M, O>(system: S) -> Dynamic<S::System>
 where
     S: IntoSystem<(), O, M>,
 {
     let id = FragmentId::random();
     Dynamic {
         id,
-        system: CachedSystem {
-            system: Some(IntoSystem::into_system(system)),
-            id: None,
-        }, // system: Unregistered(IntoSystem::into_system(system.pipe(
-           //     move |dialogue: In<String>, mut writer: EventWriter<FragmentEvent<Data>>| {
-           //         writer.send(FragmentEvent {
-           //             data: dialogue.0.into(),
-           //             id,
-           //         });
-           //     },
-           // ))),
+        system: IntoSystem::into_system(system),
     }
 }
 
-impl<S> IntoFragment for Dynamic<S> {
-    type Fragment<Data> = Self;
+impl<S, Data> IntoFragment<Data> for Dynamic<S>
+where
+    Data: FragmentData,
+    S: System<In = ()>,
+    S::Out: Send + Sync + 'static + Into<Data>,
+{
+    type Fragment = Dynamic<SystemId>;
 
-    fn into_fragment<Data>(self, _: &mut Commands) -> (Self::Fragment<Data>, FragmentNode) {
+    fn into_fragment(self, commands: &mut Commands) -> (Self::Fragment, FragmentNode) {
         let id = self.id;
         (
-            // Dynamic {
-            //     id: self.id,
-            //     system: ,
-            //     _marker: self._marker,
-            // },
-            self,
+            Dynamic {
+                id,
+                system: commands.register_one_shot_system(self.system.pipe(
+                    move |data: In<S::Out>, mut writer: EventWriter<FragmentEvent<Data>>| {
+                        writer.send(FragmentEvent {
+                            id,
+                            data: data.0.into(),
+                        });
+                    },
+                )),
+            },
             FragmentNode::leaf(id),
         )
     }
 }
 
-impl<S, Data> Fragment<Data> for Dynamic<S>
+impl<Data> Fragment<Data> for Dynamic<SystemId>
 where
-    S: System<In = ()>,
-    S::Out: Send + Sync + 'static + Into<Data>,
     Data: FragmentData,
 {
     fn start(
@@ -69,21 +62,7 @@ where
         commands: &mut Commands,
     ) -> Start {
         if id == self.id {
-            if self.system.id.is_none() {
-                let sys = commands
-                    .register_one_shot_system(self.system.system.take().unwrap().pipe(
-                    move |dialogue: In<S::Out>, mut writer: EventWriter<FragmentEvent<Data>>| {
-                        writer.send(FragmentEvent {
-                            data: dialogue.0.into(),
-                            id,
-                        });
-                    },
-                ));
-
-                self.system.id = Some(sys);
-            }
-
-            commands.run_system(self.system.id.unwrap());
+            commands.run_system(self.system);
 
             let state = state.update(id);
             state.triggered += 1;

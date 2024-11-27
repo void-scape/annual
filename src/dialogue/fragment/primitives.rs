@@ -1,14 +1,17 @@
-use super::{FragmentNode, IntoFragment};
+use super::{FragmentData, FragmentNode, IntoFragment};
 
 macro_rules! impl_leaf {
     ($ty:ty) => {
-        impl IntoFragment for $ty {
-            type Fragment<Data> = crate::dialogue::fragment::Leaf<$ty>;
+        impl<Data> IntoFragment<Data> for $ty
+        where
+            Data: FragmentData + From<$ty>,
+        {
+            type Fragment = crate::dialogue::fragment::Leaf<$ty>;
 
-            fn into_fragment<Data>(
+            fn into_fragment(
                 self,
                 _: &mut bevy::prelude::Commands,
-            ) -> (Self::Fragment<Data>, FragmentNode) {
+            ) -> (Self::Fragment, FragmentNode) {
                 crate::dialogue::fragment::Leaf::new(self)
             }
         }

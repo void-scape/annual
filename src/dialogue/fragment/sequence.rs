@@ -49,14 +49,15 @@ pub struct Sequence<F> {
 macro_rules! seq_frag {
     ($($ty:ident),*) => {
         #[allow(non_snake_case)]
-        impl< $($ty),*> IntoFragment for ($($ty,)*)
+        impl<Data, $($ty),*> IntoFragment<Data> for ($($ty,)*)
         where
-            $($ty: IntoFragment),*
+            Data: FragmentData,
+            $($ty: IntoFragment<Data>),*
         {
-            type Fragment<Data> = Sequence<($($ty::Fragment<Data>,)*)>;
+            type Fragment = Sequence<($($ty::Fragment,)*)>;
 
             #[allow(unused_mut)]
-            fn into_fragment<Data>(self, commands: &mut Commands) -> (Self::Fragment<Data>, FragmentNode) {
+            fn into_fragment(self, commands: &mut Commands) -> (Self::Fragment, FragmentNode) {
                 let id = FragmentId::random();
                 let mut ids = Vec::new();
                 let mut node = FragmentNode::new(id, Vec::new());
@@ -144,13 +145,14 @@ macro_rules! seq_frag {
 
 all_tuples!(seq_frag, 0, 15, T);
 
-impl<T> IntoFragment for Vec<T>
+impl<Data, T> IntoFragment<Data> for Vec<T>
 where
-    T: IntoFragment,
+    Data: FragmentData,
+    T: IntoFragment<Data>,
 {
-    type Fragment<Data> = Sequence<Vec<T::Fragment<Data>>>;
+    type Fragment = Sequence<Vec<T::Fragment>>;
 
-    fn into_fragment<Data>(self, commands: &mut Commands) -> (Self::Fragment<Data>, FragmentNode) {
+    fn into_fragment(self, commands: &mut Commands) -> (Self::Fragment, FragmentNode) {
         let id = FragmentId::random();
         let mut ids = Vec::new();
         let mut node = FragmentNode::new(id, Vec::new());
@@ -176,13 +178,14 @@ where
     }
 }
 
-impl<T, const LEN: usize> IntoFragment for [T; LEN]
+impl<Data, T, const LEN: usize> IntoFragment<Data> for [T; LEN]
 where
-    T: IntoFragment,
+    Data: FragmentData,
+    T: IntoFragment<Data>,
 {
-    type Fragment<Data> = Sequence<[T::Fragment<Data>; LEN]>;
+    type Fragment = Sequence<[T::Fragment; LEN]>;
 
-    fn into_fragment<Data>(self, commands: &mut Commands) -> (Self::Fragment<Data>, FragmentNode) {
+    fn into_fragment(self, commands: &mut Commands) -> (Self::Fragment, FragmentNode) {
         let id = FragmentId::random();
         let mut ids = Vec::new();
         let mut node = FragmentNode::new(id, Vec::new());

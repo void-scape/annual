@@ -8,14 +8,15 @@ pub struct OnVisit<F, T> {
     pub(super) on_trigger: T,
 }
 
-impl<F, T> IntoFragment for OnVisit<F, T>
+impl<Data, F, T> IntoFragment<Data> for OnVisit<F, T>
 where
-    F: IntoFragment,
+    F: IntoFragment<Data>,
     T: System<In = (), Out = ()>,
+    Data: FragmentData,
 {
-    type Fragment<Data> = OnVisit<F::Fragment<Data>, SystemId>;
+    type Fragment = OnVisit<F::Fragment, SystemId>;
 
-    fn into_fragment<Data>(self, commands: &mut Commands) -> (Self::Fragment<Data>, FragmentNode) {
+    fn into_fragment(self, commands: &mut Commands) -> (Self::Fragment, FragmentNode) {
         let (fragment, node) = self.fragment.into_fragment(commands);
 
         (
@@ -64,14 +65,15 @@ pub struct OnStart<F, T> {
     pub(super) on_trigger: T,
 }
 
-impl<F, T> IntoFragment for OnStart<F, T>
+impl<Data, F, T> IntoFragment<Data> for OnStart<F, T>
 where
-    F: IntoFragment,
+    F: IntoFragment<Data>,
     T: System<In = (), Out = ()>,
+    Data: FragmentData,
 {
-    type Fragment<Data> = OnStart<F::Fragment<Data>, SystemId>;
+    type Fragment = OnStart<F::Fragment, SystemId>;
 
-    fn into_fragment<Data>(self, commands: &mut Commands) -> (Self::Fragment<Data>, FragmentNode) {
+    fn into_fragment(self, commands: &mut Commands) -> (Self::Fragment, FragmentNode) {
         let (fragment, node) = self.fragment.into_fragment(commands);
 
         (
@@ -119,14 +121,15 @@ pub struct OnEnd<F, T> {
     pub(super) on_trigger: T,
 }
 
-impl<F, T> IntoFragment for OnEnd<F, T>
+impl<Data, F, T> IntoFragment<Data> for OnEnd<F, T>
 where
-    F: IntoFragment,
+    F: IntoFragment<Data>,
     T: System<In = (), Out = ()>,
+    Data: FragmentData,
 {
-    type Fragment<Data> = OnEnd<F::Fragment<Data>, SystemId>;
+    type Fragment = OnEnd<F::Fragment, SystemId>;
 
-    fn into_fragment<Data>(self, commands: &mut Commands) -> (Self::Fragment<Data>, FragmentNode) {
+    fn into_fragment(self, commands: &mut Commands) -> (Self::Fragment, FragmentNode) {
         let (fragment, node) = self.fragment.into_fragment(commands);
 
         (

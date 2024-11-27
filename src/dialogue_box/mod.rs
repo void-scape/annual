@@ -220,16 +220,16 @@ impl DialogueBoxComponent {
     }
 }
 
-impl crate::dialogue::fragment::IntoFragment for bevy_bits::DialogueBoxToken {
-    type Fragment<Data> = crate::dialogue::fragment::Leaf<bevy_bits::DialogueBoxToken>;
+impl<Data> crate::dialogue::fragment::IntoFragment<Data> for bevy_bits::DialogueBoxToken
+where
+    Data: From<bevy_bits::DialogueBoxToken> + crate::dialogue::fragment::FragmentData,
+{
+    type Fragment = crate::dialogue::fragment::Leaf<bevy_bits::DialogueBoxToken>;
 
-    fn into_fragment<Data>(
+    fn into_fragment(
         self,
         _: &mut bevy::prelude::Commands,
-    ) -> (
-        Self::Fragment<Data>,
-        crate::dialogue::fragment::FragmentNode,
-    ) {
+    ) -> (Self::Fragment, crate::dialogue::fragment::FragmentNode) {
         crate::dialogue::fragment::Leaf::new(self)
     }
 }

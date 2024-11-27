@@ -27,9 +27,7 @@ fn spawn_box<F>(
     asset_server: &AssetServer,
     texture_atlases: &mut Assets<TextureAtlasLayout>,
 ) where
-    F: IntoFragment,
-    F::Fragment<bevy_bits::DialogueBoxToken>:
-        Fragment<bevy_bits::DialogueBoxToken> + Send + Sync + 'static,
+    F: IntoFragment<bevy_bits::DialogueBoxToken>,
 {
     let box_entity = commands.spawn_empty().id();
     fragment
@@ -57,15 +55,15 @@ fn spawn_box<F>(
             },
         ))
         .on_end(dialogue_box::despawn_dialogue_box(box_entity))
-        .map_event(
-            move |event: &dialogue::FragmentEvent<bevy_bits::DialogueBoxToken>| {
-                dialogue_box::DialogueBoxEvent {
-                    event: event.clone(),
-                    entity: box_entity,
-                }
-            },
-        )
+        .map_event(move |event| dialogue_box::DialogueBoxEvent {
+            event: event.clone(),
+            entity: box_entity,
+        })
         .spawn_fragment::<bevy_bits::DialogueBoxToken>(commands);
+}
+
+fn inner_seq() -> impl IntoFragment<bevy_bits::DialogueBoxToken> {
+    ("Hello...", tokens!("[1.0](speed)..."))
 }
 
 fn scene(
@@ -74,8 +72,7 @@ fn scene(
     mut texture_atlases: ResMut<Assets<TextureAtlasLayout>>,
 ) {
     let fragment = (
-        "Hello...",
-        tokens!("[1.0](speed)..."),
+        inner_seq(),
         "What are you looking for?",
         tokens!("D-did you... [1.0](pause)I mean, [0.5](pause)are you a..."),
         "Is something wrong?",

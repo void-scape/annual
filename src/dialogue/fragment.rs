@@ -170,16 +170,16 @@ pub trait SpawnFragment: Sized {
     fn spawn_fragment<Data>(self, commands: &mut Commands)
     where
         Data: FragmentData,
-        Self: IntoFragment,
-        <Self as IntoFragment>::Fragment<Data>: Fragment<Data> + Send + Sync + 'static;
+        Self: IntoFragment<Data>,
+        <Self as IntoFragment<Data>>::Fragment: Fragment<Data> + Send + Sync + 'static;
 }
 
 impl<T> SpawnFragment for T {
     fn spawn_fragment<Data>(self, commands: &mut Commands)
     where
         Data: FragmentData,
-        Self: IntoFragment,
-        <Self as IntoFragment>::Fragment<Data>: Fragment<Data> + Send + Sync + 'static,
+        Self: IntoFragment<Data>,
+        <Self as IntoFragment<Data>>::Fragment: Fragment<Data> + Send + Sync + 'static,
     {
         let (fragment, tree) = self.into_fragment(commands);
 
@@ -206,11 +206,15 @@ impl<T> SpawnFragment for T {
     }
 }
 
-pub trait IntoFragment {
-    type Fragment<Data>;
+pub trait IntoFragment<Data: FragmentData> {
+    type Fragment: Fragment<Data> + Send + Sync + 'static;
 
-    fn into_fragment<Data>(self, commands: &mut Commands) -> (Self::Fragment<Data>, FragmentNode);
+    fn into_fragment(self, commands: &mut Commands) -> (Self::Fragment, FragmentNode);
+}
 
+impl<T> FragmentTransform for T {}
+
+pub trait FragmentTransform {
     /// Run a system any time this fragment is visited.
     fn on_visit<S, M>(self, system: S) -> OnVisit<Self, S::System>
     where
@@ -289,10 +293,7 @@ pub trait Once: Sized {
     fn once(self) -> Limit<Self>;
 }
 
-impl<T> Once for T
-where
-    T: IntoFragment,
-{
+impl<T> Once for T {
     fn once(self) -> Limit<Self> {
         self.limit(1)
     }
