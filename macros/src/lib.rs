@@ -56,6 +56,9 @@ pub fn tokens(input: TokenStream) -> TokenStream {
         }
     }
 
+    result.push(bevy_bits::DialogueBoxToken::Command(
+        bevy_bits::tokens::TextCommand::Clear,
+    ));
     let result = result.into_iter().map(WrapperToken).collect::<Vec<_>>();
 
     let output = quote! {
@@ -73,13 +76,20 @@ fn parse_normal<'a>(input: &mut &'a str) -> PResult<&'a str> {
 
 fn parse_command(input: &mut &str) -> PResult<bevy_bits::DialogueBoxToken> {
     '['.parse_next(input)?;
-    let args = take_while(1.., |c| c != ']').parse_next(input)?;
+    let args: Result<&str, winnow::error::ErrMode<winnow::error::ContextError>> =
+        take_while(1.., |c| c != ']').parse_next(input);
     ']'.parse_next(input)?;
     '('.parse_next(input)?;
     let cmd = take_while(1.., |c| c != ')').parse_next(input)?;
     ')'.parse_next(input)?;
 
-    Ok(bevy_bits::DialogueBoxToken::parse_command(args, cmd))
+    Ok(bevy_bits::DialogueBoxToken::parse_command(
+        match args {
+            Ok(args) => Some(args),
+            Err(_) => None,
+        },
+        cmd,
+    ))
 }
 
 struct WrapperToken(bevy_bits::DialogueBoxToken);
@@ -131,6 +141,9 @@ impl quote::ToTokens for WrapperToken {
                 });
             }
             bevy_bits::DialogueBoxToken::Command(cmd) => match &cmd {
+                bevy_bits::TextCommand::Clear => tokens.append_all(
+                    quote! { bevy_bits::DialogueBoxToken::Command(bevy_bits::tokens::TextCommand::Clear) },
+                ),
                 bevy_bits::TextCommand::Speed(speed) => tokens.append_all(
                     quote! { bevy_bits::DialogueBoxToken::Command(bevy_bits::tokens::TextCommand::Speed(#speed)) },
                 ),

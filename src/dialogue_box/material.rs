@@ -1,3 +1,5 @@
+use std::marker::PhantomData;
+
 use bevy::{
     prelude::*,
     render::{render_resource::*, view::RenderLayers},
@@ -5,8 +7,18 @@ use bevy::{
     window::{PrimaryWindow, WindowResized},
 };
 
-trait TextMaterial {
+#[derive(Component)]
+pub struct TextMaterialMarker<M: TextMaterial>(PhantomData<M>);
+
+impl<M: TextMaterial> TextMaterialMarker<M> {
+    pub fn new() -> Self {
+        Self(PhantomData)
+    }
+}
+
+pub trait TextMaterial: Send + Sync + 'static {
     fn init(texture: Handle<Image>) -> Self;
+    fn can_render_effect(effect: &bevy_bits::TextEffect) -> bool;
 }
 
 pub const WAVE_MATERIAL_LAYER: usize = 1;
@@ -21,6 +33,10 @@ pub struct WaveMaterial {
 impl TextMaterial for WaveMaterial {
     fn init(texture: Handle<Image>) -> Self {
         Self { texture }
+    }
+
+    fn can_render_effect(effect: &bevy_bits::TextEffect) -> bool {
+        *effect == bevy_bits::TextEffect::Wave
     }
 }
 

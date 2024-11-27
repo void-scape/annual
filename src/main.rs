@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{prelude::*, sprite::Anchor};
 use macros::tokens;
 
 mod dialogue;
@@ -27,40 +27,55 @@ fn scene(
 ) {
     use dialogue::fragment::*;
 
+    let dialogue_box = dialogue_box::DialogueBoxBundle {
+        atlas: dialogue_box::DialogueBoxAtlas::new(
+            &asset_server,
+            &mut texture_atlases,
+            "Scalable txt screen x1.png",
+            UVec2::new(16, 16),
+        ),
+        dimensions: dialogue_box::DialogueBoxDimensions::new(20, 4),
+        spatial: SpatialBundle::from_transform(
+            Transform::default()
+                .with_scale(Vec3::new(3.0, 3.0, 1.0))
+                .with_translation(Vec3::new(-500.0, 0.0, 0.0)),
+        ),
+        ..Default::default()
+    };
+
     let box_entity = commands.spawn_empty().id();
     (
-        "Hello...",
-        tokens!("[1.0](speed)..."),
-        "What are you looking for?",
-        tokens!("D-did you... [1.0](pause)I mean, [0.5](pause)are you a..."),
-        "Is something wrong?",
-        "Are you... talking?",
-        "Well, are you?",
-        tokens!("But you're a [FLOWER](wave)!"),
-        "Oh, I guess so...",
+        // TODO: clear token implicit for &'static str and strings
+        tokens!("Hello..."),
+        tokens!("[15](speed)..."),
+        tokens!("[20](speed)What are you looking for?"),
+        tokens!("[15](speed)D-did you... [1.0](pause)I mean, [0.5](pause)are you a..."),
+        tokens!("[20](speed)Is something wrong?"),
+        tokens!("Are you... talking?"),
+        tokens!("Well, are you?"),
+        tokens!("[15](speed)But you're a [20](speed)[FLOWER](wave)!"),
+        tokens!("Oh, I guess so..."),
     )
         .once()
         .on_start(dialogue_box::spawn_dialogue_box(
             box_entity,
-            dialogue_box::DialogueBoxBundle {
-                atlas: dialogue_box::DialogueBoxAtlas::new(
-                    &asset_server,
-                    &mut texture_atlases,
-                    "Scalable txt screen x1.png",
-                    UVec2::new(16, 16),
-                ),
-                dimensions: dialogue_box::DialogueBoxDimensions::new(20, 4),
+            dialogue_box::TypeWriterBundle {
+                state: dialogue_box::TypeWriterState::new(20.),
+                text_anchor: Anchor::TopLeft,
                 font: dialogue_box::DialogueBoxFont {
                     font: asset_server.load("joystix monospace.otf"),
-                    font_size: 32.0,
+                    font_size: 45.0,
                     default_color: bevy::color::Color::WHITE,
                 },
-                spatial: SpatialBundle::from_transform(
-                    Transform::default()
-                        .with_scale(Vec3::new(3.0, 3.0, 1.0))
-                        .with_translation(Vec3::new(-500.0, 0.0, 0.0)),
-                ),
+                spatial: SpatialBundle::from_transform(Transform::default().with_scale(Vec3::new(
+                    1.0 / 3.0,
+                    1.0 / 3.0,
+                    1.0,
+                ))),
+                text_2d_bounds: dialogue_box.text_bounds(),
+                ..Default::default()
             },
+            dialogue_box,
         ))
         .on_end(dialogue_box::despawn_dialogue_box(box_entity))
         .map_event(
