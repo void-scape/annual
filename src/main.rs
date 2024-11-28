@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use dialogue::fragment::*;
-use dialogue_box::WithBox;
+use dialogue_box::{DialogueTextSfx, WithBox};
 use macros::t;
 
 mod dialogue;
@@ -34,6 +34,13 @@ fn scene(
         t!("[12](speed)But you're a [0.25](pause)[20](speed)[FLOWER](wave)!"),
         "Oh, I guess so...",
     )
+        .set_resource(DialogueTextSfx(AudioBundle {
+            source: asset_server.load("short-beep-tone-47916.mp3"),
+            settings: PlaybackSettings {
+                mode: bevy::audio::PlaybackMode::Despawn,
+                ..Default::default()
+            },
+        }))
         .spawn_with_box(&mut commands, &asset_server, &mut texture_atlases);
 
     commands.spawn(Camera2dBundle::default());

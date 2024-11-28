@@ -1,7 +1,7 @@
 use super::{
     material::{TextMaterial, TextMaterialMarker},
     DialogueBox, DialogueBoxAtlas, DialogueBoxDimensions, DialogueBoxEvent, DialogueBoxFont,
-    SectionOccurance, TypeWriterState,
+    DialogueTextSfx, SectionOccurance, TypeWriterState,
 };
 use crate::dialogue::FragmentEndEvent;
 use bevy::{input::keyboard::KeyboardInput, prelude::*, sprite::Anchor, text::Text2dBounds};
@@ -18,6 +18,8 @@ pub fn handle_dialogue_box_events(
         &DialogueBoxFont,
     )>,
     mut input: EventReader<KeyboardInput>,
+    sfx_bundle: Option<Res<DialogueTextSfx>>,
+    mut commands: Commands,
 ) {
     for event in reader.read() {
         if let Ok(text_box) = boxes.get(event.entity) {
@@ -46,7 +48,14 @@ pub fn handle_dialogue_box_events(
     for (i, (mut text, mut state, box_font)) in type_writers.iter_mut().enumerate() {
         // TODO: this will be cheap in the custom pipeline
 
-        if let Some(end) = state.tick(&time, &mut input, &mut text, box_font) {
+        if let Some(end) = state.tick(
+            &time,
+            &mut input,
+            &mut text,
+            box_font,
+            &mut commands,
+            sfx_bundle.as_ref().map(|b| &b.0),
+        ) {
             // HACK: There is one typewriter per material + 1 for none. All of them update, but we only
             // want to send the end event once.
             if i == 0 {

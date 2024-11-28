@@ -47,6 +47,11 @@ impl Plugin for DialogueBoxPlugin {
     }
 }
 
+/// [`AudioSourceBundle<AudioSource>`] that globally defines revealed text sfx for all dialogue
+/// boxes.
+#[derive(Resource, Clone)]
+pub struct DialogueTextSfx(pub bevy::audio::AudioBundle);
+
 /// Associates a [`FragmentEvent<DialogueBoxToken>`] with a specific [`DialogueBoxBundle`] entity.
 #[derive(Event, Debug, Clone)]
 pub struct DialogueBoxEvent {
@@ -209,7 +214,6 @@ impl TypeWriterState {
         id: Option<FragmentId>,
         font: &DialogueBoxFont,
     ) {
-        println!("{sequence:#?}");
         debug_assert!(sequence.len() > 0);
 
         let mut type_writer = TypeWriterState::new(self.chars_per_sec);
@@ -238,6 +242,8 @@ impl TypeWriterState {
         reader: &mut EventReader<KeyboardInput>,
         text: &mut Text,
         box_font: &DialogueBoxFont,
+        commands: &mut Commands,
+        sfx: Option<&AudioBundle>,
     ) -> Option<FragmentEndEvent> {
         let mut end_event = None;
         let mut received_input = reader
@@ -255,6 +261,9 @@ impl TypeWriterState {
                     // already checked if the section is finished
                     if let Some(section) = timer.finished().then(|| section.advance()) {
                         Self::update_text(text, box_font, section);
+                        if let Some(sfx) = sfx {
+                            commands.spawn(sfx.clone());
+                        }
                     }
                 }
 
@@ -313,6 +322,8 @@ impl TypeWriterState {
                             box_font,
                             index,
                             sequence,
+                            commands,
+                            sfx,
                         );
 
                         if type_writer.finished() && *index >= sequence.len() {
@@ -337,6 +348,8 @@ impl TypeWriterState {
                         box_font,
                         index,
                         sequence,
+                        commands,
+                        sfx,
                     );
                     None
                 }
@@ -358,8 +371,14 @@ impl TypeWriterState {
         box_font: &DialogueBoxFont,
         index: &mut usize,
         sequence: &mut Cow<'static, [DialogueBoxToken]>,
+        commands: &mut Commands,
+        sfx: Option<&AudioBundle>,
     ) {
-        if type_writer.tick(time, reader, text, box_font).is_some() && *index < sequence.len() {
+        if type_writer
+            .tick(time, reader, text, box_font, commands, sfx)
+            .is_some()
+            && *index < sequence.len()
+        {
             match sequence[*index].clone() {
                 DialogueBoxToken::Section(sec) => {
                     type_writer.push_section(sec, Some(FragmentId::random()), box_font)
