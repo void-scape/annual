@@ -1,7 +1,7 @@
 #![allow(unused)]
 use crate::{
     dialogue::{FragmentEndEvent, FragmentEvent, FragmentId},
-    Fragment, FragmentTransform, IntoFragment, Once, SpawnFragment,
+    Fragment, FragmentExt, IntoFragment, SpawnFragment,
 };
 use bevy::{
     asset::AssetPath,
