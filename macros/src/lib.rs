@@ -31,7 +31,7 @@ pub fn derive_fragment(input: TokenStream) -> TokenStream {
 }
 
 #[proc_macro]
-pub fn tokens(input: TokenStream) -> TokenStream {
+pub fn t(input: TokenStream) -> TokenStream {
     let input_str = parse_macro_input!(input as LitStr).value();
     let mut result = Vec::new();
 

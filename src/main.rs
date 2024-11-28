@@ -1,7 +1,7 @@
 use bevy::{prelude::*, sprite::Anchor};
 use dialogue::fragment::*;
 use dialogue_box::TypeWriterState;
-use macros::tokens;
+use macros::t;
 
 mod dialogue;
 mod dialogue_box;
@@ -70,7 +70,7 @@ fn spawn_box<F>(
 }
 
 fn inner_seq() -> impl IntoFragment<bevy_bits::DialogueBoxToken> {
-    (tokens!("Hello..."), tokens!("[15](speed)..."))
+    (t!("Hello..."), t!("[15](speed)..."))
 }
 
 fn scene(
@@ -81,13 +81,13 @@ fn scene(
     // TODO: clear tokens are implicit for strings
     let fragment = (
         inner_seq(),
-        tokens!("[20](speed)What are you looking for?"),
-        tokens!("[15](speed)D-did you... [1.0](pause)I mean, [0.5](pause)are you a..."),
-        tokens!("[20](speed)Is something wrong?"),
-        tokens!("Are you... talking?"),
-        tokens!("Well, are you?"),
-        tokens!("[12](speed)But you're a [0.25](pause)[20](speed)[FLOWER](wave)!"),
-        tokens!("Oh, I guess so..."),
+        t!("[20](speed)What are you looking for?"),
+        t!("[15](speed)D-did you... [1.0](pause)I mean, [0.5](pause)are you a..."),
+        t!("[20](speed)Is something wrong?"),
+        t!("Are you... talking?"),
+        t!("Well, are you?"),
+        t!("[12](speed)But you're a [0.25](pause)[20](speed)[FLOWER](wave)!"),
+        t!("Oh, I guess so..."),
     );
 
     spawn_box(fragment, &mut commands, &asset_server, &mut texture_atlases);

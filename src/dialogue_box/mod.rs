@@ -212,6 +212,7 @@ impl TypeWriterState {
                 if received_input {
                     section.finish();
                     self.force_update = true;
+                    end_event = Some(id.end());
                     None
                 } else {
                     section.finished().then(|| {
@@ -276,16 +277,13 @@ impl TypeWriterState {
     fn update_text(text: &mut Text, box_font: &DialogueBoxFont, section: SectionOccurance) {
         match section {
             SectionOccurance::First(section) => {
-                println!("[{}]", &section.value);
                 text.sections.push(section);
             }
             SectionOccurance::Repeated(section) => {
-                println!("[{}]", &section.value);
                 text.sections.pop();
                 text.sections.push(section);
             }
             SectionOccurance::End(section) => {
-                println!("[{}]", &section.value);
                 text.sections.pop();
                 text.sections.push(section);
             }
