@@ -31,7 +31,16 @@ fn scene(
         t!("[20](speed)Is something wrong?"),
         "Are you... talking?",
         "Well, are you?",
-        t!("[12](speed)But you're a [0.25](pause)[20](speed)[FLOWER](wave)!"),
+        t!(
+            "[12](speed)But you're a [0.25](pause)[20](speed){[FLOWER](wave)!}",
+            |frag| frag.on_start(|mut commands: Commands| commands.spawn(AudioBundle {
+                source: asset_server.load(""),
+                settings: PlaybackSettings {
+                    mode: bevy::audio::PlaybackMode::Despawn,
+                    ..Default::default()
+                },
+            }))
+        ),
         "Oh, I guess so...",
     )
         .text_sfx(AudioBundle {

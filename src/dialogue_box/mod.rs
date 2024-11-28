@@ -302,6 +302,15 @@ impl TypeWriterState {
                     Duration::from_secs_f32(*duration),
                     TimerMode::Once,
                 ))),
+                TextCommand::Clear => {
+                    text.sections.clear();
+                    end_event = self.fragment_id;
+                    Some(State::Ready)
+                }
+                TextCommand::AwaitClear => Some(State::AwaitClear),
+                TextCommand::ClearAfter(duration) => {
+                    todo!()
+                }
             },
             State::Paused(duration) => {
                 if self.force_update {
@@ -438,6 +447,7 @@ enum State {
         timer: Timer,
     },
     Paused(Timer),
+    AwaitClear,
     Sequence {
         sequence: Cow<'static, [bevy_bits::DialogueBoxToken]>,
         index: usize,

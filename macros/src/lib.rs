@@ -69,7 +69,7 @@ pub fn t(input: TokenStream) -> TokenStream {
 }
 
 fn parse_normal<'a>(input: &mut &'a str) -> PResult<&'a str> {
-    take_while(0.., |c| c != '[').parse_next(input)
+    take_while(0.., |c| c != '[' && c != '{').parse_next(input)
 }
 
 fn parse_command(input: &mut &str) -> PResult<bevy_bits::DialogueBoxToken> {
