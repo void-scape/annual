@@ -25,17 +25,17 @@ pub fn handle_dialogue_box_events(
                 match event.event.data.clone() {
                     bevy_bits::DialogueBoxToken::Section(section) => {
                         if let Ok((mut text, mut state, box_font)) = type_writers.get_mut(*child) {
-                            state.push_section(section, event.event.id, box_font);
+                            state.push_section(section, Some(event.event.id), box_font);
                         }
                     }
                     bevy_bits::DialogueBoxToken::Command(cmd) => {
                         if let Ok((mut text, mut state, _)) = type_writers.get_mut(*child) {
-                            state.push_cmd(cmd, event.event.id);
+                            state.push_cmd(cmd, Some(event.event.id));
                         }
                     }
                     bevy_bits::DialogueBoxToken::Sequence(seq) => {
-                        if let Ok((mut text, mut state, _)) = type_writers.get_mut(*child) {
-                            state.push_seq(seq, event.event.id);
+                        if let Ok((mut text, mut state, box_font)) = type_writers.get_mut(*child) {
+                            state.push_seq(seq, Some(event.event.id), box_font);
                         }
                     }
                 }
@@ -55,53 +55,3 @@ pub fn handle_dialogue_box_events(
         }
     }
 }
-
-// TODO: handle text materials for effects
-// pub fn handle_dialogue_box_events_material<M: TextMaterial>(
-//     mut reader: EventReader<DialogueBoxEvent>,
-//     mut writer: EventWriter<FragmentEndEvent>,
-//     time: Res<Time>,
-//     boxes: Query<&Children, With<DialogueBox>>,
-//     mut type_writers: Query<(
-//         &mut bevy::text::Text,
-//         &mut TypeWriterState,
-//         &DialogueBoxFont,
-//         &TextMaterialMarker<M>,
-//     )>,
-//     mut input: EventReader<KeyboardInput>,
-// ) {
-//     for (mut text, mut state, box_font, _) in type_writers.iter_mut() {
-//         if let Some(section) = state.tick(&time) {
-//             match section {
-//                 SectionOccurance::First(section) => {
-//                     println!("{section:#?}");
-//                     text.sections.push(bevy::text::TextSection::new(
-//                         section.text.to_string(),
-//                         bevy::text::TextStyle {
-//                             font_size: box_font.font_size,
-//                             font: box_font.font.clone(),
-//                             color: if let Some(effect) = section.effects.last() {
-//                                 if M::can_render_effect(effect) {
-//                                     section
-//                                         .color
-//                                         .as_ref()
-//                                         .map(|c| c.bevy_color())
-//                                         .unwrap_or_else(|| box_font.default_color)
-//                                 } else {
-//                                     bevy::color::Color::NONE
-//                                 }
-//                             } else {
-//                                 bevy::color::Color::NONE
-//                             },
-//                         },
-//                     ))
-//                 }
-//                 SectionOccurance::Repeated(updated_text) => {
-//                     text.sections.last_mut().as_mut().unwrap().value =
-//                         updated_text.as_ref().to_owned();
-//                 }
-//                 SectionOccurance::End => {}
-//             }
-//         }
-//     }
-// }

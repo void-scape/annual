@@ -151,11 +151,12 @@ pub struct TypeWriterBundle {
     pub sprite_source: SpriteSource,
 }
 
-#[derive(Component, Clone)]
+#[derive(Component, Debug, Clone)]
 pub struct TypeWriterState {
     chars_per_sec: f32,
     state: State,
     force_update: bool,
+    fragment_id: Option<FragmentId>,
 }
 
 impl Default for TypeWriterState {
@@ -164,6 +165,7 @@ impl Default for TypeWriterState {
             chars_per_sec: 20.0,
             state: State::Ready,
             force_update: false,
+            fragment_id: None,
         }
     }
 }
@@ -179,24 +181,56 @@ impl TypeWriterState {
     pub fn push_section(
         &mut self,
         section: bevy_bits::tokens::TextSection,
-        id: FragmentId,
+        id: Option<FragmentId>,
         font: &DialogueBoxFont,
     ) {
+        debug_assert!(!matches!(self.state, State::Sequence { .. }));
+
         self.state = State::Section {
-            id,
             section: TypeWriterSectionBuffer::new(section, font),
             timer: Timer::new(
                 Duration::from_secs_f32(1.0 / self.chars_per_sec),
                 TimerMode::Repeating,
             ),
         };
+        self.fragment_id = id;
     }
 
-    pub fn push_cmd(&mut self, command: TextCommand, id: FragmentId) {
-        self.state = State::Command { id, command };
+    pub fn push_cmd(&mut self, command: TextCommand, id: Option<FragmentId>) {
+        debug_assert!(!matches!(self.state, State::Sequence { .. }));
+
+        self.state = State::Command(command);
+        self.fragment_id = id;
     }
 
-    pub fn push_seq(&mut self, sequence: Cow<'static, [DialogueBoxToken]>, id: FragmentId) {}
+    pub fn push_seq(
+        &mut self,
+        sequence: Cow<'static, [DialogueBoxToken]>,
+        id: Option<FragmentId>,
+        font: &DialogueBoxFont,
+    ) {
+        println!("{sequence:#?}");
+        debug_assert!(sequence.len() > 0);
+
+        let mut type_writer = TypeWriterState::new(self.chars_per_sec);
+        match sequence[0].clone() {
+            DialogueBoxToken::Section(sec) => {
+                type_writer.push_section(sec, Some(FragmentId::random()), font)
+            }
+            DialogueBoxToken::Command(cmd) => type_writer.push_cmd(cmd, Some(FragmentId::random())),
+            DialogueBoxToken::Sequence(seq) => {
+                type_writer.push_seq(seq, Some(FragmentId::random()), font)
+            }
+        }
+
+        self.state = State::Sequence {
+            sequence,
+            type_writer: Box::new(type_writer),
+            index: 1,
+            force_update: false,
+        };
+        self.fragment_id = id;
+    }
 
     pub fn tick(
         &mut self,
@@ -206,57 +240,106 @@ impl TypeWriterState {
         box_font: &DialogueBoxFont,
     ) -> Option<FragmentEndEvent> {
         let mut end_event = None;
-        let received_input = reader
+        let mut received_input = reader
             .read()
             .next()
             .is_some_and(|i| i.state == ButtonState::Pressed);
 
         let new_state = match &mut self.state {
             State::Ready => None,
-            State::Section { section, id, .. } => {
+            State::Section { section, timer } => {
+                if self.force_update {
+                    Self::update_text(text, box_font, section.advance());
+                } else {
+                    timer.tick(time.delta());
+                    // already checked if the section is finished
+                    if let Some(section) = timer.finished().then(|| section.advance()) {
+                        Self::update_text(text, box_font, section);
+                    }
+                }
+
                 if received_input {
                     section.finish();
                     self.force_update = true;
-                    end_event = Some(id.end());
-                    None
+                    end_event = self.fragment_id;
+                    Some(State::Ready)
                 } else {
                     section.finished().then(|| {
-                        end_event = Some(id.end());
+                        end_event = self.fragment_id;
                         State::Ready
                     })
                 }
             }
-            State::Command { command, id } => match command {
-                // TextCommand::Clear => Some(State::AwaitingClear(*id)),
+            State::Command(command) => match command {
                 TextCommand::Speed(speed) => {
                     self.chars_per_sec = *speed;
-                    end_event = Some(id.end());
+                    end_event = self.fragment_id;
                     Some(State::Ready)
                 }
-                TextCommand::Pause(duration) => Some(State::Paused {
-                    duration: Timer::new(Duration::from_secs_f32(*duration), TimerMode::Once),
-                    id: *id,
-                }),
+                TextCommand::Pause(duration) => Some(State::Paused(Timer::new(
+                    Duration::from_secs_f32(*duration),
+                    TimerMode::Once,
+                ))),
             },
-            State::Paused { duration, id } => {
+            State::Paused(duration) => {
                 if self.force_update {
-                    end_event = Some(id.end());
+                    end_event = self.fragment_id;
                     Some(State::Ready)
                 } else {
                     duration.tick(time.delta());
                     duration.finished().then(|| {
-                        end_event = Some(id.end());
+                        end_event = self.fragment_id;
                         State::Ready
                     })
                 }
             }
-            State::AwaitingClear(id) => {
-                self.force_update = false;
-                received_input.then(|| {
-                    text.sections.clear();
-                    end_event = Some(id.end());
-                    State::Ready
-                })
+            State::Sequence {
+                sequence,
+                type_writer,
+                index,
+                force_update,
+            } => {
+                let finished = type_writer.finished() && *index >= sequence.len();
+
+                if received_input && !*force_update && !finished {
+                    *force_update = true;
+
+                    loop {
+                        Self::update_seq_type_writer(
+                            type_writer,
+                            time,
+                            reader,
+                            text,
+                            box_font,
+                            index,
+                            sequence,
+                        );
+
+                        if type_writer.finished() && *index >= sequence.len() {
+                            received_input = false;
+                            break;
+                        }
+                    }
+                }
+
+                if (*index >= sequence.len() && matches!(type_writer.state, State::Ready)) {
+                    received_input.then(|| {
+                        text.sections.clear();
+                        end_event = self.fragment_id;
+                        State::Ready
+                    })
+                } else {
+                    Self::update_seq_type_writer(
+                        type_writer,
+                        time,
+                        reader,
+                        text,
+                        box_font,
+                        index,
+                        sequence,
+                    );
+                    None
+                }
             }
         };
 
@@ -264,19 +347,33 @@ impl TypeWriterState {
             self.state = new_state;
         }
 
-        if let State::Section { section, timer, .. } = &mut self.state {
-            if self.force_update {
-                Self::update_text(text, box_font, section.advance());
-            } else {
-                timer.tick(time.delta());
-                // already checked if the section is finished
-                if let Some(section) = timer.finished().then(|| section.advance()) {
-                    Self::update_text(text, box_font, section);
+        end_event.map(|id| id.end())
+    }
+
+    fn update_seq_type_writer(
+        type_writer: &mut TypeWriterState,
+        time: &Time,
+        reader: &mut EventReader<KeyboardInput>,
+        text: &mut Text,
+        box_font: &DialogueBoxFont,
+        index: &mut usize,
+        sequence: &mut Cow<'static, [DialogueBoxToken]>,
+    ) {
+        if type_writer.tick(time, reader, text, box_font).is_some() && *index < sequence.len() {
+            match sequence[*index].clone() {
+                DialogueBoxToken::Section(sec) => {
+                    type_writer.push_section(sec, Some(FragmentId::random()), box_font)
+                }
+                DialogueBoxToken::Command(cmd) => {
+                    type_writer.push_cmd(cmd, Some(FragmentId::random()))
+                }
+                DialogueBoxToken::Sequence(seq) => {
+                    type_writer.push_seq(seq, Some(FragmentId::random()), box_font)
                 }
             }
-        }
 
-        end_event
+            *index += 1;
+        }
     }
 
     fn update_text(text: &mut Text, box_font: &DialogueBoxFont, section: SectionOccurance) {
@@ -294,25 +391,27 @@ impl TypeWriterState {
             }
         }
     }
+
+    fn finished(&self) -> bool {
+        matches!(self.state, State::Ready)
+    }
 }
 
 #[derive(Debug, Clone)]
 enum State {
     Ready,
-    Command {
-        id: FragmentId,
-        command: TextCommand,
-    },
+    Command(TextCommand),
     Section {
-        id: FragmentId,
         section: TypeWriterSectionBuffer,
         timer: Timer,
     },
-    Paused {
-        id: FragmentId,
-        duration: Timer,
+    Paused(Timer),
+    Sequence {
+        sequence: Cow<'static, [bevy_bits::DialogueBoxToken]>,
+        index: usize,
+        type_writer: Box<TypeWriterState>,
+        force_update: bool,
     },
-    AwaitingClear(FragmentId),
 }
 
 #[derive(Component, Debug, Clone)]
