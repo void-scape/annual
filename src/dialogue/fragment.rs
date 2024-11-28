@@ -212,14 +212,13 @@ pub trait IntoFragment<Data: FragmentData> {
     fn into_fragment(self, commands: &mut Commands) -> (Self::Fragment, FragmentNode);
 }
 
-impl<T> FragmentTransform for T {}
+impl<T> FragmentExt for T {}
 
-pub trait FragmentTransform {
+pub trait FragmentExt: Sized {
     /// Run a system any time this fragment is visited.
     fn on_visit<S, M>(self, system: S) -> OnVisit<Self, S::System>
     where
         S: IntoSystem<(), (), M>,
-        Self: Sized,
     {
         OnVisit {
             fragment: self,
@@ -231,7 +230,6 @@ pub trait FragmentTransform {
     fn on_start<S, M>(self, system: S) -> OnStart<Self, S::System>
     where
         S: IntoSystem<(), (), M>,
-        Self: Sized,
     {
         OnStart {
             fragment: self,
@@ -243,7 +241,6 @@ pub trait FragmentTransform {
     fn on_end<S, M>(self, system: S) -> OnEnd<Self, S::System>
     where
         S: IntoSystem<(), (), M>,
-        Self: Sized,
     {
         OnEnd {
             fragment: self,
@@ -256,7 +253,6 @@ pub trait FragmentTransform {
     where
         M: Event,
         S: FnMut(&FragmentEvent<Data>) -> M + Send + Sync + 'static,
-        Self: Sized,
     {
         Mapped {
             fragment: self,
@@ -269,7 +265,6 @@ pub trait FragmentTransform {
     fn eval<S, M, O>(self, system: S) -> Evaluated<Self, Unregistered<S::System>, O>
     where
         S: IntoSystem<(), O, M>,
-        Self: Sized,
     {
         Evaluated {
             fragment: self,
@@ -279,23 +274,41 @@ pub trait FragmentTransform {
     }
 
     /// Limit this fragment to `n` triggers.
-    fn limit(self, n: usize) -> Limit<Self>
-    where
-        Self: Sized,
-    {
+    fn limit(self, n: usize) -> Limit<Self> {
         Limit::new(self, n)
     }
-}
 
-/// A convenience trait for setting a fragment's limit to 1.
-pub trait Once: Sized {
     /// Set this fragment's limit to 1.
-    fn once(self) -> Limit<Self>;
-}
-
-impl<T> Once for T {
     fn once(self) -> Limit<Self> {
         self.limit(1)
+    }
+
+    /// Set a resource of type `T` with the provided value on the start of a fragment.
+    ///
+    /// This is similar to:
+    /// ```
+    /// #[derive(Resource)]
+    /// struct Resource(usize);
+    ///
+    /// "fragment".on_start(|mut resource: ResMut<Resource>| *resource = Resource(1));
+    /// ```
+    /// Except the resource is automatically inserted if it doesn't already exist.
+    fn set_resource<T>(self, value: T) -> OnStart<Self, impl System<In = (), Out = ()>>
+    where
+        T: Resource + Clone,
+    {
+        let system = move |world: &mut World| {
+            if !world.contains_resource::<T>() {
+                world.insert_resource(value.clone());
+            } else {
+                world.set_resource(value.clone());
+            }
+        };
+
+        OnStart {
+            fragment: self,
+            on_trigger: IntoSystem::into_system(system),
+        }
     }
 }
 
