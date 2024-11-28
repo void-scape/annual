@@ -1,4 +1,7 @@
+#![allow(clippy::too_many_arguments)]
+
 use bevy::prelude::*;
+use bevy_bits::DialogueBoxToken;
 use dialogue::fragment::*;
 use dialogue_box::{DialogueTextSfx, SetDialogueTextSfx, WithBox};
 use macros::t;
@@ -25,22 +28,28 @@ fn scene(
     mut texture_atlases: ResMut<Assets<TextureAtlasLayout>>,
 ) {
     (
-        inner_seq(),
+        DialogueBoxToken::Section(bevy_bits::tokens::TextSection {
+            text: "Hello!".into(),
+            color: None,
+            effects: (&[]).into(),
+        }),
+        DialogueBoxToken::Command(bevy_bits::TextCommand::ClearAfter(1.0)),
+        // inner_seq(),
         t!("[20](speed)What are you looking for?"),
         t!("[15](speed)D-did you... [1.0](pause)I mean, [0.5](pause)are you a..."),
         t!("[20](speed)Is something wrong?"),
         "Are you... talking?",
         "Well, are you?",
-        t!(
-            "[12](speed)But you're a [0.25](pause)[20](speed){[FLOWER](wave)!}",
-            |frag| frag.on_start(|mut commands: Commands| commands.spawn(AudioBundle {
-                source: asset_server.load(""),
-                settings: PlaybackSettings {
-                    mode: bevy::audio::PlaybackMode::Despawn,
-                    ..Default::default()
-                },
-            }))
-        ),
+        // t!(
+        //     "[12](speed)But you're a [0.25](pause)[20](speed){[FLOWER](wave)!}",
+        //     |frag| frag.on_start(|mut commands: Commands| commands.spawn(AudioBundle {
+        //         source: asset_server.load(""),
+        //         settings: PlaybackSettings {
+        //             mode: bevy::audio::PlaybackMode::Despawn,
+        //             ..Default::default()
+        //         },
+        //     }))
+        // ),
         "Oh, I guess so...",
     )
         .text_sfx(AudioBundle {

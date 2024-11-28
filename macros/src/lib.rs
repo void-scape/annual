@@ -138,9 +138,15 @@ impl quote::ToTokens for WrapperToken {
                 });
             }
             bevy_bits::DialogueBoxToken::Command(cmd) => match &cmd {
-                // bevy_bits::TextCommand::Clear => tokens.append_all(
-                //     quote! { bevy_bits::DialogueBoxToken::Command(bevy_bits::tokens::TextCommand::Clear) },
-                // ),
+                bevy_bits::TextCommand::Clear => tokens.append_all(
+                    quote! { bevy_bits::DialogueBoxToken::Command(bevy_bits::tokens::TextCommand::Clear) },
+                ),
+                bevy_bits::TextCommand::AwaitClear => tokens.append_all(
+                    quote! { bevy_bits::DialogueBoxToken::Command(bevy_bits::tokens::TextCommand::AwaitClear) },
+                ),
+                bevy_bits::TextCommand::ClearAfter(dur) => tokens.append_all(
+                    quote! { bevy_bits::DialogueBoxToken::Command(bevy_bits::tokens::TextCommand::ClearAfter(#dur)) },
+                ),
                 bevy_bits::TextCommand::Speed(speed) => tokens.append_all(
                     quote! { bevy_bits::DialogueBoxToken::Command(bevy_bits::tokens::TextCommand::Speed(#speed)) },
                 ),
