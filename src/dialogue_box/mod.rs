@@ -52,6 +52,19 @@ impl Plugin for DialogueBoxPlugin {
 #[derive(Resource, Clone)]
 pub struct DialogueTextSfx(pub bevy::audio::AudioBundle);
 
+pub trait SetDialogueTextSfx {
+    fn text_sfx(self, bundle: AudioBundle) -> impl IntoFragment<bevy_bits::DialogueBoxToken>;
+}
+
+impl<T> SetDialogueTextSfx for T
+where
+    T: IntoFragment<bevy_bits::DialogueBoxToken>,
+{
+    fn text_sfx(self, bundle: AudioBundle) -> impl IntoFragment<bevy_bits::DialogueBoxToken> {
+        self.set_resource(DialogueTextSfx(bundle))
+    }
+}
+
 /// Associates a [`FragmentEvent<DialogueBoxToken>`] with a specific [`DialogueBoxBundle`] entity.
 #[derive(Event, Debug, Clone)]
 pub struct DialogueBoxEvent {
