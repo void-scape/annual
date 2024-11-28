@@ -22,6 +22,18 @@ fn inner_seq() -> impl IntoFragment<bevy_bits::DialogueBoxToken> {
     ("Hello...", t!("[15](speed)..."))
 }
 
+fn thing<D: FragmentData>(input: impl IntoFragment<D>) -> impl IntoFragment<D> {
+    input.on_start(|mut commands: Commands, asset_server: Res<AssetServer>| {
+        commands.spawn(AudioBundle {
+            source: asset_server.load("snd_bell.wav"),
+            settings: PlaybackSettings {
+                mode: bevy::audio::PlaybackMode::Despawn,
+                ..Default::default()
+            },
+        });
+    })
+}
+
 fn scene(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
@@ -43,21 +55,37 @@ fn scene(
         t!("[20](speed)Is something wrong?"),
         "Are you... talking?",
         "Well, are you?",
-        t!("[12](speed)But you're a [0.25](pause)[20](speed)[FLOWER](wave)!"),
+        "<1.2> But you're a [0.5]<2> ~FLOWER~!",
+        "But `you're`[frag] a `~FLOWER~`[red]!",
+        // |frag| frag.stuff...
+
+        // "[1.2](speed)But you're a [0.5](pause)[FLOWER](wave)",
+        t!(
+            "[12](speed)But you're a [0.25](pause)[20](speed)[FLOWER](wave)!",
+            |frag| frag.on_start(|mut commands: Commands, asset_server: Res<AssetServer>| {
+                commands.spawn(AudioBundle {
+                    source: asset_server.load("snd_bell.wav"),
+                    settings: PlaybackSettings {
+                        mode: bevy::audio::PlaybackMode::Despawn,
+                        ..Default::default()
+                    },
+                });
+            })
+        ),
         "Oh, I guess so...",
     )
         .reveal_sfx(
             AudioBundle {
-                source: asset_server.load("just-a-normal-sans-sound-effect-made-with-Voicemod.mp3"),
+                source: asset_server.load("snd_txtsans.wav"),
                 settings: PlaybackSettings {
                     mode: bevy::audio::PlaybackMode::Despawn,
                     ..Default::default()
                 },
             },
             dialogue_box::TextSfxSettings {
-                pitch: 1.0,
-                pitch_variance: 0.05,
-                rate: 1.0 / 20.0,
+                pitch: 1.,
+                pitch_variance: 0.0,
+                rate: 1.0 / 2.0,
             },
         )
         .delete_sfx(

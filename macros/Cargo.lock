@@ -432,7 +432,10 @@ name = "bevy_bits"
 version = "0.1.0"
 dependencies = [
  "bevy",
+ "proc-macro2",
+ "quote",
  "rand",
+ "winnow",
 ]
 
 [[package]]
@@ -2326,7 +2329,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.89",
- "winnow",
 ]
 
 [[package]]

@@ -1,7 +1,8 @@
+use bevy_bits::{DialogueBoxToken, TokenGroup};
 use proc_macro::TokenStream;
-use quote::{quote, TokenStreamExt};
-use syn::{parse_macro_input, LitStr};
-use winnow::{stream::Stream, token::take_while, PResult, Parser};
+use proc_macro2::Span;
+use quote::{quote, ToTokens, TokenStreamExt};
+use syn::{parse::Parse, spanned::Spanned};
 
 fn fragment(input: TokenStream) -> syn::Result<proc_macro2::TokenStream> {
     let input: syn::DeriveInput = syn::parse(input)?;
@@ -32,137 +33,141 @@ pub fn derive_fragment(input: TokenStream) -> TokenStream {
 
 #[proc_macro]
 pub fn t(input: TokenStream) -> TokenStream {
-    let input_str = parse_macro_input!(input as LitStr).value();
-    let mut result = Vec::new();
+    tokens(input)
+        .unwrap_or_else(syn::Error::into_compile_error)
+        .into()
+}
 
-    let input = &mut &*input_str;
-
-    while let Ok(text) = parse_normal(input) {
-        let token = bevy_bits::DialogueBoxToken::Section(bevy_bits::tokens::TextSection::from(
-            text.to_owned(),
-        ));
-
-        if !text.is_empty() {
-            result.push(token);
-        }
-
-        if input.peek_token().is_some() {
-            match parse_command(input) {
-                Ok(command) => result.push(command),
-                Err(e) => panic!("{e}"),
+fn parse_closure(expr: &syn::Expr) -> syn::Result<Option<(&syn::Ident, &syn::Expr)>> {
+    match expr {
+        syn::Expr::Closure(closure) => {
+            if closure.inputs.len() != 1 {
+                return Err(syn::Error::new(
+                    closure.inputs.span(),
+                    "Expected a closure with exactly one input",
+                ));
             }
-        } else {
-            break;
+
+            let name = closure.inputs.iter().next().unwrap();
+            let name = match name {
+                syn::Pat::Ident(ident) => &ident.ident,
+                n => return Err(syn::Error::new(n.span(), "Expected a simple identifier")),
+            };
+
+            Ok(Some((name, closure.body.as_ref())))
         }
-    }
-
-    // result.push(bevy_bits::DialogueBoxToken::Command(
-    //     bevy_bits::tokens::TextCommand::Clear,
-    // ));
-    let result = result.into_iter().map(WrapperToken).collect::<Vec<_>>();
-
-    let output = quote! {
-        bevy_bits::DialogueBoxToken::Sequence(std::borrow::Cow::Borrowed(&[#(#result),*]))
-    };
-
-    output.into()
-}
-
-fn parse_normal<'a>(input: &mut &'a str) -> PResult<&'a str> {
-    take_while(0.., |c| c != '[' && c != '{').parse_next(input)
-}
-
-fn parse_command(input: &mut &str) -> PResult<bevy_bits::DialogueBoxToken> {
-    '['.parse_next(input)?;
-    let args: Result<&str, winnow::error::ErrMode<winnow::error::ContextError>> =
-        take_while(1.., |c| c != ']').parse_next(input);
-    ']'.parse_next(input)?;
-    '('.parse_next(input)?;
-    let cmd = take_while(1.., |c| c != ')').parse_next(input)?;
-    ')'.parse_next(input)?;
-
-    Ok(bevy_bits::DialogueBoxToken::parse_command(
-        match args {
-            Ok(args) => Some(args),
-            Err(_) => None,
-        },
-        cmd,
-    ))
-}
-
-struct WrapperToken(bevy_bits::DialogueBoxToken);
-struct WrapperEffect<'a>(&'a bevy_bits::TextEffect);
-struct WrapperColor<'a>(&'a bevy_bits::TextColor);
-
-impl quote::ToTokens for WrapperEffect<'_> {
-    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-        tokens.append_all(quote! { bevy_bits::TextEffect:: });
-        tokens.append_all(match &self.0 {
-            bevy_bits::TextEffect::Wave => quote! { Wave },
-        });
+        _ => Ok(None),
     }
 }
 
-impl quote::ToTokens for WrapperColor<'_> {
-    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-        match &self.0 {
-            bevy_bits::TextColor::Red => tokens.append_all(quote! { bevy_bits::TextColor::Red }),
-            bevy_bits::TextColor::Green => {
-                tokens.append_all(quote! { bevy_bits::TextColor::Green })
+/// Recursively descend token groups while plucking off expressions.
+fn descend_group(
+    span: Span,
+    group: &[TokenGroup],
+    expressions: &mut impl Iterator<Item = syn::Expr>,
+) -> syn::Result<proc_macro2::TokenStream> {
+    let mut items = Vec::new();
+    for item in group.iter() {
+        match item {
+            TokenGroup::Bare(b) => {
+                items.push(b.to_token_stream());
             }
-            bevy_bits::TextColor::Blue => tokens.append_all(quote! { bevy_bits::TextColor::Blue }),
-        }
-    }
-}
+            TokenGroup::Group(g) => {
+                // pop off the next expression
+                let expr = expressions.next().ok_or_else(|| {
+                    syn::Error::new(
+                        span,
+                        "Expression argument count does not match expression groups",
+                    )
+                })?;
 
-impl quote::ToTokens for WrapperToken {
-    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-        match &self.0 {
-            bevy_bits::DialogueBoxToken::Section(section) => {
-                let text = &section.text;
-                let color = &section.color.as_ref().map(WrapperColor);
-                let color = if let Some(color) = color {
-                    quote! { #color }
-                } else {
-                    quote! { None }
+                let closure = parse_closure(&expr)?;
+                let inner = descend_group(span, &g, expressions)?;
+
+                let value = match closure {
+                    Some((ident, body)) => {
+                        quote! {
+                            {
+                                let #ident = #inner;
+                                #body
+                            }
+                        }
+                    }
+                    None => {
+                        quote! {
+                            #expr(#inner)
+                        }
+                    }
                 };
-                let effects = section.effects.iter().map(WrapperEffect).collect::<Vec<_>>();
 
-                tokens.append_all(quote! {
-                bevy_bits::DialogueBoxToken::Section(
-                    bevy_bits::tokens::TextSection {
-                        text: std::borrow::Cow::Borrowed(#text),
-                        color: #color,
-                        effects: std::borrow::Cow::Borrowed(&[#(#effects),*])
-                    })
-                });
+                items.push(value);
             }
-            bevy_bits::DialogueBoxToken::Command(cmd) => match &cmd {
-                bevy_bits::TextCommand::Clear => tokens.append_all(
-                    quote! { bevy_bits::DialogueBoxToken::Command(bevy_bits::tokens::TextCommand::Clear) },
-                ),
-                bevy_bits::TextCommand::Delete(num) => tokens.append_all(
-                    quote! { bevy_bits::DialogueBoxToken::Command(bevy_bits::tokens::TextCommand::Delete(#num)) },
-                ),
-                bevy_bits::TextCommand::AwaitClear => tokens.append_all(
-                    quote! { bevy_bits::DialogueBoxToken::Command(bevy_bits::tokens::TextCommand::AwaitClear) },
-                ),
-                bevy_bits::TextCommand::ClearAfter(dur) => tokens.append_all(
-                    quote! { bevy_bits::DialogueBoxToken::Command(bevy_bits::tokens::TextCommand::ClearAfter(#dur)) },
-                ),
-                bevy_bits::TextCommand::Speed(speed) => tokens.append_all(
-                    quote! { bevy_bits::DialogueBoxToken::Command(bevy_bits::tokens::TextCommand::Speed(#speed)) },
-                ),
-                bevy_bits::TextCommand::Pause(pause) => tokens.append_all(
-                    quote! { bevy_bits::DialogueBoxToken::Command(bevy_bits::tokens::TextCommand::Pause(#pause)) },
-                ),
-            },
-            bevy_bits::DialogueBoxToken::Sequence(seq) => {
-                let seq = seq.iter().map(|t| WrapperToken(t.clone())).collect::<Vec<_>>();
-                 tokens.append_all(
-                    quote! { bevy_bits::DialogueBoxToken::Sequence(std::borrow::Cow::Borrowed(&[#(#seq),*])) },
-                );
-            },
+        }
+    }
+
+    Ok(quote! {
+        (
+            #(#items,)*
+        )
+    })
+}
+
+fn tokens(input: TokenStream) -> syn::Result<proc_macro2::TokenStream> {
+    let Dialogue {
+        string,
+        expressions,
+    } = syn::parse(input)?;
+
+    let input = string.value();
+
+    let mut tokens = bevy_bits::tokens::parse_groups(&input)
+        .map_err(|e| syn::Error::new(string.span(), e.to_string()))?;
+
+    if bevy_bits::tokens::TokenGroup::bare(&tokens) {
+        let tokens = tokens.into_iter().map(|t| match t {
+            bevy_bits::TokenGroup::Bare(b) => b,
+            _ => unreachable!(),
+        });
+
+        let output = quote! {
+            bevy_bits::DialogueBoxToken::Sequence(std::borrow::Cow::Borrowed(&[#(#tokens),*]))
+        };
+
+        Ok(output)
+    } else {
+        let mut expressions = expressions.into_iter().rev();
+        tokens.push(TokenGroup::Bare(DialogueBoxToken::Command(
+            bevy_bits::TextCommand::AwaitClear,
+        )));
+        Ok(descend_group(string.span(), &tokens, &mut expressions)?)
+    }
+}
+
+struct Dialogue {
+    string: syn::LitStr,
+    expressions: syn::punctuated::Punctuated<syn::Expr, syn::Token![,]>,
+}
+
+impl Parse for Dialogue {
+    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+        let string = input.parse()?;
+
+        if let Ok(_) = <syn::Token![,] as Parse>::parse(input) {
+            let expressions =
+                syn::punctuated::Punctuated::<_, syn::Token![,]>::parse_terminated_with(
+                    input,
+                    syn::Expr::parse,
+                )?;
+
+            Ok(Self {
+                string,
+                expressions,
+            })
+        } else {
+            Ok(Self {
+                string,
+                expressions: Default::default(),
+            })
         }
     }
 }

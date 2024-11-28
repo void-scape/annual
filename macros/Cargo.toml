@@ -7,8 +7,7 @@ edition = "2021"
 proc-macro = true
 
 [dependencies]
-bevy_bits = { path = "../bevy_bits" }
+bevy_bits = { path = "../bevy_bits", features = ["proc-macro"] }
 proc-macro2 = "1.0.92"
 quote = "1.0.37"
 syn = "2.0.89"
-winnow = "0.6.20"
