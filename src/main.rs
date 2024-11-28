@@ -3,7 +3,7 @@
 use bevy::prelude::*;
 use bevy_bits::DialogueBoxToken;
 use dialogue::fragment::*;
-use dialogue_box::{SetDialogueTextSfx, WithBox};
+use dialogue_box::{audio::SetDialogueTextSfx, WithBox};
 use macros::t;
 
 mod dialogue;
@@ -42,11 +42,11 @@ fn scene(
     (
         DialogueBoxToken::Command(bevy_bits::TextCommand::Speed(5.0)),
         DialogueBoxToken::Section(bevy_bits::tokens::TextSection {
-            text: "Hello!".into(),
+            text: "I am cool".into(),
             color: None,
             effects: (&[]).into(),
         }),
-        DialogueBoxToken::Command(bevy_bits::TextCommand::Delete(6)),
+        DialogueBoxToken::Command(bevy_bits::TextCommand::Delete(9)),
         DialogueBoxToken::Command(bevy_bits::TextCommand::Speed(20.0)),
         DialogueBoxToken::Command(bevy_bits::TextCommand::ClearAfter(0.2)),
         inner_seq(),
@@ -82,24 +82,25 @@ fn scene(
                     ..Default::default()
                 },
             },
-            dialogue_box::TextSfxSettings {
+            dialogue_box::audio::TextSfxSettings {
                 pitch: 1.,
-                pitch_variance: 0.0,
-                rate: 1.0 / 2.0,
+                pitch_variance: 0.2,
+                trigger: dialogue_box::audio::Trigger::OnWord,
+                // trigger: dialogue_box::audio::Trigger::OnCharacter,
             },
         )
         .delete_sfx(
             AudioBundle {
-                source: asset_server.load("just-a-normal-sans-sound-effect-made-with-Voicemod.mp3"),
+                source: asset_server.load("snd_txtsans.wav"),
                 settings: PlaybackSettings {
                     mode: bevy::audio::PlaybackMode::Despawn,
                     ..Default::default()
                 },
             },
-            dialogue_box::TextSfxSettings {
+            dialogue_box::audio::TextSfxSettings {
                 pitch: 0.75,
                 pitch_variance: 0.0,
-                rate: 1.0 / 2.0,
+                trigger: dialogue_box::audio::Trigger::OnCharacter,
             },
         )
         .spawn_with_box(&mut commands, &asset_server, &mut texture_atlases);

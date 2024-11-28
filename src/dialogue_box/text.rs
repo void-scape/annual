@@ -1,7 +1,7 @@
 use super::{
     material::{TextMaterial, TextMaterialMarker},
-    DeletedTextSfx, DialogueBox, DialogueBoxAtlas, DialogueBoxDimensions, DialogueBoxEvent,
-    DialogueBoxFont, RevealedTextSfx, SectionOccurance, TypeWriterState,
+    DialogueBox, DialogueBoxAtlas, DialogueBoxDimensions, DialogueBoxEvent, DialogueBoxFont,
+    SectionOccurance, TypeWriterState,
 };
 use crate::dialogue::FragmentEndEvent;
 use bevy::{
@@ -24,8 +24,8 @@ pub fn handle_dialogue_box_events(
         &DialogueBoxFont,
     )>,
     mut input: EventReader<KeyboardInput>,
-    reveal_sfx: Option<Res<RevealedTextSfx>>,
-    delete_sfx: Option<Res<DeletedTextSfx>>,
+    reveal_sfx: Option<Res<super::audio::RevealedTextSfx>>,
+    delete_sfx: Option<Res<super::audio::DeletedTextSfx>>,
     mut commands: Commands,
 ) {
     for event in reader.read() {
