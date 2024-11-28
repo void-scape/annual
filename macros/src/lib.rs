@@ -56,15 +56,13 @@ pub fn t(input: TokenStream) -> TokenStream {
         }
     }
 
-    result.push(bevy_bits::DialogueBoxToken::Command(
-        bevy_bits::tokens::TextCommand::Clear,
-    ));
+    // result.push(bevy_bits::DialogueBoxToken::Command(
+    //     bevy_bits::tokens::TextCommand::Clear,
+    // ));
     let result = result.into_iter().map(WrapperToken).collect::<Vec<_>>();
 
     let output = quote! {
-        {
-            [#(#result),*]
-        }
+        bevy_bits::DialogueBoxToken::Sequence(std::borrow::Cow::Borrowed(&[#(#result),*]))
     };
 
     output.into()
@@ -119,7 +117,6 @@ impl quote::ToTokens for WrapperColor<'_> {
 
 impl quote::ToTokens for WrapperToken {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-        // let token = self.0;
         match &self.0 {
             bevy_bits::DialogueBoxToken::Section(section) => {
                 let text = &section.text;
@@ -141,15 +138,21 @@ impl quote::ToTokens for WrapperToken {
                 });
             }
             bevy_bits::DialogueBoxToken::Command(cmd) => match &cmd {
-                bevy_bits::TextCommand::Clear => tokens.append_all(
-                    quote! { bevy_bits::DialogueBoxToken::Command(bevy_bits::tokens::TextCommand::Clear) },
-                ),
+                // bevy_bits::TextCommand::Clear => tokens.append_all(
+                //     quote! { bevy_bits::DialogueBoxToken::Command(bevy_bits::tokens::TextCommand::Clear) },
+                // ),
                 bevy_bits::TextCommand::Speed(speed) => tokens.append_all(
                     quote! { bevy_bits::DialogueBoxToken::Command(bevy_bits::tokens::TextCommand::Speed(#speed)) },
                 ),
                 bevy_bits::TextCommand::Pause(pause) => tokens.append_all(
                     quote! { bevy_bits::DialogueBoxToken::Command(bevy_bits::tokens::TextCommand::Pause(#pause)) },
                 ),
+            },
+            bevy_bits::DialogueBoxToken::Sequence(seq) => {
+                let seq = seq.iter().map(|t| WrapperToken(t.clone())).collect::<Vec<_>>();
+                 tokens.append_all(
+                    quote! { bevy_bits::DialogueBoxToken::Sequence(std::borrow::Cow::Borrowed(&[#(#seq),*])) },
+                );
             },
         }
     }

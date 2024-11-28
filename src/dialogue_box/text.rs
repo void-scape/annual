@@ -33,6 +33,11 @@ pub fn handle_dialogue_box_events(
                             state.push_cmd(cmd, event.event.id);
                         }
                     }
+                    bevy_bits::DialogueBoxToken::Sequence(seq) => {
+                        if let Ok((mut text, mut state, _)) = type_writers.get_mut(*child) {
+                            state.push_seq(seq, event.event.id);
+                        }
+                    }
                 }
             }
         }

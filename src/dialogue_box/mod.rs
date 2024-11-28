@@ -1,5 +1,8 @@
 #![allow(unused)]
-use crate::dialogue::{FragmentEndEvent, FragmentEvent, FragmentId};
+use crate::{
+    dialogue::{FragmentEndEvent, FragmentEvent, FragmentId},
+    Fragment, FragmentTransform, IntoFragment, Once, SpawnFragment,
+};
 use bevy::{
     asset::AssetPath,
     input::{keyboard::KeyboardInput, ButtonState},
@@ -9,9 +12,9 @@ use bevy::{
     text::{Text2dBounds, TextLayoutInfo},
     utils::HashMap,
 };
-use bevy_bits::TextCommand;
+use bevy_bits::{DialogueBoxToken, TextCommand};
 use material::{TextMaterialMarker, WaveMaterial, WAVE_MATERIAL_LAYER};
-use std::{borrow::Cow, path::Path, time::Duration};
+use std::{borrow::Cow, collections::VecDeque, path::Path, time::Duration};
 
 mod material;
 mod text;
@@ -193,6 +196,8 @@ impl TypeWriterState {
         self.state = State::Command { id, command };
     }
 
+    pub fn push_seq(&mut self, sequence: Cow<'static, [DialogueBoxToken]>, id: FragmentId) {}
+
     pub fn tick(
         &mut self,
         time: &Time,
@@ -222,7 +227,7 @@ impl TypeWriterState {
                 }
             }
             State::Command { command, id } => match command {
-                TextCommand::Clear => Some(State::AwaitingClear(*id)),
+                // TextCommand::Clear => Some(State::AwaitingClear(*id)),
                 TextCommand::Speed(speed) => {
                     self.chars_per_sec = *speed;
                     end_event = Some(id.end());
@@ -416,6 +421,70 @@ impl TypeWriterSectionBuffer {
 
     pub fn finished(&self) -> bool {
         matches!(self.state, SectionBufferState::End { .. })
+    }
+}
+
+pub trait WithBox {
+    /// Maps outgoing [`FragmentEvent`] data into [`DialogueBoxEvent`] events that are binded to a [`DialogueBoxBundle`].
+    fn spawn_with_box(
+        self,
+        commands: &mut Commands,
+        asset_server: &AssetServer,
+        texture_atlases: &mut Assets<TextureAtlasLayout>,
+    );
+}
+
+impl<T> WithBox for T
+where
+    T: IntoFragment<bevy_bits::DialogueBoxToken>,
+{
+    fn spawn_with_box(
+        self,
+        commands: &mut Commands,
+        asset_server: &AssetServer,
+        texture_atlases: &mut Assets<TextureAtlasLayout>,
+    ) {
+        let dialogue_box = DialogueBoxBundle {
+            atlas: DialogueBoxAtlas::new(
+                asset_server,
+                texture_atlases,
+                "Scalable txt screen x1.png",
+                UVec2::new(16, 16),
+            ),
+            dimensions: DialogueBoxDimensions::new(20, 4),
+            spatial: SpatialBundle::from_transform(
+                Transform::default()
+                    .with_scale(Vec3::new(3.0, 3.0, 1.0))
+                    .with_translation(Vec3::new(-500.0, 0.0, 0.0)),
+            ),
+            ..Default::default()
+        };
+
+        let box_entity = commands.spawn_empty().id();
+        self.once()
+            .on_start(spawn_dialogue_box(
+                box_entity,
+                TypeWriterBundle {
+                    font: DialogueBoxFont {
+                        font_size: 32.0,
+                        default_color: bevy::color::Color::WHITE,
+                        font: asset_server.load("joystix monospace.otf"),
+                    },
+                    state: TypeWriterState::new(20.0),
+                    text_anchor: Anchor::TopLeft,
+                    spatial: SpatialBundle::from_transform(
+                        Transform::default().with_scale(Vec3::new(1.0 / 3.0, 1.0 / 3.0, 1.0)),
+                    ),
+                    ..Default::default()
+                },
+                dialogue_box,
+            ))
+            .on_end(despawn_dialogue_box(box_entity))
+            .map_event(move |event| DialogueBoxEvent {
+                event: event.clone(),
+                entity: box_entity,
+            })
+            .spawn_fragment::<bevy_bits::DialogueBoxToken>(commands);
     }
 }
 
