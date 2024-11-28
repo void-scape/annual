@@ -1,10 +1,16 @@
 use super::{
     material::{TextMaterial, TextMaterialMarker},
-    DialogueBox, DialogueBoxAtlas, DialogueBoxDimensions, DialogueBoxEvent, DialogueBoxFont,
-    DialogueTextSfx, SectionOccurance, TypeWriterState,
+    DeletedTextSfx, DialogueBox, DialogueBoxAtlas, DialogueBoxDimensions, DialogueBoxEvent,
+    DialogueBoxFont, RevealedTextSfx, SectionOccurance, TypeWriterState,
 };
 use crate::dialogue::FragmentEndEvent;
-use bevy::{input::keyboard::KeyboardInput, prelude::*, sprite::Anchor, text::Text2dBounds};
+use bevy::{
+    input::{keyboard::KeyboardInput, ButtonState},
+    prelude::*,
+    sprite::Anchor,
+    text::Text2dBounds,
+};
+use rand::Rng;
 use std::marker::PhantomData;
 
 pub fn handle_dialogue_box_events(
@@ -18,7 +24,8 @@ pub fn handle_dialogue_box_events(
         &DialogueBoxFont,
     )>,
     mut input: EventReader<KeyboardInput>,
-    sfx_bundle: Option<Res<DialogueTextSfx>>,
+    reveal_sfx: Option<Res<RevealedTextSfx>>,
+    delete_sfx: Option<Res<DeletedTextSfx>>,
     mut commands: Commands,
 ) {
     for event in reader.read() {
@@ -45,16 +52,26 @@ pub fn handle_dialogue_box_events(
         }
     }
 
+    let received_input = input
+        .read()
+        .next()
+        .is_some_and(|i| i.state == ButtonState::Pressed);
+
+    let reveal_sfx = reveal_sfx.map(|s| s.into_inner());
+    let delete_sfx = delete_sfx.map(|s| s.into_inner());
+
     for (i, (mut text, mut state, box_font)) in type_writers.iter_mut().enumerate() {
         // TODO: this will be cheap in the custom pipeline
 
         if let Some(end) = state.tick(
             &time,
-            &mut input,
+            received_input,
             &mut text,
             box_font,
             &mut commands,
-            sfx_bundle.as_ref().map(|b| &b.0),
+            reveal_sfx,
+            delete_sfx,
+            false,
         ) {
             // HACK: There is one typewriter per material + 1 for none. All of them update, but we only
             // want to send the end event once.

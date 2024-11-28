@@ -13,7 +13,8 @@ use bevy::{
     utils::HashMap,
 };
 use bevy_bits::{DialogueBoxToken, TextCommand};
-use material::{TextMaterialMarker, WaveMaterial, WAVE_MATERIAL_LAYER};
+use material::{TextMaterialMarker, TextMaterialMarkerNone, WaveMaterial, WAVE_MATERIAL_LAYER};
+use rand::Rng;
 use std::{borrow::Cow, collections::VecDeque, path::Path, time::Duration};
 
 mod material;
@@ -40,28 +41,100 @@ impl Plugin for DialogueBoxPlugin {
                 Update,
                 (
                     text::handle_dialogue_box_events,
-                    // text::handle_dialogue_box_events_material::<WaveMaterial>,
+                    material::remove_effects_from_type_writer,
+                    material::update_effect_type_writer::<WaveMaterial>,
                     material::resize_text_effect_textures,
                 ),
             );
     }
 }
 
-/// [`AudioSourceBundle<AudioSource>`] that globally defines revealed text sfx for all dialogue
+/// [`AudioSourceBundle<AudioSource>`] that globally defines `revealed` text sfx for all dialogue
 /// boxes.
 #[derive(Resource, Clone)]
-pub struct DialogueTextSfx(pub bevy::audio::AudioBundle);
+pub struct RevealedTextSfx {
+    pub bundle: bevy::audio::AudioBundle,
+    pub settings: TextSfxSettings,
+}
+
+impl RevealedTextSfx {
+    pub fn bundle(&self) -> bevy::audio::AudioBundle {
+        let mut bundle = self.bundle.clone();
+        bundle.settings.speed = self.settings.pitch
+            + if self.settings.pitch_variance != 0.0 {
+                rand::thread_rng()
+                    .gen_range(-self.settings.pitch_variance..self.settings.pitch_variance)
+            } else {
+                0.0
+            };
+
+        bundle
+    }
+}
+
+/// [`AudioSourceBundle<AudioSource>`] that globally defines `deleted` text sfx for all dialogue
+/// boxes.
+#[derive(Resource, Clone)]
+pub struct DeletedTextSfx {
+    pub bundle: bevy::audio::AudioBundle,
+    pub settings: TextSfxSettings,
+}
+
+impl DeletedTextSfx {
+    pub fn bundle(&self) -> bevy::audio::AudioBundle {
+        let mut bundle = self.bundle.clone();
+        bundle.settings.speed = self.settings.pitch
+            + if self.settings.pitch_variance != 0.0 {
+                rand::thread_rng()
+                    .gen_range(-self.settings.pitch_variance..self.settings.pitch_variance)
+            } else {
+                0.0
+            };
+
+        bundle
+    }
+}
+
+#[derive(Clone)]
+pub struct TextSfxSettings {
+    pub pitch: f32,
+    pub pitch_variance: f32,
+    /// Audio samples per second
+    pub rate: f32,
+}
 
 pub trait SetDialogueTextSfx {
-    fn text_sfx(self, bundle: AudioBundle) -> impl IntoFragment<bevy_bits::DialogueBoxToken>;
+    fn reveal_sfx(
+        self,
+        bundle: AudioBundle,
+        settings: TextSfxSettings,
+    ) -> impl IntoFragment<bevy_bits::DialogueBoxToken>;
+
+    fn delete_sfx(
+        self,
+        bundle: AudioBundle,
+        settings: TextSfxSettings,
+    ) -> impl IntoFragment<bevy_bits::DialogueBoxToken>;
 }
 
 impl<T> SetDialogueTextSfx for T
 where
     T: IntoFragment<bevy_bits::DialogueBoxToken>,
 {
-    fn text_sfx(self, bundle: AudioBundle) -> impl IntoFragment<bevy_bits::DialogueBoxToken> {
-        self.set_resource(DialogueTextSfx(bundle))
+    fn reveal_sfx(
+        self,
+        bundle: AudioBundle,
+        settings: TextSfxSettings,
+    ) -> impl IntoFragment<bevy_bits::DialogueBoxToken> {
+        self.set_resource(RevealedTextSfx { bundle, settings })
+    }
+
+    fn delete_sfx(
+        self,
+        bundle: AudioBundle,
+        settings: TextSfxSettings,
+    ) -> impl IntoFragment<bevy_bits::DialogueBoxToken> {
+        self.set_resource(DeletedTextSfx { bundle, settings })
     }
 }
 
@@ -174,7 +247,10 @@ pub struct TypeWriterState {
     chars_per_sec: f32,
     state: State,
     force_update: bool,
+    effect_mapping: Vec<Option<bevy_bits::TextEffect>>,
     fragment_id: Option<FragmentId>,
+    reveal_accum: f32,
+    delete_accum: f32,
 }
 
 impl Default for TypeWriterState {
@@ -183,7 +259,10 @@ impl Default for TypeWriterState {
             chars_per_sec: 20.0,
             state: State::Ready,
             force_update: false,
+            effect_mapping: Vec::new(),
             fragment_id: None,
+            reveal_accum: 0.0,
+            delete_accum: 0.0,
         }
     }
 }
@@ -252,45 +331,78 @@ impl TypeWriterState {
     pub fn tick(
         &mut self,
         time: &Time,
-        reader: &mut EventReader<KeyboardInput>,
+        mut received_input: bool,
         text: &mut Text,
         box_font: &DialogueBoxFont,
         commands: &mut Commands,
-        sfx: Option<&AudioBundle>,
+        reveal: Option<&RevealedTextSfx>,
+        delete: Option<&DeletedTextSfx>,
+        force_update: bool,
     ) -> Option<FragmentEndEvent> {
         let mut end_event = None;
-        let mut received_input = reader
-            .read()
-            .next()
-            .is_some_and(|i| i.state == ButtonState::Pressed);
-
         let new_state = match &mut self.state {
             State::Ready => None,
-            State::Section { section, timer } => {
-                if self.force_update {
-                    Self::update_text(text, box_font, section.advance());
-                } else {
-                    timer.tick(time.delta());
-                    // already checked if the section is finished
-                    if let Some(section) = timer.finished().then(|| section.advance()) {
-                        Self::update_text(text, box_font, section);
-                        if let Some(sfx) = sfx {
-                            commands.spawn(sfx.clone());
+            State::Delete { amount, timer } => {
+                timer.tick(time.delta());
+                if timer.finished() {
+                    if let Some(delete) = delete {
+                        // self.delete_accum += time.delta_seconds();
+                        // if text
+                        //     .sections
+                        //     .last()
+                        //     .is_some_and(|s| s.value.chars().last().is_some_and(|c| c != ' '))
+                        //     && self.delete_accum >= delete.settings.rate
+                        // {
+                        if !force_update {
+                            commands.spawn(delete.bundle());
                         }
+                        //     self.delete_accum -= delete.settings.rate;
+                        // }
+                    }
+
+                    if let Some(section) = text.sections.last_mut() {
+                        section.value.pop();
+                        *amount -= 1;
+                    } else {
+                        warn!("tried to delete from section that does not exist");
                     }
                 }
 
-                if received_input {
-                    section.finish();
-                    self.force_update = true;
+                if *amount == 0 {
                     end_event = self.fragment_id;
                     Some(State::Ready)
                 } else {
-                    section.finished().then(|| {
-                        end_event = self.fragment_id;
-                        State::Ready
-                    })
+                    None
                 }
+            }
+            State::Section { section, timer } => {
+                timer.tick(time.delta());
+                if let Some(occurance) = timer.finished().then(|| section.advance()) {
+                    Self::update_text(text, &mut self.effect_mapping, box_font, occurance);
+
+                    if let Some(reveal) = reveal {
+                        // self.reveal_accum += time.delta_seconds();
+                        // println!("{}", self.reveal_accum);
+                        // if section
+                        //     .current_section()
+                        //     .text
+                        //     .chars()
+                        //     .last()
+                        //     .is_some_and(|c| c != ' ')
+                        //     && self.reveal_accum >= reveal.settings.rate
+                        // {
+                        if !force_update {
+                            commands.spawn(reveal.bundle());
+                        }
+                        //     self.reveal_accum -= reveal.settings.rate;
+                        // }
+                    }
+                }
+
+                section.finished().then(|| {
+                    end_event = self.fragment_id;
+                    State::Ready
+                })
             }
             State::Command(command) => match command {
                 TextCommand::Speed(speed) => {
@@ -303,7 +415,7 @@ impl TypeWriterState {
                     TimerMode::Once,
                 ))),
                 TextCommand::Clear => {
-                    text.sections.clear();
+                    self.clear(text);
                     end_event = self.fragment_id;
                     Some(State::Ready)
                 }
@@ -312,31 +424,33 @@ impl TypeWriterState {
                     Duration::from_secs_f32(*duration),
                     TimerMode::Once,
                 ))),
+                TextCommand::Delete(amount) => Some(State::Delete {
+                    amount: *amount,
+                    timer: Timer::new(
+                        Duration::from_secs_f32(1.0 / self.chars_per_sec),
+                        TimerMode::Repeating,
+                    ),
+                }),
             },
             State::ClearAfter(timer) => {
                 timer.tick(time.delta());
                 timer.finished().then(|| {
-                    text.sections.clear();
+                    self.clear(text);
                     end_event = self.fragment_id;
                     State::Ready
                 })
             }
             State::AwaitClear => received_input.then(|| {
-                text.sections.clear();
+                self.clear(text);
                 end_event = self.fragment_id;
                 State::Ready
             }),
             State::Paused(duration) => {
-                if self.force_update {
+                duration.tick(time.delta());
+                duration.finished().then(|| {
                     end_event = self.fragment_id;
-                    Some(State::Ready)
-                } else {
-                    duration.tick(time.delta());
-                    duration.finished().then(|| {
-                        end_event = self.fragment_id;
-                        State::Ready
-                    })
-                }
+                    State::Ready
+                })
             }
             State::Sequence {
                 sequence,
@@ -346,6 +460,7 @@ impl TypeWriterState {
             } => {
                 let finished = type_writer.finished() && *index >= sequence.len();
 
+                let mut must_render = false;
                 if received_input && !*force_update && !finished {
                     *force_update = true;
 
@@ -353,25 +468,30 @@ impl TypeWriterState {
                         Self::update_seq_type_writer(
                             type_writer,
                             time,
-                            reader,
+                            false,
                             text,
                             box_font,
                             index,
                             sequence,
                             commands,
-                            sfx,
+                            reveal,
+                            delete,
+                            true,
                         );
 
                         if type_writer.finished() && *index >= sequence.len() {
-                            received_input = false;
+                            must_render = true;
                             break;
                         }
                     }
                 }
 
-                if (*index >= sequence.len() && matches!(type_writer.state, State::Ready)) {
+                if !must_render
+                    && *index >= sequence.len()
+                    && matches!(type_writer.state, State::Ready)
+                {
                     received_input.then(|| {
-                        text.sections.clear();
+                        self.clear(text);
                         end_event = self.fragment_id;
                         State::Ready
                     })
@@ -379,13 +499,15 @@ impl TypeWriterState {
                     Self::update_seq_type_writer(
                         type_writer,
                         time,
-                        reader,
+                        false,
                         text,
                         box_font,
                         index,
                         sequence,
                         commands,
-                        sfx,
+                        reveal,
+                        delete,
+                        false,
                     );
                     None
                 }
@@ -399,19 +521,100 @@ impl TypeWriterState {
         end_event.map(|id| id.end())
     }
 
+    pub fn update_reveal_sfx(
+        &mut self,
+        time: &Time,
+        reveal: AudioBundle,
+        rate: f32,
+        commands: &mut Commands,
+    ) {
+        match &mut self.state {
+            State::Section { section, .. } => {
+                if section
+                    .current_section()
+                    .text
+                    .chars()
+                    .last()
+                    .is_some_and(|c| c != ' ')
+                {
+                    self.reveal_accum -= time.delta_seconds();
+                    if self.reveal_accum <= 0.0 {
+                        commands.spawn(reveal);
+                        self.reveal_accum = rate;
+                    }
+                }
+            }
+            State::Sequence { type_writer, .. } => {
+                type_writer.update_reveal_sfx(time, reveal, rate, commands);
+            }
+            _ => {}
+        }
+    }
+
+    pub fn update_delete_sfx(
+        &mut self,
+        time: &Time,
+        text: &Text,
+        delete: AudioBundle,
+        rate: f32,
+        commands: &mut Commands,
+    ) {
+        match &mut self.state {
+            State::Delete { .. } => {
+                if text
+                    .sections
+                    .last()
+                    .is_some_and(|s| s.value.chars().last().is_some_and(|c| c != ' '))
+                {
+                    self.delete_accum -= time.delta_seconds();
+                    if self.delete_accum <= 0.0 {
+                        commands.spawn(delete);
+                        self.delete_accum = rate;
+                    }
+                }
+            }
+            State::Sequence { type_writer, .. } => {
+                type_writer.update_delete_sfx(time, text, delete, rate, commands);
+            }
+            _ => {}
+        }
+    }
+
+    pub fn effect_mapping(&self) -> Vec<Option<bevy_bits::TextEffect>> {
+        match &self.state {
+            State::Sequence { type_writer, .. } => {
+                let mut effects = type_writer.effect_mapping();
+                effects.extend(self.effect_mapping.clone());
+                effects
+            }
+            _ => self.effect_mapping.clone(),
+        }
+    }
+
     fn update_seq_type_writer(
         type_writer: &mut TypeWriterState,
         time: &Time,
-        reader: &mut EventReader<KeyboardInput>,
+        received_input: bool,
         text: &mut Text,
         box_font: &DialogueBoxFont,
         index: &mut usize,
         sequence: &mut Cow<'static, [DialogueBoxToken]>,
         commands: &mut Commands,
-        sfx: Option<&AudioBundle>,
+        reveal: Option<&RevealedTextSfx>,
+        delete: Option<&DeletedTextSfx>,
+        force_update: bool,
     ) {
         if type_writer
-            .tick(time, reader, text, box_font, commands, sfx)
+            .tick(
+                time,
+                received_input,
+                text,
+                box_font,
+                commands,
+                reveal,
+                delete,
+                force_update,
+            )
             .is_some()
             && *index < sequence.len()
         {
@@ -431,20 +634,35 @@ impl TypeWriterState {
         }
     }
 
-    fn update_text(text: &mut Text, box_font: &DialogueBoxFont, section: SectionOccurance) {
+    fn update_text(
+        text: &mut Text,
+        effect_mapping: &mut Vec<Option<bevy_bits::TextEffect>>,
+        box_font: &DialogueBoxFont,
+        section: SectionOccurance,
+    ) {
         match section {
             SectionOccurance::First(section) => {
+                effect_mapping.push(section.effects.first().cloned());
+                let mut section = section.clone().bevy_section(
+                    box_font.font.clone(),
+                    box_font.font_size,
+                    box_font.default_color,
+                );
+                section.style.color.set_alpha(0.0);
                 text.sections.push(section);
             }
             SectionOccurance::Repeated(section) => {
-                text.sections.pop();
-                text.sections.push(section);
+                text.sections.last_mut().as_mut().unwrap().value = section.text.into();
             }
             SectionOccurance::End(section) => {
-                text.sections.pop();
-                text.sections.push(section);
+                text.sections.last_mut().as_mut().unwrap().value = section.text.into();
             }
         }
+    }
+
+    fn clear(&mut self, text: &mut Text) {
+        text.sections.clear();
+        self.effect_mapping.clear();
     }
 
     fn finished(&self) -> bool {
@@ -463,6 +681,10 @@ enum State {
     Paused(Timer),
     AwaitClear,
     ClearAfter(Timer),
+    Delete {
+        amount: usize,
+        timer: Timer,
+    },
     Sequence {
         sequence: Cow<'static, [bevy_bits::DialogueBoxToken]>,
         index: usize,
@@ -477,64 +699,89 @@ struct TypeWriterSectionBuffer {
 }
 
 pub enum SectionOccurance {
-    First(TextSection),
-    Repeated(TextSection),
-    End(TextSection),
+    First(bevy_bits::tokens::TextSection),
+    Repeated(bevy_bits::tokens::TextSection),
+    End(bevy_bits::tokens::TextSection),
 }
 
 #[derive(Debug, Clone)]
 enum SectionBufferState {
-    First { section: TextSection },
-    Repeated { section: TextSection, index: usize },
-    End { section: TextSection },
+    First {
+        section: bevy_bits::tokens::TextSection,
+    },
+    Repeated {
+        section: bevy_bits::tokens::TextSection,
+        index: usize,
+    },
+    End {
+        section: bevy_bits::tokens::TextSection,
+    },
 }
 
 impl TypeWriterSectionBuffer {
     pub fn new(section: bevy_bits::tokens::TextSection, font: &DialogueBoxFont) -> Self {
-        let section = section.bevy_section(font.font.clone(), font.font_size, font.default_color);
+        // let section = section.bevy_section(font.font.clone(), font.font_size, font.default_color);
 
         Self {
             state: SectionBufferState::First { section },
         }
     }
 
+    pub fn current_section(&self) -> bevy_bits::tokens::TextSection {
+        match &self.state {
+            SectionBufferState::First { section } => bevy_bits::tokens::TextSection {
+                color: section.color.clone(),
+                effects: section.effects.clone(),
+                text: Cow::Owned(section.text[..1].to_string()),
+            },
+            SectionBufferState::Repeated { section, index } => bevy_bits::tokens::TextSection {
+                color: section.color.clone(),
+                effects: section.effects.clone(),
+                text: Cow::Owned(section.text[..*index].to_owned()),
+            },
+            SectionBufferState::End { section } => section.clone(),
+        }
+    }
+
     pub fn advance(&mut self) -> SectionOccurance {
         let section = match &mut self.state {
             SectionBufferState::First { section } => SectionOccurance::First({
-                let space = section.value.find(" ").unwrap_or(section.value.len() - 1);
-                let mut value = String::with_capacity(space);
-                value.push_str(&section.value[..1]);
+                let space = section.text.find(" ").unwrap_or(section.text.len() - 1);
+                let mut text = String::with_capacity(space);
+                text.push_str(&section.text[..1]);
                 for _ in 0..space {
-                    value.push(' ');
+                    text.push(' ');
                 }
 
-                TextSection {
-                    style: section.style.clone(),
-                    value,
+                bevy_bits::tokens::TextSection {
+                    color: section.color.clone(),
+                    effects: section.effects.clone(),
+                    text: Cow::Owned(text),
                 }
             }),
             SectionBufferState::Repeated { section, index } => {
                 *index += 1;
 
-                let value = if section.value.as_bytes()[index.saturating_sub(1)] != b' ' {
-                    let mut buf = section.value[..*index].to_owned();
-                    if let Some(space) = section.value[*index..].find(" ") {
+                let text = if section.text.as_bytes()[index.saturating_sub(1)] != b' ' {
+                    let mut buf = section.text[..*index].to_owned();
+                    if let Some(space) = section.text[*index..].find(" ") {
                         for _ in 0..space + 1 {
                             buf.push(' ');
                         }
                     } else {
-                        for _ in *index..section.value.len() {
+                        for _ in *index..section.text.len() {
                             buf.push(' ');
                         }
                     }
                     buf
                 } else {
-                    section.value[..*index].to_owned()
+                    section.text[..*index].to_owned()
                 };
 
-                SectionOccurance::Repeated(TextSection {
-                    value,
-                    style: section.style.clone(),
+                SectionOccurance::Repeated(bevy_bits::tokens::TextSection {
+                    color: section.color.clone(),
+                    effects: section.effects.clone(),
+                    text: Cow::Owned(text),
                 })
             }
             SectionBufferState::End { section } => SectionOccurance::End(section.clone()),
@@ -542,7 +789,7 @@ impl TypeWriterSectionBuffer {
 
         let new_state = match &self.state {
             SectionBufferState::First { section } => {
-                if section.value.len() == 1 {
+                if section.text.len() == 1 {
                     Some(SectionBufferState::End {
                         section: section.clone(),
                     })
@@ -553,10 +800,11 @@ impl TypeWriterSectionBuffer {
                     })
                 }
             }
-            SectionBufferState::Repeated { section, index } => (section.value.len() == *index)
-                .then(|| SectionBufferState::End {
+            SectionBufferState::Repeated { section, index } => {
+                (section.text.len() == *index).then(|| SectionBufferState::End {
                     section: section.clone(),
-                }),
+                })
+            }
             _ => None,
         };
 
@@ -668,12 +916,12 @@ pub fn spawn_dialogue_box(
             .entity(entity)
             .insert(dialogue_box.clone())
             .with_children(|parent| {
-                parent.spawn(type_writer.clone());
-                // parent.spawn((
-                //     type_writer,
-                //     TextMaterialMarker::<WaveMaterial>::new(),
-                //     RenderLayers::layer(WAVE_MATERIAL_LAYER),
-                // ));
+                parent.spawn((type_writer.clone(), TextMaterialMarkerNone));
+                parent.spawn((
+                    type_writer.clone(),
+                    TextMaterialMarker::<WaveMaterial>::new(),
+                    RenderLayers::layer(WAVE_MATERIAL_LAYER),
+                ));
 
                 let width = 2 + inner_width;
                 let height = 2 + inner_height;

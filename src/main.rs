@@ -3,7 +3,7 @@
 use bevy::prelude::*;
 use bevy_bits::DialogueBoxToken;
 use dialogue::fragment::*;
-use dialogue_box::{DialogueTextSfx, SetDialogueTextSfx, WithBox};
+use dialogue_box::{SetDialogueTextSfx, WithBox};
 use macros::t;
 
 mod dialogue;
@@ -28,37 +28,52 @@ fn scene(
     mut texture_atlases: ResMut<Assets<TextureAtlasLayout>>,
 ) {
     (
+        DialogueBoxToken::Command(bevy_bits::TextCommand::Speed(5.0)),
         DialogueBoxToken::Section(bevy_bits::tokens::TextSection {
             text: "Hello!".into(),
             color: None,
             effects: (&[]).into(),
         }),
-        DialogueBoxToken::Command(bevy_bits::TextCommand::ClearAfter(1.0)),
-        // inner_seq(),
+        DialogueBoxToken::Command(bevy_bits::TextCommand::Delete(6)),
+        DialogueBoxToken::Command(bevy_bits::TextCommand::Speed(20.0)),
+        DialogueBoxToken::Command(bevy_bits::TextCommand::ClearAfter(0.2)),
+        inner_seq(),
         t!("[20](speed)What are you looking for?"),
         t!("[15](speed)D-did you... [1.0](pause)I mean, [0.5](pause)are you a..."),
         t!("[20](speed)Is something wrong?"),
         "Are you... talking?",
         "Well, are you?",
-        // t!(
-        //     "[12](speed)But you're a [0.25](pause)[20](speed){[FLOWER](wave)!}",
-        //     |frag| frag.on_start(|mut commands: Commands| commands.spawn(AudioBundle {
-        //         source: asset_server.load(""),
-        //         settings: PlaybackSettings {
-        //             mode: bevy::audio::PlaybackMode::Despawn,
-        //             ..Default::default()
-        //         },
-        //     }))
-        // ),
+        t!("[12](speed)But you're a [0.25](pause)[20](speed)[FLOWER](wave)!"),
         "Oh, I guess so...",
     )
-        .text_sfx(AudioBundle {
-            source: asset_server.load("short-beep-tone-47916.mp3"),
-            settings: PlaybackSettings {
-                mode: bevy::audio::PlaybackMode::Despawn,
-                ..Default::default()
+        .reveal_sfx(
+            AudioBundle {
+                source: asset_server.load("just-a-normal-sans-sound-effect-made-with-Voicemod.mp3"),
+                settings: PlaybackSettings {
+                    mode: bevy::audio::PlaybackMode::Despawn,
+                    ..Default::default()
+                },
             },
-        })
+            dialogue_box::TextSfxSettings {
+                pitch: 1.0,
+                pitch_variance: 0.05,
+                rate: 1.0 / 20.0,
+            },
+        )
+        .delete_sfx(
+            AudioBundle {
+                source: asset_server.load("just-a-normal-sans-sound-effect-made-with-Voicemod.mp3"),
+                settings: PlaybackSettings {
+                    mode: bevy::audio::PlaybackMode::Despawn,
+                    ..Default::default()
+                },
+            },
+            dialogue_box::TextSfxSettings {
+                pitch: 0.75,
+                pitch_variance: 0.0,
+                rate: 1.0 / 2.0,
+            },
+        )
         .spawn_with_box(&mut commands, &asset_server, &mut texture_atlases);
 
     commands.spawn(Camera2dBundle::default());

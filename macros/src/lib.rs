@@ -141,6 +141,9 @@ impl quote::ToTokens for WrapperToken {
                 bevy_bits::TextCommand::Clear => tokens.append_all(
                     quote! { bevy_bits::DialogueBoxToken::Command(bevy_bits::tokens::TextCommand::Clear) },
                 ),
+                bevy_bits::TextCommand::Delete(num) => tokens.append_all(
+                    quote! { bevy_bits::DialogueBoxToken::Command(bevy_bits::tokens::TextCommand::Delete(#num)) },
+                ),
                 bevy_bits::TextCommand::AwaitClear => tokens.append_all(
                     quote! { bevy_bits::DialogueBoxToken::Command(bevy_bits::tokens::TextCommand::AwaitClear) },
                 ),

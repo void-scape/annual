@@ -7,6 +7,8 @@ use bevy::{
     window::{PrimaryWindow, WindowResized},
 };
 
+use super::TypeWriterState;
+
 #[derive(Component)]
 pub struct TextMaterialMarker<M: TextMaterial>(PhantomData<M>);
 
@@ -16,9 +18,12 @@ impl<M: TextMaterial> TextMaterialMarker<M> {
     }
 }
 
+#[derive(Component)]
+pub struct TextMaterialMarkerNone;
+
 pub trait TextMaterial: Send + Sync + 'static {
     fn init(texture: Handle<Image>) -> Self;
-    fn can_render_effect(effect: &bevy_bits::TextEffect) -> bool;
+    fn target() -> bevy_bits::TextEffect;
 }
 
 pub const WAVE_MATERIAL_LAYER: usize = 1;
@@ -35,8 +40,8 @@ impl TextMaterial for WaveMaterial {
         Self { texture }
     }
 
-    fn can_render_effect(effect: &bevy_bits::TextEffect) -> bool {
-        *effect == bevy_bits::TextEffect::Wave
+    fn target() -> bevy_bits::TextEffect {
+        bevy_bits::TextEffect::Wave
     }
 }
 
@@ -111,6 +116,37 @@ pub fn init_effect_material<E: TextMaterial + Asset + Material2d, const LAYER: u
         },
         effect_target_image,
     ));
+}
+
+pub fn remove_effects_from_type_writer(
+    mut type_writers: Query<
+        (&mut bevy::text::Text, &TypeWriterState),
+        With<TextMaterialMarkerNone>,
+    >,
+) {
+    for (mut text, state) in type_writers.iter_mut() {
+        for (section, effect) in text.sections.iter_mut().zip(state.effect_mapping().iter()) {
+            if effect.is_some() {
+                section.style.color.set_alpha(0.0);
+            } else {
+                section.style.color.set_alpha(1.0);
+            }
+        }
+    }
+}
+
+pub fn update_effect_type_writer<E: TextMaterial + Asset + Material2d>(
+    mut type_writers: Query<(&mut bevy::text::Text, &TypeWriterState), With<TextMaterialMarker<E>>>,
+) {
+    for (mut text, state) in type_writers.iter_mut() {
+        for (section, effect) in text.sections.iter_mut().zip(state.effect_mapping().iter()) {
+            if effect.is_some_and(|e| e == E::target()) {
+                section.style.color.set_alpha(1.0);
+            } else {
+                section.style.color.set_alpha(0.0);
+            }
+        }
+    }
 }
 
 // TODO: resizing will prevent the camera from rendering to the texture
