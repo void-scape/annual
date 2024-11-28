@@ -57,11 +57,16 @@ pub fn handle_dialogue_box_events(
         .next()
         .is_some_and(|i| i.state == ButtonState::Pressed);
 
-    let reveal_sfx = reveal_sfx.map(|s| s.into_inner());
-    let delete_sfx = delete_sfx.map(|s| s.into_inner());
+    let mut reveal_sfx = reveal_sfx.map(|s| s.into_inner());
+    let mut delete_sfx = delete_sfx.map(|s| s.into_inner());
 
     for (i, (mut text, mut state, box_font)) in type_writers.iter_mut().enumerate() {
         // TODO: this will be cheap in the custom pipeline
+
+        if i != 0 {
+            reveal_sfx = None;
+            delete_sfx = None;
+        }
 
         if let Some(end) = state.tick(
             &time,

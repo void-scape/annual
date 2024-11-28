@@ -40,15 +40,15 @@ fn scene(
     mut texture_atlases: ResMut<Assets<TextureAtlasLayout>>,
 ) {
     (
-        DialogueBoxToken::Command(bevy_bits::TextCommand::Speed(5.0)),
-        DialogueBoxToken::Section(bevy_bits::tokens::TextSection {
-            text: "I am cool".into(),
-            color: None,
-            effects: (&[]).into(),
-        }),
-        DialogueBoxToken::Command(bevy_bits::TextCommand::Delete(9)),
-        DialogueBoxToken::Command(bevy_bits::TextCommand::Speed(20.0)),
-        DialogueBoxToken::Command(bevy_bits::TextCommand::ClearAfter(0.2)),
+        // DialogueBoxToken::Command(bevy_bits::TextCommand::Speed(5.0)),
+        // DialogueBoxToken::Section(bevy_bits::tokens::TextSection {
+        //     text: "I am cool".into(),
+        //     color: None,
+        //     effects: (&[]).into(),
+        // }),
+        // DialogueBoxToken::Command(bevy_bits::TextCommand::Delete(9)),
+        // DialogueBoxToken::Command(bevy_bits::TextCommand::Speed(20.0)),
+        // DialogueBoxToken::Command(bevy_bits::TextCommand::ClearAfter(0.2)),
         inner_seq(),
         t!("[20](speed)What are you looking for?"),
         t!("[15](speed)D-did you... [1.0](pause)I mean, [0.5](pause)are you a..."),
@@ -86,7 +86,7 @@ fn scene(
                 pitch: 1.,
                 pitch_variance: 0.2,
                 trigger: dialogue_box::audio::Trigger::OnWord,
-                // trigger: dialogue_box::audio::Trigger::OnCharacter,
+                // trigger: dialogue_box::audio::Trigger::Rate(1.0 / 10.0),
             },
         )
         .delete_sfx(
@@ -100,7 +100,8 @@ fn scene(
             dialogue_box::audio::TextSfxSettings {
                 pitch: 0.75,
                 pitch_variance: 0.0,
-                trigger: dialogue_box::audio::Trigger::OnCharacter,
+                // trigger: dialogue_box::audio::Trigger::OnCharacter,
+                trigger: dialogue_box::audio::Trigger::Rate(1.0 / 10.0),
             },
         )
         .spawn_with_box(&mut commands, &asset_server, &mut texture_atlases);

@@ -136,6 +136,13 @@ impl TypeWriterState {
             State::Ready => None,
             State::Section { section, timer } => {
                 timer.tick(time.delta());
+
+                if let Some(reveal) = reveal {
+                    if matches!(reveal.settings.trigger, super::audio::Trigger::Rate(_)) {
+                        self.reveal_accum += time.delta_seconds();
+                    }
+                }
+
                 if let Some(occurance) = timer.finished().then(|| section.advance()) {
                     Self::update_text(
                         text,
@@ -153,6 +160,7 @@ impl TypeWriterState {
                                     .iter()
                                     .flat_map(|a| a.chars())
                                     .collect::<String>(),
+                                &mut self.reveal_accum,
                                 reveal,
                                 commands,
                             );
@@ -167,6 +175,13 @@ impl TypeWriterState {
             }
             State::Delete { amount, timer } => {
                 timer.tick(time.delta());
+
+                if let Some(delete) = delete {
+                    if matches!(delete.settings.trigger, super::audio::Trigger::Rate(_)) {
+                        self.delete_accum += time.delta_seconds();
+                    }
+                }
+
                 if timer.finished() {
                     if let Some(delete) = delete {
                         if !force_update {
@@ -176,6 +191,7 @@ impl TypeWriterState {
                                     .iter()
                                     .flat_map(|a| a.chars())
                                     .collect::<String>(),
+                                &mut self.delete_accum,
                                 delete,
                                 commands,
                             );
@@ -464,12 +480,16 @@ impl TypeWriterState {
 
     fn try_play_reveal(
         section_accumulator: &str,
+        reveal_accumulator: &mut f32,
         reveal: &super::audio::RevealedTextSfx,
         commands: &mut Commands,
     ) {
         match reveal.settings.trigger {
-            super::audio::Trigger::Rate(f32) => {
-                todo!()
+            super::audio::Trigger::Rate(rate) => {
+                if *reveal_accumulator > rate {
+                    commands.spawn(reveal.bundle());
+                    *reveal_accumulator -= rate;
+                }
             }
             super::audio::Trigger::OnCharacter => {
                 if section_accumulator
@@ -498,12 +518,16 @@ impl TypeWriterState {
 
     fn try_play_delete(
         section_accumulator: &str,
+        delete_accumulator: &mut f32,
         delete: &super::audio::DeletedTextSfx,
         commands: &mut Commands,
     ) {
         match delete.settings.trigger {
-            super::audio::Trigger::Rate(f32) => {
-                todo!()
+            super::audio::Trigger::Rate(rate) => {
+                if *delete_accumulator > rate {
+                    commands.spawn(delete.bundle());
+                    *delete_accumulator -= rate;
+                }
             }
             super::audio::Trigger::OnCharacter => {
                 if section_accumulator

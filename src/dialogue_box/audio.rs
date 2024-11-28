@@ -55,6 +55,16 @@ pub struct TextSfxSettings {
     pub trigger: Trigger,
 }
 
+impl Default for TextSfxSettings {
+    fn default() -> Self {
+        Self {
+            pitch: 1.0,
+            pitch_variance: 0.0,
+            trigger: Trigger::Rate(1.0 / 10.0),
+        }
+    }
+}
+
 #[derive(Clone)]
 pub enum Trigger {
     /// Audio samples per second
