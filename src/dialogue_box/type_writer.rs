@@ -453,7 +453,7 @@ impl TypeWriterState {
     ) {
         match section {
             SectionOccurance::First(section, padding) => {
-                effect_mapping.push(section.effects.first().cloned());
+                effect_mapping.push(section.effect.clone());
                 section_accumulator.push(section.text.to_string());
                 let mut section = section.clone().bevy_section(
                     box_font.font.clone(),
@@ -619,12 +619,12 @@ impl TypeWriterSectionBuffer {
         match &self.state {
             SectionBufferState::First => bevy_bits::tokens::TextSection {
                 color: self.section.color.clone(),
-                effects: self.section.effects.clone(),
+                effect: self.section.effect.clone(),
                 text: Cow::Owned(self.section.text[..1].to_string()),
             },
             SectionBufferState::Repeated(index) => bevy_bits::tokens::TextSection {
                 color: self.section.color.clone(),
-                effects: self.section.effects.clone(),
+                effect: self.section.effect.clone(),
                 text: Cow::Owned(self.section.text[..*index].to_owned()),
             },
             SectionBufferState::End => self.section.clone(),
@@ -647,7 +647,7 @@ impl TypeWriterSectionBuffer {
                 SectionOccurance::First(
                     bevy_bits::tokens::TextSection {
                         color: self.section.color.clone(),
-                        effects: self.section.effects.clone(),
+                        effect: self.section.effect.clone(),
                         text: Cow::Owned(self.section.text[..1].to_owned()),
                     },
                     padding,
@@ -675,7 +675,7 @@ impl TypeWriterSectionBuffer {
                 SectionOccurance::Repeated(
                     bevy_bits::tokens::TextSection {
                         color: self.section.color.clone(),
-                        effects: self.section.effects.clone(),
+                        effect: self.section.effect.clone(),
                         text: Cow::Owned(self.section.text[..*index].to_owned()),
                     },
                     padding,
