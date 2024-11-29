@@ -19,11 +19,9 @@ use std::{borrow::Cow, collections::VecDeque, path::Path, time::Duration};
 
 pub mod audio;
 mod material;
-mod portrait;
 mod text;
 mod type_writer;
 
-pub use portrait::*;
 pub use text::*;
 pub use type_writer::*;
 
@@ -203,6 +201,10 @@ where
                 dialogue_box,
             ))
             .on_end(despawn_dialogue_box(box_entity))
+            // .on_start(crate::characters::portrait::init_portrait(
+            //     Transform::from_translation(Vec3::default().with_x(-200.0)),
+            // ))
+            .on_end(crate::characters::portrait::despawn_portrait)
             .map_event(move |event| DialogueBoxEvent {
                 event: event.clone(),
                 entity: box_entity,

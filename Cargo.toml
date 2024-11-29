@@ -14,7 +14,7 @@ bevy_ecs_ldtk = { version = "0.10.0", features = ["atlas"] }
 
 [dependencies.bevy]
 version = "0.14.1"
-features = ["dynamic_linking", "wav", "mp3"]
+features = ["dynamic_linking", "wav", "mp3", "jpeg"]
 
 [dependencies.pulldown-cmark]
 version = "0.12.2"

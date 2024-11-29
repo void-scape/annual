@@ -1,5 +1,5 @@
 use crate::{FragmentExt, IntoFragment};
-use bevy::prelude::*;
+use bevy::{audio::PlaybackMode, prelude::*};
 use rand::Rng;
 
 /// [`AudioSourceBundle<AudioSource>`] that globally defines `revealed` text sfx for all dialogue
@@ -13,6 +13,7 @@ pub struct RevealedTextSfx {
 impl RevealedTextSfx {
     pub fn bundle(&self) -> bevy::audio::AudioBundle {
         let mut bundle = self.bundle.clone();
+        bundle.settings.mode = PlaybackMode::Despawn;
         bundle.settings.speed = self.settings.pitch
             + if self.settings.pitch_variance != 0.0 {
                 rand::thread_rng()
@@ -36,6 +37,7 @@ pub struct DeletedTextSfx {
 impl DeletedTextSfx {
     pub fn bundle(&self) -> bevy::audio::AudioBundle {
         let mut bundle = self.bundle.clone();
+        bundle.settings.mode = PlaybackMode::Despawn;
         bundle.settings.speed = self.settings.pitch
             + if self.settings.pitch_variance != 0.0 {
                 rand::thread_rng()
@@ -48,7 +50,7 @@ impl DeletedTextSfx {
     }
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct TextSfxSettings {
     pub pitch: f32,
     pub pitch_variance: f32,
@@ -65,7 +67,26 @@ impl Default for TextSfxSettings {
     }
 }
 
-#[derive(Clone)]
+impl TextSfxSettings {
+    pub fn from_trigger(trigger: Trigger) -> Self {
+        Self {
+            trigger,
+            ..Default::default()
+        }
+    }
+
+    pub fn with_pitch(mut self, pitch: f32) -> Self {
+        self.pitch = pitch;
+        self
+    }
+
+    pub fn with_variance(mut self, pitch_variance: f32) -> Self {
+        self.pitch_variance = pitch_variance;
+        self
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
 pub enum Trigger {
     /// Audio samples per second
     Rate(f32),

@@ -31,6 +31,39 @@ pub fn derive_fragment(input: TokenStream) -> TokenStream {
         .into()
 }
 
+fn character(input: TokenStream) -> syn::Result<proc_macro2::TokenStream> {
+    let input: syn::DeriveInput = syn::parse(input)?;
+
+    let ident = &input.ident;
+    let fn_name = proc_macro2::Ident::new(&ident.to_string().to_lowercase(), Span::call_site());
+    let trait_name = proc_macro2::Ident::new(&format!("Into{}", ident), Span::call_site());
+
+    Ok(quote! {
+        pub trait #trait_name<D: crate::FragmentData> {
+            fn #fn_name(self) -> impl crate::IntoFragment<D>;
+        }
+
+        impl<T, D> #trait_name<D> for T
+        where
+            T: crate::IntoFragment<D>,
+            D: crate::FragmentData
+        {
+            fn #fn_name(self) -> impl crate::IntoFragment<D> {
+                use crate::characters::CharacterAssets;
+                use crate::characters::sfx::Sfx;
+                self.portrait(#ident::texture().into(), None).reveal(#ident::text_sfx())
+            }
+        }
+    })
+}
+
+#[proc_macro_derive(Character)]
+pub fn derive_character(input: TokenStream) -> TokenStream {
+    character(input)
+        .unwrap_or_else(syn::Error::into_compile_error)
+        .into()
+}
+
 #[proc_macro]
 pub fn t(input: TokenStream) -> TokenStream {
     tokens(input)
