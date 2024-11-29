@@ -1,26 +1,26 @@
 #![allow(clippy::too_many_arguments)]
 
 use bevy::prelude::*;
-use bevy_ecs_ldtk::{LdtkPlugin, LdtkWorldBundle, LevelSelection};
 use dialogue::fragment::*;
 use dialogue_box::{audio::SetDialogueTextSfx, WithBox};
 use macros::t;
 
 mod dialogue;
 mod dialogue_box;
+mod editor;
+mod ldtk;
 
 fn main() {
     App::default()
         .add_plugins(DefaultPlugins.set(ImagePlugin::default_nearest()))
         .add_plugins((
-            // EditorPlugin::default(),
+            editor::EditorPlugin,
             dialogue_box::DialogueBoxPlugin,
             dialogue::DialoguePlugin,
+            ldtk::LdtkPlugin,
         ))
-        .add_plugins(LdtkPlugin)
-        .insert_resource(LevelSelection::index(0))
-        .add_systems(Startup, scene)
         .add_systems(Update, bevy_bits::close_on_escape)
+        .add_systems(Startup, scene)
         .run();
 }
 
@@ -97,10 +97,4 @@ fn scene(
             },
         )
         .spawn_with_box(&mut commands, &asset_server, &mut texture_atlases);
-
-    commands.spawn(LdtkWorldBundle {
-        ldtk_handle: asset_server.load("ldtk/annual.ldtk"),
-        ..Default::default()
-    });
-    commands.spawn(Camera2dBundle::default());
 }

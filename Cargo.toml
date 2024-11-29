@@ -21,6 +21,10 @@ version = "0.12.2"
 default-features = false
 features = ["simd"]
 
+[features]
+default = ["editor"]
+editor = []
+
 # Enable a small amount of optimization in the dev profile.
 [profile.dev]
 opt-level = 0

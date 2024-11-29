@@ -5,10 +5,14 @@ use super::{
 };
 use crate::dialogue::FragmentEndEvent;
 use bevy::{
-    input::{keyboard::KeyboardInput, ButtonState},
+    input::{
+        keyboard::{Key, KeyboardInput},
+        ButtonState,
+    },
     prelude::*,
     sprite::Anchor,
     text::Text2dBounds,
+    window::PrimaryWindow,
 };
 use rand::Rng;
 use std::marker::PhantomData;
@@ -24,6 +28,7 @@ pub fn handle_dialogue_box_events(
         &DialogueBoxFont,
     )>,
     mut input: EventReader<KeyboardInput>,
+    window: Query<Entity, With<PrimaryWindow>>,
     reveal_sfx: Option<Res<super::audio::RevealedTextSfx>>,
     delete_sfx: Option<Res<super::audio::DeletedTextSfx>>,
     mut commands: Commands,
@@ -52,10 +57,10 @@ pub fn handle_dialogue_box_events(
         }
     }
 
-    let received_input = input
-        .read()
-        .next()
-        .is_some_and(|i| i.state == ButtonState::Pressed);
+    let received_input = input.read().next().is_some_and(|i| {
+        (i.state == ButtonState::Pressed && i.window == window.single())
+            && (i.key_code == KeyCode::Space || i.key_code == KeyCode::Enter)
+    });
 
     let mut reveal_sfx = reveal_sfx.map(|s| s.into_inner());
     let mut delete_sfx = delete_sfx.map(|s| s.into_inner());
