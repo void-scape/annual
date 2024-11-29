@@ -19,9 +19,11 @@ use std::{borrow::Cow, collections::VecDeque, path::Path, time::Duration};
 
 pub mod audio;
 mod material;
+mod portrait;
 mod text;
 mod type_writer;
 
+pub use portrait::*;
 pub use text::*;
 pub use type_writer::*;
 
@@ -30,7 +32,8 @@ pub struct DialogueBoxPlugin;
 
 impl Plugin for DialogueBoxPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(Material2dPlugin::<WaveMaterial>::default())
+        app.add_event::<DialogueBoxEvent>()
+            .add_plugins(Material2dPlugin::<WaveMaterial>::default())
             .add_systems(
                 Startup,
                 material::init_effect_material::<

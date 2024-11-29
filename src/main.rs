@@ -1,7 +1,7 @@
 #![allow(clippy::too_many_arguments)]
 
 use bevy::prelude::*;
-use bevy_bits::DialogueBoxToken;
+use bevy_ecs_ldtk::{LdtkPlugin, LdtkWorldBundle, LevelSelection};
 use dialogue::fragment::*;
 use dialogue_box::{audio::SetDialogueTextSfx, WithBox};
 use macros::t;
@@ -12,7 +12,13 @@ mod dialogue_box;
 fn main() {
     App::default()
         .add_plugins(DefaultPlugins.set(ImagePlugin::default_nearest()))
-        .add_plugins((dialogue::DialoguePlugin, dialogue_box::DialogueBoxPlugin))
+        .add_plugins((
+            // EditorPlugin::default(),
+            dialogue_box::DialogueBoxPlugin,
+            dialogue::DialoguePlugin,
+        ))
+        .add_plugins(LdtkPlugin)
+        .insert_resource(LevelSelection::index(0))
         .add_systems(Startup, scene)
         .add_systems(Update, bevy_bits::close_on_escape)
         .run();
@@ -40,15 +46,6 @@ fn scene(
     mut texture_atlases: ResMut<Assets<TextureAtlasLayout>>,
 ) {
     (
-        // DialogueBoxToken::Command(bevy_bits::TextCommand::Speed(5.0)),
-        // DialogueBoxToken::Section(bevy_bits::tokens::TextSection {
-        //     text: "I am cool".into(),
-        //     color: None,
-        //     effects: (&[]).into(),
-        // }),
-        // DialogueBoxToken::Command(bevy_bits::TextCommand::Delete(9)),
-        // DialogueBoxToken::Command(bevy_bits::TextCommand::Speed(20.0)),
-        // DialogueBoxToken::Command(bevy_bits::TextCommand::ClearAfter(0.2)),
         inner_seq(),
         t!("[20](speed)What are you looking for?"),
         t!("[15](speed)D-did you... [1.0](pause)I mean, [0.5](pause)are you a..."),
@@ -106,5 +103,9 @@ fn scene(
         )
         .spawn_with_box(&mut commands, &asset_server, &mut texture_atlases);
 
+    commands.spawn(LdtkWorldBundle {
+        ldtk_handle: asset_server.load("ldtk/annual.ldtk"),
+        ..Default::default()
+    });
     commands.spawn(Camera2dBundle::default());
 }

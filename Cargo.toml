@@ -9,6 +9,8 @@ bevy_bits = { path = "bevy_bits" }
 paste = "1.0.15"
 rand = "0.8.5"
 winnow = "0.6.20"
+bevy_editor_pls = "0.10.0"
+bevy_ecs_ldtk = { version = "0.10.0", features = ["atlas"] }
 
 [dependencies.bevy]
 version = "0.14.1"
