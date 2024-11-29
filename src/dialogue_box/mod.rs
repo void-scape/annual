@@ -642,7 +642,7 @@ impl TypeWriterState {
     ) {
         match section {
             SectionOccurance::First(section) => {
-                effect_mapping.push(section.effects.first().cloned());
+                effect_mapping.push(section.effect.clone());
                 let mut section = section.clone().bevy_section(
                     box_font.font.clone(),
                     box_font.font_size,
@@ -731,12 +731,12 @@ impl TypeWriterSectionBuffer {
         match &self.state {
             SectionBufferState::First { section } => bevy_bits::tokens::TextSection {
                 color: section.color.clone(),
-                effects: section.effects.clone(),
+                effect: section.effect.clone(),
                 text: Cow::Owned(section.text[..1].to_string()),
             },
             SectionBufferState::Repeated { section, index } => bevy_bits::tokens::TextSection {
                 color: section.color.clone(),
-                effects: section.effects.clone(),
+                effect: section.effect.clone(),
                 text: Cow::Owned(section.text[..*index].to_owned()),
             },
             SectionBufferState::End { section } => section.clone(),
@@ -755,7 +755,7 @@ impl TypeWriterSectionBuffer {
 
                 bevy_bits::tokens::TextSection {
                     color: section.color.clone(),
-                    effects: section.effects.clone(),
+                    effect: section.effect.clone(),
                     text: Cow::Owned(text),
                 }
             }),
@@ -780,7 +780,7 @@ impl TypeWriterSectionBuffer {
 
                 SectionOccurance::Repeated(bevy_bits::tokens::TextSection {
                     color: section.color.clone(),
-                    effects: section.effects.clone(),
+                    effect: section.effect.clone(),
                     text: Cow::Owned(text),
                 })
             }

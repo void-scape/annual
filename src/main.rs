@@ -19,7 +19,7 @@ fn main() {
 }
 
 fn inner_seq() -> impl IntoFragment<bevy_bits::DialogueBoxToken> {
-    ("Hello...", t!("[15](speed)..."))
+    ("Hello...", t!("<5>..."))
 }
 
 fn thing<D: FragmentData>(input: impl IntoFragment<D>) -> impl IntoFragment<D> {
@@ -44,34 +44,29 @@ fn scene(
         DialogueBoxToken::Section(bevy_bits::tokens::TextSection {
             text: "Hello!".into(),
             color: None,
-            effects: (&[]).into(),
+            effect: None,
         }),
         DialogueBoxToken::Command(bevy_bits::TextCommand::Delete(6)),
         DialogueBoxToken::Command(bevy_bits::TextCommand::Speed(20.0)),
         DialogueBoxToken::Command(bevy_bits::TextCommand::ClearAfter(0.2)),
         inner_seq(),
-        t!("[20](speed)What are you looking for?"),
-        t!("[15](speed)D-did you... [1.0](pause)I mean, [0.5](pause)are you a..."),
-        t!("[20](speed)Is something wrong?"),
+        t!("<20>What are you looking for?"),
+        t!("<15>D-did you... [1] I mean, [0.5] are you a..."),
+        t!("<20>Is something wrong?"),
         "Are you... talking?",
         "Well, are you?",
-        "<1.2> But you're a [0.5]<2> ~FLOWER~!",
-        "But `you're`[frag] a `~FLOWER~`[red]!",
-        // |frag| frag.stuff...
-
-        // "[1.2](speed)But you're a [0.5](pause)[FLOWER](wave)",
-        t!(
-            "[12](speed)But you're a [0.25](pause)[20](speed)[FLOWER](wave)!",
-            |frag| frag.on_start(|mut commands: Commands, asset_server: Res<AssetServer>| {
-                commands.spawn(AudioBundle {
-                    source: asset_server.load("snd_bell.wav"),
-                    settings: PlaybackSettings {
-                        mode: bevy::audio::PlaybackMode::Despawn,
-                        ..Default::default()
-                    },
-                });
-            })
-        ),
+        t!("<12>But you're a [0.25]<20> {`FLOWER`[wave]}!", |frag| frag
+            .on_start(
+                |mut commands: Commands, asset_server: Res<AssetServer>| {
+                    commands.spawn(AudioBundle {
+                        source: asset_server.load("snd_bell.wav"),
+                        settings: PlaybackSettings {
+                            mode: bevy::audio::PlaybackMode::Despawn,
+                            ..Default::default()
+                        },
+                    });
+                }
+            )),
         "Oh, I guess so...",
     )
         .reveal_sfx(
