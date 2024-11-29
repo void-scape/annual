@@ -1,7 +1,7 @@
 use super::{
     material::{TextMaterial, TextMaterialMarker},
-    DeletedTextSfx, DialogueBox, DialogueBoxAtlas, DialogueBoxDimensions, DialogueBoxEvent,
-    DialogueBoxFont, RevealedTextSfx, SectionOccurance, TypeWriterState,
+    DialogueBox, DialogueBoxAtlas, DialogueBoxDimensions, DialogueBoxEvent, DialogueBoxFont,
+    SectionOccurance, TypeWriterState,
 };
 use crate::dialogue::FragmentEndEvent;
 use bevy::{
@@ -24,8 +24,8 @@ pub fn handle_dialogue_box_events(
         &DialogueBoxFont,
     )>,
     mut input: EventReader<KeyboardInput>,
-    reveal_sfx: Option<Res<RevealedTextSfx>>,
-    delete_sfx: Option<Res<DeletedTextSfx>>,
+    reveal_sfx: Option<Res<super::audio::RevealedTextSfx>>,
+    delete_sfx: Option<Res<super::audio::DeletedTextSfx>>,
     mut commands: Commands,
 ) {
     for event in reader.read() {
@@ -57,11 +57,16 @@ pub fn handle_dialogue_box_events(
         .next()
         .is_some_and(|i| i.state == ButtonState::Pressed);
 
-    let reveal_sfx = reveal_sfx.map(|s| s.into_inner());
-    let delete_sfx = delete_sfx.map(|s| s.into_inner());
+    let mut reveal_sfx = reveal_sfx.map(|s| s.into_inner());
+    let mut delete_sfx = delete_sfx.map(|s| s.into_inner());
 
     for (i, (mut text, mut state, box_font)) in type_writers.iter_mut().enumerate() {
         // TODO: this will be cheap in the custom pipeline
+
+        if i != 0 {
+            reveal_sfx = None;
+            delete_sfx = None;
+        }
 
         if let Some(end) = state.tick(
             &time,

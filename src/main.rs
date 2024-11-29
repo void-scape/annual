@@ -3,7 +3,7 @@
 use bevy::prelude::*;
 use bevy_bits::DialogueBoxToken;
 use dialogue::fragment::*;
-use dialogue_box::{SetDialogueTextSfx, WithBox};
+use dialogue_box::{audio::SetDialogueTextSfx, WithBox};
 use macros::t;
 
 mod dialogue;
@@ -77,24 +77,26 @@ fn scene(
                     ..Default::default()
                 },
             },
-            dialogue_box::TextSfxSettings {
+            dialogue_box::audio::TextSfxSettings {
                 pitch: 1.,
-                pitch_variance: 0.0,
-                rate: 1.0 / 2.0,
+                pitch_variance: 0.2,
+                trigger: dialogue_box::audio::Trigger::OnWord,
+                // trigger: dialogue_box::audio::Trigger::Rate(1.0 / 10.0),
             },
         )
         .delete_sfx(
             AudioBundle {
-                source: asset_server.load("just-a-normal-sans-sound-effect-made-with-Voicemod.mp3"),
+                source: asset_server.load("snd_txtsans.wav"),
                 settings: PlaybackSettings {
                     mode: bevy::audio::PlaybackMode::Despawn,
                     ..Default::default()
                 },
             },
-            dialogue_box::TextSfxSettings {
+            dialogue_box::audio::TextSfxSettings {
                 pitch: 0.75,
                 pitch_variance: 0.0,
-                rate: 1.0 / 2.0,
+                // trigger: dialogue_box::audio::Trigger::OnCharacter,
+                trigger: dialogue_box::audio::Trigger::Rate(1.0 / 10.0),
             },
         )
         .spawn_with_box(&mut commands, &asset_server, &mut texture_atlases);
