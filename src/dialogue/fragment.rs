@@ -169,7 +169,46 @@ where
     }
 }
 
+/// Spawn a fragment with its associated ID tree.
+pub fn spawn_fragment<Data>(
+    fragment: impl Fragment<Data> + Send + Sync + 'static,
+    tree: FragmentNode,
+    commands: &mut Commands,
+) where
+    Data: FragmentData,
+{
+    commands.add(move |world: &mut World| {
+        if !world.contains_resource::<Events<FragmentEvent<Data>>>() {
+            EventRegistry::register_event::<FragmentEvent<Data>>(world);
+        }
+
+        // TODO: make sure these can't overlap
+        let mut schedules = world.resource_mut::<Schedules>();
+        schedules.add_systems(
+            FragmentUpdate,
+            (evaluated_fragments::<Data>, watch_events::<Data>)
+                .chain()
+                .after(EvaluateSet),
+        );
+    });
+
+    let associated_frag = commands.spawn(ErasedFragment(fragment.boxed())).id();
+    commands.spawn(FragmentTree {
+        tree,
+        fragment: associated_frag,
+    });
+}
+
 pub trait SpawnFragment: Sized {
+    /// A convenience method for spawning fragments.
+    ///
+    /// Equivalent to
+    /// ```
+    /// # fn spawn(mut commands: Commands) {
+    /// let (fragment, tree) = self.into_fragment(&mut commands);
+    /// spawn_fragment(fragment, tree, &mut commands);
+    /// # }
+    /// ```
     fn spawn_fragment<Data>(self, commands: &mut Commands)
     where
         Data: FragmentData,
@@ -185,27 +224,7 @@ impl<T> SpawnFragment for T {
         <Self as IntoFragment<Data>>::Fragment: Fragment<Data> + Send + Sync + 'static,
     {
         let (fragment, tree) = self.into_fragment(commands);
-
-        commands.add(move |world: &mut World| {
-            if !world.contains_resource::<Events<FragmentEvent<Data>>>() {
-                EventRegistry::register_event::<FragmentEvent<Data>>(world);
-            }
-
-            // TODO: make sure these can't overlap
-            let mut schedules = world.resource_mut::<Schedules>();
-            schedules.add_systems(
-                FragmentUpdate,
-                (evaluated_fragments::<Data>, watch_events::<Data>)
-                    .chain()
-                    .after(EvaluateSet),
-            );
-        });
-
-        let associated_frag = commands.spawn(ErasedFragment(fragment.boxed())).id();
-        commands.spawn(FragmentTree {
-            tree,
-            fragment: associated_frag,
-        });
+        spawn_fragment(fragment, tree, commands);
     }
 }
 

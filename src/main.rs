@@ -1,13 +1,13 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::type_complexity)]
 
-use std::time::Duration;
-
 use bevy::prelude::*;
+use bevy_bits::DialogueBoxToken;
 use characters::portrait::Portrait;
 use dialogue::fragment::*;
-use dialogue_box::{DialogueBoxDescriptor, WithBox};
+use dialogue_box::{DialogueBoxDescriptor, SpawnBox};
 use macros::t;
+use std::time::Duration;
 
 mod characters;
 mod dialogue;
@@ -33,7 +33,7 @@ fn one() -> impl IntoFragment<bevy_bits::DialogueBoxToken> {
     use characters::*;
     (
         "Hello!"
-            .init_portrait(Transform::from_xyz(-400.0, 200.0, 0.0).with_scale(Vec3::splat(0.2)))
+            .init_portrait(Transform::from_xyz(-400., 200., 0.))
             .flower(),
         t!("<7>...[0.5]!").sans(),
         "Are you looking for something?".flower(),
@@ -57,34 +57,26 @@ fn one() -> impl IntoFragment<bevy_bits::DialogueBoxToken> {
         "Oh, I guess so...".flower(),
     )
         .delay(Duration::from_millis(2000), |mut commands: Commands| {
-            two()
-                .dialogue_box(commands.spawn_empty().id(), &DESC)
-                .spawn_fragment(&mut commands);
+            two().spawn_box(&mut commands, &DESC);
         })
 }
 
 fn two() -> impl IntoFragment<bevy_bits::DialogueBoxToken> {
     use characters::*;
     (
-        "Do you want to go on a walk?"
-            .init_portrait(Transform::from_xyz(-400.0, 200.0, 0.0).with_scale(Vec3::splat(0.2)))
-            .sans(),
+        "Do you want to go on a walk?".sans(),
         "I'd love to!".flower(),
         t!("But [0.5] I can't move.").flower(),
     )
         .delay(Duration::from_millis(4000), |mut commands: Commands| {
-            three()
-                .dialogue_box(commands.spawn_empty().id(), &DESC)
-                .spawn_fragment(&mut commands);
+            three().spawn_box(&mut commands, &DESC);
         })
 }
 
 fn three() -> impl IntoFragment<bevy_bits::DialogueBoxToken> {
     use characters::*;
     (
-        t!("I know! [0.25] I'll come by tomorrow.")
-            .init_portrait(Transform::from_xyz(-400.0, 200.0, 0.0).with_scale(Vec3::splat(0.2)))
-            .sans(),
+        t!("I know! [0.25] I'll come by tomorrow.").sans(),
         "Okay!".flower(),
         "I'll bring all my friends.".sans(),
         "I'll be waiting.".flower(),
@@ -93,9 +85,7 @@ fn three() -> impl IntoFragment<bevy_bits::DialogueBoxToken> {
 
 fn scene(mut commands: Commands) {
     use characters::*;
-    one()
-        .dialogue_box(commands.spawn_empty().id(), &DESC)
-        .spawn_fragment(&mut commands);
+    one().spawn_box(&mut commands, &DESC)
 }
 
 const DESC: DialogueBoxDescriptor = DialogueBoxDescriptor {

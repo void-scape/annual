@@ -153,42 +153,39 @@ impl DialogueBoxDimensions {
 #[derive(Component, Debug, Clone)]
 pub struct DialogueBoxFragmentMap(pub Vec<FragmentId>);
 
-/// Maps outgoing [`FragmentEvent`] data into [`DialogueBoxEvent`] events that are binded to a [`DialogueBoxBundle`].
-pub trait WithBox {
+pub trait SpawnBox {
     /// Populates `entity` with a dialogue box and children on fragment start.
     ///
     /// ```
-    /// # use dialogue_box::WithBox;
-    /// #
-    /// # let fragment = ("Hello, World!").dialogue_box(
-    /// #     commands.spawn_empty().id(),
-    /// #     &DialogueBoxDescriptor { .. },
-    /// # );
-    /// # fragment.spawn_fragment(&mut commands);
+    /// # fn func(mut commands: Commands, descriptor: DialogueBoxDescriptor) {
+    /// use dialogue_box::WithBox;
+    ///
+    /// let fragment = ("Hello, World!").dialogue_box(
+    ///     commands.spawn_empty().id(),
+    ///     &descriptor,
+    /// ;
+    ///
+    /// fragment.spawn_fragment(&mut commands);
+    /// #}
     /// ```
-    fn dialogue_box(
-        self,
-        entity: Entity,
-        descriptor: &'static DialogueBoxDescriptor,
-    ) -> impl IntoFragment<bevy_bits::DialogueBoxToken>;
+    fn spawn_box(self, commands: &mut Commands, desc: &'static DialogueBoxDescriptor);
 }
 
-impl<T> WithBox for T
+impl<T> SpawnBox for T
 where
     T: IntoFragment<bevy_bits::DialogueBoxToken>,
 {
-    fn dialogue_box(
-        self,
-        entity: Entity,
-        descriptor: &'static DialogueBoxDescriptor,
-    ) -> impl IntoFragment<bevy_bits::DialogueBoxToken> {
-        self.once()
-            .on_start(spawn_dialogue_box(entity, descriptor))
-            .on_end(despawn_dialogue_box(entity))
-            // .on_start(crate::characters::portrait::init_portrait(
-            //     Transform::from_translation(Vec3::default().with_x(-200.0)),
-            // ))
+    fn spawn_box(self, commands: &mut Commands, desc: &'static DialogueBoxDescriptor) {
+        let entity = commands.spawn_empty().id();
+
+        let (fragment, tree) = self
+            .once()
+            .on_start(spawn_dialogue_box(entity, desc))
             .on_end(crate::characters::portrait::despawn_portrait)
+            .into_fragment(commands);
+
+        commands.spawn(DialogueBoxFragmentMap(tree.leaves()));
+        crate::dialogue::fragment::spawn_fragment(fragment, tree, commands);
     }
 }
 
