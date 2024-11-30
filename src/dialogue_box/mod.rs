@@ -52,9 +52,12 @@ impl Plugin for DialogueBoxPlugin {
     }
 }
 
-pub trait IntoBox: IntoFragment<Entity, bevy_bits::DialogueBoxToken> {}
+#[derive(Debug)]
+pub struct BoxToken(pub bevy_bits::DialogueBoxToken, pub BoxEntity);
 
-impl<T> IntoBox for T where T: IntoFragment<Entity, bevy_bits::DialogueBoxToken> {}
+pub trait IntoBox: IntoFragment<BoxEntity, BoxToken> {}
+
+impl<T> IntoBox for T where T: IntoFragment<BoxEntity, BoxToken> {}
 
 /// Spawns a dialogue box with a texture atlas, font, and position.
 #[derive(Bundle, Default, Clone)]
@@ -157,7 +160,7 @@ impl DialogueBoxDimensions {
 #[derive(Component, Debug, Clone)]
 pub struct DialogueBoxFragmentMap(pub Vec<FragmentId>);
 
-#[derive(Component, Clone)]
+#[derive(Component, Debug, Clone)]
 pub struct BoxEntity(Entity);
 
 impl BoxEntity {

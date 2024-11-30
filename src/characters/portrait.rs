@@ -1,34 +1,25 @@
-use crate::{FragmentExt, IntoFragment, Threaded};
+use crate::{dialogue_box::IntoBox, FragmentExt};
 use bevy::{asset::AssetPath, ecs::query::QuerySingleError, prelude::*};
 
-pub trait Portrait<D: Threaded> {
+pub trait Portrait {
     /// Initializes portrait entity in the ECS.
     ///
     /// Must be called before [`Portrait::portrait`].
-    fn init_portrait(self, transform: Transform) -> impl IntoFragment<D>;
+    fn init_portrait(self, transform: Transform) -> impl IntoBox;
 
     /// Set the texture and, optionally, the position of the active character portrait
-    fn portrait(
-        self,
-        texture: AssetPath<'static>,
-        position: Option<Transform>,
-    ) -> impl IntoFragment<D>;
+    fn portrait(self, texture: AssetPath<'static>, position: Option<Transform>) -> impl IntoBox;
 }
 
-impl<T, D> Portrait<D> for T
+impl<T> Portrait for T
 where
-    T: IntoFragment<D>,
-    D: Threaded,
+    T: IntoBox,
 {
-    fn init_portrait(self, transform: Transform) -> impl IntoFragment<D> {
+    fn init_portrait(self, transform: Transform) -> impl IntoBox {
         self.on_start(init_portrait(transform))
     }
 
-    fn portrait(
-        self,
-        texture: AssetPath<'static>,
-        transform: Option<Transform>,
-    ) -> impl IntoFragment<D> {
+    fn portrait(self, texture: AssetPath<'static>, transform: Option<Transform>) -> impl IntoBox {
         self.on_start(portrait(texture, transform))
     }
 }

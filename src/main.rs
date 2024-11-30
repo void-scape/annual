@@ -2,9 +2,10 @@
 #![allow(clippy::type_complexity)]
 
 use bevy::prelude::*;
+use bevy_bits::DialogueBoxToken;
 use characters::portrait::Portrait;
 use dialogue::fragment::*;
-use dialogue_box::{DialogueBoxDescriptor, SpawnBox};
+use dialogue_box::{BoxEntity, DialogueBoxDescriptor, IntoBox, SpawnBox};
 use macros::t;
 use std::time::Duration;
 
