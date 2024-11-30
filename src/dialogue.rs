@@ -61,7 +61,7 @@ pub struct FragmentEvent<Data> {
 }
 
 #[allow(unused)]
-impl<E> FragmentEvent<E> {
+impl<D> FragmentEvent<D> {
     pub fn end(&self) -> FragmentEndEvent {
         FragmentEndEvent { id: self.id }
     }

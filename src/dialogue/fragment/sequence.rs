@@ -58,7 +58,7 @@ macro_rules! seq_frag {
             type Fragment = Sequence<($($ty::Fragment,)*)>;
 
             #[allow(unused_mut)]
-            fn into_fragment(self, commands: &mut Commands) -> (Self::Fragment, FragmentNode) {
+            fn into_fragment(self, context: &Context, commands: &mut Commands) -> (Self::Fragment, FragmentNode) {
                 let id = FragmentId::random();
                 let mut ids = Vec::new();
                 ids.reserve_exact($count);
@@ -76,7 +76,7 @@ macro_rules! seq_frag {
                     fragments: (
                         $(
                             {
-                                let (frag, n) = $ty.into_fragment(commands);
+                                let (frag, n) = $ty.into_fragment(context, commands);
                                 ids.push(n.id);
                                 node.push(n);
                                 frag
@@ -164,7 +164,11 @@ where
 {
     type Fragment = Sequence<Vec<T::Fragment>>;
 
-    fn into_fragment(self, commands: &mut Commands) -> (Self::Fragment, FragmentNode) {
+    fn into_fragment(
+        self,
+        context: &Context,
+        commands: &mut Commands,
+    ) -> (Self::Fragment, FragmentNode) {
         let id = FragmentId::random();
         let mut ids = Vec::new();
         let mut node = FragmentNode::new(id, Vec::new());
@@ -172,7 +176,7 @@ where
         let fragments = self
             .into_iter()
             .map(|frag| {
-                let (frag, n) = frag.into_fragment(commands);
+                let (frag, n) = frag.into_fragment(context, commands);
                 ids.push(n.id);
                 node.push(n);
                 frag
@@ -197,14 +201,18 @@ where
 {
     type Fragment = Sequence<[T::Fragment; LEN]>;
 
-    fn into_fragment(self, commands: &mut Commands) -> (Self::Fragment, FragmentNode) {
+    fn into_fragment(
+        self,
+        context: &Context,
+        commands: &mut Commands,
+    ) -> (Self::Fragment, FragmentNode) {
         let id = FragmentId::random();
         let mut ids = Vec::new();
         let mut node = FragmentNode::new(id, Vec::new());
 
         let mut fragments = self.into_iter();
         let fragments = core::array::from_fn(|_| {
-            let (frag, n) = fragments.next().unwrap().into_fragment(commands);
+            let (frag, n) = fragments.next().unwrap().into_fragment(context, commands);
             ids.push(n.id);
             node.push(n);
             frag

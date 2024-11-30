@@ -31,7 +31,7 @@ where
 {
     type Fragment = Dynamic<SystemId>;
 
-    fn into_fragment(self, commands: &mut Commands) -> (Self::Fragment, FragmentNode) {
+    fn into_fragment(self, _: &Context, commands: &mut Commands) -> (Self::Fragment, FragmentNode) {
         let id = self.id;
         (
             Dynamic {
@@ -56,7 +56,7 @@ where
 {
     fn start(
         &mut self,
-        context: &Context,
+        _: &Context,
         id: FragmentId,
         state: &mut FragmentStates,
         _writer: &mut EventWriter<FragmentEvent<Data>>,
@@ -77,7 +77,7 @@ where
 
     fn end(
         &mut self,
-        context: &Context,
+        _: &Context,
         id: FragmentId,
         state: &mut FragmentStates,
         _commands: &mut Commands,

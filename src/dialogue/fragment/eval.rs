@@ -19,8 +19,12 @@ where
 {
     type Fragment = F::Fragment;
 
-    fn into_fragment(self, commands: &mut Commands) -> (Self::Fragment, FragmentNode) {
-        let (fragment, node) = self.fragment.into_fragment(commands);
+    fn into_fragment(
+        self,
+        context: &Context,
+        commands: &mut Commands,
+    ) -> (Self::Fragment, FragmentNode) {
+        let (fragment, node) = self.fragment.into_fragment(context, commands);
         let id = node.id;
 
         commands.add(move |world: &mut World| {

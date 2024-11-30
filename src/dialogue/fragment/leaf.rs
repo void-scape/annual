@@ -22,7 +22,7 @@ where
 {
     fn start(
         &mut self,
-        context: &Context,
+        _: &Context,
         id: FragmentId,
         state: &mut FragmentStates,
         writer: &mut EventWriter<FragmentEvent<Data>>,
@@ -46,7 +46,7 @@ where
 
     fn end(
         &mut self,
-        context: &Context,
+        _: &Context,
         id: FragmentId,
         state: &mut FragmentStates,
         _commands: &mut Commands,

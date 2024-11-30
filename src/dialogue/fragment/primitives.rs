@@ -10,6 +10,7 @@ macro_rules! impl_leaf {
 
             fn into_fragment(
                 self,
+                _: &Context,
                 _: &mut bevy::prelude::Commands,
             ) -> (Self::Fragment, FragmentNode) {
                 crate::dialogue::fragment::Leaf::new(self)

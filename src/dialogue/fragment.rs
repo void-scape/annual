@@ -13,7 +13,6 @@ mod primitives;
 mod sequence;
 
 pub use delay::Delay;
-pub use dynamic::dynamic;
 pub use eval::Evaluated;
 pub use hooks::{OnEnd, OnStart, OnVisit};
 pub use leaf::Leaf;
@@ -218,28 +217,31 @@ pub trait SpawnFragment: Sized {
     ///
     /// Equivalent to
     /// ```
-    /// # fn spawn(mut commands: Commands) {
-    /// let (fragment, tree) = self.into_fragment(&mut commands);
+    ///
+    /// # fn spawn(context: u32, mut commands: Commands) {
+    /// let (fragment, tree) = self.into_fragment(context, &mut commands);
     /// spawn_fragment(fragment, tree, &mut commands);
     /// # }
     /// ```
-    fn spawn_fragment<Context, Data>(self, commands: &mut Commands)
+    fn spawn_fragment<Context, Data>(self, context: Context, commands: &mut Commands)
     where
         Data: Threaded,
+        Context: Threaded,
         Self: IntoFragment<Context, Data>,
         <Self as IntoFragment<Context, Data>>::Fragment:
             Fragment<Context, Data> + Send + Sync + 'static;
 }
 
 impl<T> SpawnFragment for T {
-    fn spawn_fragment<Context, Data>(self, commands: &mut Commands)
+    fn spawn_fragment<Context, Data>(self, context: Context, commands: &mut Commands)
     where
         Data: Threaded,
+        Context: Threaded,
         Self: IntoFragment<Context, Data>,
         <Self as IntoFragment<Context, Data>>::Fragment:
             Fragment<Context, Data> + Send + Sync + 'static,
     {
-        let (fragment, tree) = self.into_fragment(commands);
+        let (fragment, tree) = self.into_fragment(&context, commands);
         spawn_fragment(fragment, tree, commands);
     }
 }
@@ -247,7 +249,11 @@ impl<T> SpawnFragment for T {
 pub trait IntoFragment<Context, Data: Threaded> {
     type Fragment: Fragment<Context, Data> + Send + Sync + 'static;
 
-    fn into_fragment(self, commands: &mut Commands) -> (Self::Fragment, FragmentNode);
+    fn into_fragment(
+        self,
+        context: &Context,
+        commands: &mut Commands,
+    ) -> (Self::Fragment, FragmentNode);
 }
 
 impl<T> FragmentExt for T {}
@@ -421,7 +427,7 @@ fn evaluated_fragments<Context, Data: Threaded>(
             fragment
                 .0
                 .as_mut()
-                .start(ctx, **id, &mut state, &mut writer, &mut commands);
+                .start(&ctx.0, **id, &mut state, &mut writer, &mut commands);
         }
     }
 

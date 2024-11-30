@@ -16,8 +16,12 @@ where
 {
     type Fragment = OnVisit<F::Fragment, SystemId>;
 
-    fn into_fragment(self, commands: &mut Commands) -> (Self::Fragment, FragmentNode) {
-        let (fragment, node) = self.fragment.into_fragment(commands);
+    fn into_fragment(
+        self,
+        context: &Context,
+        commands: &mut Commands,
+    ) -> (Self::Fragment, FragmentNode) {
+        let (fragment, node) = self.fragment.into_fragment(context, commands);
 
         (
             OnVisit {
@@ -83,8 +87,12 @@ where
 {
     type Fragment = OnStart<F::Fragment, SystemId>;
 
-    fn into_fragment(self, commands: &mut Commands) -> (Self::Fragment, FragmentNode) {
-        let (fragment, node) = self.fragment.into_fragment(commands);
+    fn into_fragment(
+        self,
+        context: &Context,
+        commands: &mut Commands,
+    ) -> (Self::Fragment, FragmentNode) {
+        let (fragment, node) = self.fragment.into_fragment(context, commands);
 
         (
             OnStart {
@@ -149,8 +157,12 @@ where
 {
     type Fragment = OnEnd<F::Fragment, SystemId>;
 
-    fn into_fragment(self, commands: &mut Commands) -> (Self::Fragment, FragmentNode) {
-        let (fragment, node) = self.fragment.into_fragment(commands);
+    fn into_fragment(
+        self,
+        context: &Context,
+        commands: &mut Commands,
+    ) -> (Self::Fragment, FragmentNode) {
+        let (fragment, node) = self.fragment.into_fragment(context, commands);
 
         (
             OnEnd {
