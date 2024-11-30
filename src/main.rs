@@ -4,7 +4,7 @@
 use bevy::prelude::*;
 use characters::portrait::Portrait;
 use dialogue::fragment::*;
-use dialogue_box::{audio::SetDialogueTextSfx, WithBox};
+use dialogue_box::{DialogueBoxDescriptor, WithBox};
 use macros::t;
 
 mod characters;
@@ -43,11 +43,7 @@ fn inner_seq() -> impl IntoFragment<bevy_bits::DialogueBoxToken> {
 //     })
 // }
 
-fn scene(
-    mut commands: Commands,
-    asset_server: Res<AssetServer>,
-    mut texture_atlases: ResMut<Assets<TextureAtlasLayout>>,
-) {
+fn scene(mut commands: Commands) {
     use characters::*;
     (
         inner_seq()
@@ -73,5 +69,20 @@ fn scene(
         .sans(),
         "Oh, I guess so...".flower(),
     )
-        .spawn_with_box(&mut commands, &asset_server, &mut texture_atlases);
+        .dialogue_box(commands.spawn_empty().id(), &DESC)
+        .spawn_fragment(&mut commands);
 }
+
+const DESC: DialogueBoxDescriptor = DialogueBoxDescriptor {
+    transform: Transform::from_xyz(-500.0, 0.0, 0.0).with_scale(Vec3::new(3.0, 3.0, 1.0)),
+    dimensions: dialogue_box::DialogueBoxDimensions::new(20, 4),
+    atlas: dialogue_box::DialogueBoxAtlasDescriptor {
+        texture: "Scalable txt screen x1.png",
+        tile_size: UVec2::new(16, 16),
+    },
+    font: dialogue_box::DialogueBoxFontDescriptor {
+        font_size: 32.0,
+        default_color: Color::WHITE,
+        font: "joystix monospace.otf",
+    },
+};

@@ -98,9 +98,16 @@ impl DialogueBoxBundle {
 #[derive(Component, Default, Clone)]
 pub struct DialogueBox;
 
-#[derive(Component, Default, Clone)]
+#[derive(Component, Debug, Default, Clone)]
 pub struct DialogueBoxFont {
     pub font: Handle<Font>,
+    pub font_size: f32,
+    pub default_color: bevy::color::Color,
+}
+
+#[derive(Component, Debug, Default, Clone)]
+pub struct DialogueBoxFontDescriptor {
+    pub font: &'static str,
     pub font_size: f32,
     pub default_color: bevy::color::Color,
 }
@@ -108,36 +115,42 @@ pub struct DialogueBoxFont {
 #[derive(Component, Default, Clone)]
 pub struct DialogueBoxAtlas {
     pub atlas_layout: Handle<TextureAtlasLayout>,
-    pub tile_size: UVec2,
     pub texture: Handle<Image>,
+    pub tile_size: UVec2,
+}
+
+#[derive(Component, Debug, Default, Clone, Copy)]
+pub struct DialogueBoxAtlasDescriptor {
+    pub texture: &'static str,
+    pub tile_size: UVec2,
 }
 
 impl DialogueBoxAtlas {
     pub fn new<'a>(
         asset_server: &AssetServer,
         texture_atlases: &mut Assets<TextureAtlasLayout>,
-        atlas_path: impl Into<AssetPath<'a>>,
+        texture: impl Into<AssetPath<'a>>,
         tile_size: UVec2,
     ) -> Self {
         let texture_atlas = TextureAtlasLayout::from_grid(tile_size, 3, 3, None, None);
         let atlas_layout = texture_atlases.add(texture_atlas);
 
         Self {
-            texture: asset_server.load(atlas_path),
-            atlas_layout,
+            texture: asset_server.load(texture.into()),
             tile_size,
+            atlas_layout,
         }
     }
 }
 
-#[derive(Component, Default, Clone, Copy)]
+#[derive(Component, Debug, Default, Clone, Copy)]
 pub struct DialogueBoxDimensions {
     pub inner_width: usize,
     pub inner_height: usize,
 }
 
 impl DialogueBoxDimensions {
-    pub fn new(inner_width: usize, inner_height: usize) -> Self {
+    pub const fn new(inner_width: usize, inner_height: usize) -> Self {
         Self {
             inner_width,
             inner_height,
@@ -145,72 +158,55 @@ impl DialogueBoxDimensions {
     }
 }
 
+/// Maps outgoing [`FragmentEvent`] data into [`DialogueBoxEvent`] events that are binded to a [`DialogueBoxBundle`].
 pub trait WithBox {
-    /// Maps outgoing [`FragmentEvent`] data into [`DialogueBoxEvent`] events that are binded to a [`DialogueBoxBundle`].
-    fn spawn_with_box(
+    /// Populates `entity` with a dialogue box and children on fragment start.
+    ///
+    /// ```
+    /// # use dialogue_box::WithBox;
+    /// #
+    /// # let fragment = ("Hello, World!").dialogue_box(
+    /// #     commands.spawn_empty().id(),
+    /// #     &DialogueBoxDescriptor { .. },
+    /// # );
+    /// # fragment.spawn_fragment(&mut commands);
+    /// ```
+    fn dialogue_box(
         self,
-        commands: &mut Commands,
-        asset_server: &AssetServer,
-        texture_atlases: &mut Assets<TextureAtlasLayout>,
-    );
+        entity: Entity,
+        descriptor: &'static DialogueBoxDescriptor,
+    ) -> impl IntoFragment<bevy_bits::DialogueBoxToken>;
 }
 
 impl<T> WithBox for T
 where
     T: IntoFragment<bevy_bits::DialogueBoxToken>,
 {
-    fn spawn_with_box(
+    fn dialogue_box(
         self,
-        commands: &mut Commands,
-        asset_server: &AssetServer,
-        texture_atlases: &mut Assets<TextureAtlasLayout>,
-    ) {
-        let dialogue_box = DialogueBoxBundle {
-            atlas: DialogueBoxAtlas::new(
-                asset_server,
-                texture_atlases,
-                "Scalable txt screen x1.png",
-                UVec2::new(16, 16),
-            ),
-            dimensions: DialogueBoxDimensions::new(20, 4),
-            spatial: SpatialBundle::from_transform(
-                Transform::default()
-                    .with_scale(Vec3::new(3.0, 3.0, 1.0))
-                    .with_translation(Vec3::new(-500.0, 0.0, 0.0)),
-            ),
-            ..Default::default()
-        };
-
-        let box_entity = commands.spawn_empty().id();
+        entity: Entity,
+        descriptor: &'static DialogueBoxDescriptor,
+    ) -> impl IntoFragment<bevy_bits::DialogueBoxToken> {
         self.once()
-            .on_start(spawn_dialogue_box(
-                box_entity,
-                TypeWriterBundle {
-                    font: DialogueBoxFont {
-                        font_size: 32.0,
-                        default_color: bevy::color::Color::WHITE,
-                        font: asset_server.load("joystix monospace.otf"),
-                    },
-                    state: TypeWriterState::new(20.0),
-                    text_anchor: Anchor::TopLeft,
-                    spatial: SpatialBundle::from_transform(
-                        Transform::default().with_scale(Vec3::new(1.0 / 3.0, 1.0 / 3.0, 1.0)),
-                    ),
-                    ..Default::default()
-                },
-                dialogue_box,
-            ))
-            .on_end(despawn_dialogue_box(box_entity))
+            .on_start(spawn_dialogue_box(entity, descriptor))
+            .on_end(despawn_dialogue_box(entity))
             // .on_start(crate::characters::portrait::init_portrait(
             //     Transform::from_translation(Vec3::default().with_x(-200.0)),
             // ))
             .on_end(crate::characters::portrait::despawn_portrait)
             .map_event(move |event| DialogueBoxEvent {
                 event: event.clone(),
-                entity: box_entity,
+                entity,
             })
-            .spawn_fragment::<bevy_bits::DialogueBoxToken>(commands);
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct DialogueBoxDescriptor {
+    pub dimensions: DialogueBoxDimensions,
+    pub transform: Transform,
+    pub atlas: DialogueBoxAtlasDescriptor,
+    pub font: DialogueBoxFontDescriptor,
 }
 
 /// Spawns a [`DialogueBoxBundle`] with a [`TypeWriterBundle`] child.
@@ -219,10 +215,40 @@ where
 /// [`Transform`]s.
 pub fn spawn_dialogue_box(
     entity: Entity,
-    type_writer: TypeWriterBundle,
-    dialogue_box: DialogueBoxBundle,
-) -> impl Fn(Commands) {
-    move |mut commands: Commands| {
+    desc: &'static DialogueBoxDescriptor,
+) -> impl Fn(Commands, Res<AssetServer>, ResMut<Assets<TextureAtlasLayout>>) {
+    move |mut commands: Commands,
+          asset_server: Res<AssetServer>,
+          mut texture_atlases: ResMut<Assets<TextureAtlasLayout>>| {
+        let transform = desc.transform;
+        let dialogue_box = DialogueBoxBundle {
+            atlas: DialogueBoxAtlas::new(
+                &asset_server,
+                &mut texture_atlases,
+                desc.atlas.texture,
+                desc.atlas.tile_size,
+            ),
+            dimensions: desc.dimensions,
+            spatial: SpatialBundle::from_transform(transform),
+            ..Default::default()
+        };
+
+        let type_writer = TypeWriterBundle {
+            font: DialogueBoxFont {
+                font: asset_server.load(desc.font.font),
+                font_size: desc.font.font_size,
+                default_color: desc.font.default_color,
+            },
+            state: TypeWriterState::new(20.0),
+            text_anchor: Anchor::TopLeft,
+            spatial: SpatialBundle::from_transform(Transform::default().with_scale(Vec3::new(
+                1.0 / transform.scale.x,
+                1.0 / transform.scale.y,
+                1.0,
+            ))),
+            ..Default::default()
+        };
+
         let inner_width = dialogue_box.dimensions.inner_width;
         let inner_height = dialogue_box.dimensions.inner_height;
         let tile_size = dialogue_box.atlas.tile_size;
