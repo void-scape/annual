@@ -36,10 +36,11 @@ impl<F, S> Delay<F, S> {
     }
 }
 
-impl<F, S, D, C> IntoFragment<D, C> for Delay<F, S>
+impl<F, S, D, C> IntoFragment<C, D> for Delay<F, S>
 where
+    F: IntoFragment<C, D>,
     D: Threaded,
-    F: IntoFragment<D, C>,
+    C: Threaded,
     S: System<In = (), Out = ()> + 'static,
 {
     type Fragment = Delay<F::Fragment, SystemId>;
@@ -58,10 +59,11 @@ where
     }
 }
 
-impl<F, D, C> Fragment<D, C> for Delay<F, SystemId>
+impl<F, D, C> Fragment<C, D> for Delay<F, SystemId>
 where
+    F: Fragment<C, D>,
     D: Threaded,
-    F: Fragment<D, C>,
+    C: Threaded,
 {
     fn start(
         &mut self,

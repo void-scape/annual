@@ -10,9 +10,9 @@ pub struct Mapped<F, S, E, Data> {
     pub(super) _marker: PhantomData<fn() -> (S, E, Data)>,
 }
 
-impl<Data, F, S, E> IntoFragment<Data> for Mapped<F, S, E, Data>
+impl<Context, Data, F, S, E> IntoFragment<Context, Data> for Mapped<F, S, E, Data>
 where
-    F: IntoFragment<Data>,
+    F: IntoFragment<Context, Data>,
     S: FnMut(&FragmentEvent<Data>) -> E + Send + Sync + 'static,
     E: Event + Clone,
     Data: Threaded,

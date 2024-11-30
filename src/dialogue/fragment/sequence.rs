@@ -52,6 +52,7 @@ macro_rules! seq_frag {
         impl<Context, Data, $($ty),*> IntoFragment<Context, Data> for ($($ty,)*)
         where
             Data: Threaded,
+            Context: Threaded,
             $($ty: IntoFragment<Context, Data>),*
         {
             type Fragment = Sequence<($($ty::Fragment,)*)>;

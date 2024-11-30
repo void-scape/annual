@@ -1,3 +1,4 @@
+use super::IntoBox;
 use crate::{FragmentExt, IntoFragment};
 use bevy::{audio::PlaybackMode, prelude::*};
 use rand::Rng;
@@ -95,36 +96,20 @@ pub enum Trigger {
 }
 
 pub trait SetDialogueTextSfx {
-    fn reveal_sfx(
-        self,
-        bundle: AudioBundle,
-        settings: TextSfxSettings,
-    ) -> impl IntoFragment<bevy_bits::DialogueBoxToken>;
+    fn reveal_sfx(self, bundle: AudioBundle, settings: TextSfxSettings) -> impl IntoBox;
 
-    fn delete_sfx(
-        self,
-        bundle: AudioBundle,
-        settings: TextSfxSettings,
-    ) -> impl IntoFragment<bevy_bits::DialogueBoxToken>;
+    fn delete_sfx(self, bundle: AudioBundle, settings: TextSfxSettings) -> impl IntoBox;
 }
 
 impl<T> SetDialogueTextSfx for T
 where
-    T: IntoFragment<bevy_bits::DialogueBoxToken>,
+    T: IntoBox,
 {
-    fn reveal_sfx(
-        self,
-        bundle: AudioBundle,
-        settings: TextSfxSettings,
-    ) -> impl IntoFragment<bevy_bits::DialogueBoxToken> {
+    fn reveal_sfx(self, bundle: AudioBundle, settings: TextSfxSettings) -> impl IntoBox {
         self.set_resource(RevealedTextSfx { bundle, settings })
     }
 
-    fn delete_sfx(
-        self,
-        bundle: AudioBundle,
-        settings: TextSfxSettings,
-    ) -> impl IntoFragment<bevy_bits::DialogueBoxToken> {
+    fn delete_sfx(self, bundle: AudioBundle, settings: TextSfxSettings) -> impl IntoBox {
         self.set_resource(DeletedTextSfx { bundle, settings })
     }
 }

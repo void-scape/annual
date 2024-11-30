@@ -15,13 +15,14 @@ impl<T> Leaf<T> {
     }
 }
 
-impl<T, Data> Fragment<Data> for Leaf<T>
+impl<Context, T, Data> Fragment<Context, Data> for Leaf<T>
 where
     Data: Threaded + From<T>,
     T: Clone,
 {
     fn start(
         &mut self,
+        context: &Context,
         id: FragmentId,
         state: &mut FragmentStates,
         writer: &mut EventWriter<FragmentEvent<Data>>,
@@ -43,7 +44,13 @@ where
         }
     }
 
-    fn end(&mut self, id: FragmentId, state: &mut FragmentStates, _commands: &mut Commands) -> End {
+    fn end(
+        &mut self,
+        context: &Context,
+        id: FragmentId,
+        state: &mut FragmentStates,
+        _commands: &mut Commands,
+    ) -> End {
         if id == self.id {
             let state = state.update(id);
             state.completed += 1;

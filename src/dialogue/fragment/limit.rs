@@ -38,9 +38,9 @@ impl<F> Limit<F> {
     }
 }
 
-impl<Data, F> IntoFragment<Data> for Limit<F>
+impl<Context, Data, F> IntoFragment<Context, Data> for Limit<F>
 where
-    F: IntoFragment<Data>,
+    F: IntoFragment<Context, Data>,
     Data: Threaded,
 {
     type Fragment = F::Fragment;

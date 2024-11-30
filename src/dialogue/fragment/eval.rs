@@ -10,9 +10,9 @@ pub struct Evaluated<F, T, O> {
     pub(super) _marker: PhantomData<fn() -> O>,
 }
 
-impl<Data, F, T, O> IntoFragment<Data> for Evaluated<F, Unregistered<T>, O>
+impl<Context, Data, F, T, O> IntoFragment<Context, Data> for Evaluated<F, Unregistered<T>, O>
 where
-    F: IntoFragment<Data>,
+    F: IntoFragment<Context, Data>,
     T: System<In = (), Out = O>,
     O: Evaluate + Send + 'static,
     Data: Threaded,

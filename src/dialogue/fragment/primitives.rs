@@ -2,9 +2,9 @@ use super::{FragmentNode, IntoFragment, Threaded};
 
 macro_rules! impl_leaf {
     ($ty:ty) => {
-        impl<Data> IntoFragment<Data> for $ty
+        impl<Context, Data> IntoFragment<Context, Data> for $ty
         where
-            Data: FragmentData + From<$ty>,
+            Data: Threaded + From<$ty>,
         {
             type Fragment = crate::dialogue::fragment::Leaf<$ty>;
 

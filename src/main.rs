@@ -2,7 +2,6 @@
 #![allow(clippy::type_complexity)]
 
 use bevy::prelude::*;
-use bevy_bits::DialogueBoxToken;
 use characters::portrait::Portrait;
 use dialogue::fragment::*;
 use dialogue_box::{DialogueBoxDescriptor, SpawnBox};
@@ -29,7 +28,7 @@ fn main() {
         .run();
 }
 
-fn one() -> impl IntoFragment<bevy_bits::DialogueBoxToken> {
+fn one() -> impl IntoBox {
     use characters::*;
     (
         "Hello!"
@@ -61,7 +60,7 @@ fn one() -> impl IntoFragment<bevy_bits::DialogueBoxToken> {
         })
 }
 
-fn two() -> impl IntoFragment<bevy_bits::DialogueBoxToken> {
+fn two() -> impl IntoBox {
     use characters::*;
     (
         "Do you want to go on a walk?"
@@ -75,7 +74,7 @@ fn two() -> impl IntoFragment<bevy_bits::DialogueBoxToken> {
         })
 }
 
-fn three() -> impl IntoFragment<bevy_bits::DialogueBoxToken> {
+fn three() -> impl IntoBox {
     use characters::*;
     (
         t!("I know! [0.25] I'll come by tomorrow.").sans(),

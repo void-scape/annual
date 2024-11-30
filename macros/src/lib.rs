@@ -39,16 +39,16 @@ fn character(input: TokenStream) -> syn::Result<proc_macro2::TokenStream> {
     let trait_name = proc_macro2::Ident::new(&format!("Into{}", ident), Span::call_site());
 
     Ok(quote! {
-        pub trait #trait_name<D: crate::FragmentData> {
-            fn #fn_name(self) -> impl crate::IntoFragment<D>;
+        pub trait #trait_name<D: crate::Threaded> {
+            fn #fn_name(self) -> impl crate::IntoFragment<crate::dialogue_box::BoxEntity, D>;
         }
 
         impl<T, D> #trait_name<D> for T
         where
             T: crate::IntoFragment<D>,
-            D: crate::FragmentData
+            D: crate::Threaded
         {
-            fn #fn_name(self) -> impl crate::IntoFragment<D> {
+            fn #fn_name(self) -> impl crate::IntoFragment<crate::dialogue_box::BoxEntity, D> {
                 use crate::characters::CharacterAssets;
                 use crate::characters::sfx::Sfx;
                 self.portrait(#ident::texture().into(), None).reveal(#ident::text_sfx())

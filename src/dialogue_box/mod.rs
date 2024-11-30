@@ -52,6 +52,10 @@ impl Plugin for DialogueBoxPlugin {
     }
 }
 
+pub trait IntoBox: IntoFragment<Entity, bevy_bits::DialogueBoxToken> {}
+
+impl<T> IntoBox for T where T: IntoFragment<Entity, bevy_bits::DialogueBoxToken> {}
+
 /// Spawns a dialogue box with a texture atlas, font, and position.
 #[derive(Bundle, Default, Clone)]
 pub struct DialogueBoxBundle {
@@ -153,6 +157,15 @@ impl DialogueBoxDimensions {
 #[derive(Component, Debug, Clone)]
 pub struct DialogueBoxFragmentMap(pub Vec<FragmentId>);
 
+#[derive(Component, Clone)]
+pub struct BoxEntity(Entity);
+
+impl BoxEntity {
+    pub fn entity(&self) -> Entity {
+        self.0
+    }
+}
+
 pub trait SpawnBox {
     /// Populates `entity` with a dialogue box and children on fragment start.
     ///
@@ -173,7 +186,7 @@ pub trait SpawnBox {
 
 impl<T> SpawnBox for T
 where
-    T: IntoFragment<bevy_bits::DialogueBoxToken>,
+    T: IntoFragment<BoxEntity, bevy_bits::DialogueBoxToken>,
 {
     fn spawn_box(self, commands: &mut Commands, desc: &'static DialogueBoxDescriptor) {
         let entity = commands.spawn_empty().id();
@@ -347,7 +360,7 @@ impl DialogueBoxComponent {
     }
 }
 
-impl<Data> crate::dialogue::fragment::IntoFragment<Data> for bevy_bits::DialogueBoxToken
+impl<Data> crate::dialogue::fragment::IntoFragment<BoxEntity, Data> for bevy_bits::DialogueBoxToken
 where
     Data: From<bevy_bits::DialogueBoxToken> + crate::dialogue::fragment::Threaded,
 {

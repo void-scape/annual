@@ -8,9 +8,9 @@ pub struct OnVisit<F, T> {
     pub(super) on_trigger: T,
 }
 
-impl<Data, F, T> IntoFragment<Data> for OnVisit<F, T>
+impl<Context, Data, F, T> IntoFragment<Context, Data> for OnVisit<F, T>
 where
-    F: IntoFragment<Data>,
+    F: IntoFragment<Context, Data>,
     T: System<In = (), Out = ()>,
     Data: Threaded,
 {
@@ -29,19 +29,22 @@ where
     }
 }
 
-impl<Data, F> Fragment<Data> for OnVisit<F, SystemId>
+impl<Context, Data, F> Fragment<Context, Data> for OnVisit<F, SystemId>
 where
-    F: Fragment<Data>,
+    F: Fragment<Context, Data>,
     Data: Threaded,
 {
     fn start(
         &mut self,
+        context: &Context,
         selected_id: FragmentId,
         state: &mut FragmentStates,
         writer: &mut EventWriter<FragmentEvent<Data>>,
         commands: &mut Commands,
     ) -> Start {
-        let start = self.fragment.start(selected_id, state, writer, commands);
+        let start = self
+            .fragment
+            .start(context, selected_id, state, writer, commands);
 
         // Run triggers whenever any children are selected.
         if start.visited() {
@@ -51,8 +54,14 @@ where
         start
     }
 
-    fn end(&mut self, id: FragmentId, state: &mut FragmentStates, commands: &mut Commands) -> End {
-        self.fragment.end(id, state, commands)
+    fn end(
+        &mut self,
+        context: &Context,
+        id: FragmentId,
+        state: &mut FragmentStates,
+        commands: &mut Commands,
+    ) -> End {
+        self.fragment.end(context, id, state, commands)
     }
 
     fn id(&self) -> &FragmentId {
@@ -65,11 +74,12 @@ pub struct OnStart<F, T> {
     pub(super) on_trigger: T,
 }
 
-impl<Data, F, T> IntoFragment<Data> for OnStart<F, T>
+impl<Context, Data, F, T> IntoFragment<Context, Data> for OnStart<F, T>
 where
-    F: IntoFragment<Data>,
+    F: IntoFragment<Context, Data>,
     T: System<In = (), Out = ()>,
     Data: Threaded,
+    Context: Clone + Threaded,
 {
     type Fragment = OnStart<F::Fragment, SystemId>;
 
@@ -86,29 +96,39 @@ where
     }
 }
 
-impl<Data, F> Fragment<Data> for OnStart<F, SystemId>
+impl<Context, Data, F> Fragment<Context, Data> for OnStart<F, SystemId>
 where
-    F: Fragment<Data>,
+    F: Fragment<Context, Data>,
     Data: Threaded,
+    Context: Clone + Send,
 {
     fn start(
         &mut self,
+        context: &Context,
         selected_id: FragmentId,
         state: &mut FragmentStates,
         writer: &mut EventWriter<FragmentEvent<Data>>,
         commands: &mut Commands,
     ) -> Start {
-        let start = self.fragment.start(selected_id, state, writer, commands);
+        let start = self
+            .fragment
+            .start(context, selected_id, state, writer, commands);
 
         if start.entered() {
-            commands.run_system(self.on_trigger);
+            commands.run_system_with_input(self.on_trigger, context.clone());
         }
 
         start
     }
 
-    fn end(&mut self, id: FragmentId, state: &mut FragmentStates, commands: &mut Commands) -> End {
-        self.fragment.end(id, state, commands)
+    fn end(
+        &mut self,
+        context: &Context,
+        id: FragmentId,
+        state: &mut FragmentStates,
+        commands: &mut Commands,
+    ) -> End {
+        self.fragment.end(context, id, state, commands)
     }
 
     fn id(&self) -> &FragmentId {
@@ -121,9 +141,9 @@ pub struct OnEnd<F, T> {
     pub(super) on_trigger: T,
 }
 
-impl<Data, F, T> IntoFragment<Data> for OnEnd<F, T>
+impl<Context, Data, F, T> IntoFragment<Context, Data> for OnEnd<F, T>
 where
-    F: IntoFragment<Data>,
+    F: IntoFragment<Context, Data>,
     T: System<In = (), Out = ()>,
     Data: Threaded,
 {
@@ -142,23 +162,30 @@ where
     }
 }
 
-impl<Data, F> Fragment<Data> for OnEnd<F, SystemId>
+impl<Context, Data, F> Fragment<Context, Data> for OnEnd<F, SystemId>
 where
-    F: Fragment<Data>,
+    F: Fragment<Context, Data>,
     Data: Threaded,
 {
     fn start(
         &mut self,
+        context: &Context,
         id: FragmentId,
         state: &mut FragmentStates,
         writer: &mut EventWriter<FragmentEvent<Data>>,
         commands: &mut Commands,
     ) -> Start {
-        self.fragment.start(id, state, writer, commands)
+        self.fragment.start(context, id, state, writer, commands)
     }
 
-    fn end(&mut self, id: FragmentId, state: &mut FragmentStates, commands: &mut Commands) -> End {
-        let end = self.fragment.end(id, state, commands);
+    fn end(
+        &mut self,
+        context: &Context,
+        id: FragmentId,
+        state: &mut FragmentStates,
+        commands: &mut Commands,
+    ) -> End {
+        let end = self.fragment.end(context, id, state, commands);
 
         if end.exited() {
             commands.run_system(self.on_trigger);
