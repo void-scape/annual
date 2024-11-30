@@ -1,6 +1,8 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::type_complexity)]
 
+use std::time::Duration;
+
 use bevy::prelude::*;
 use characters::portrait::Portrait;
 use dialogue::fragment::*;
@@ -27,32 +29,17 @@ fn main() {
         .run();
 }
 
-fn inner_seq() -> impl IntoFragment<bevy_bits::DialogueBoxToken> {
-    ("Hello...", t!("<5>..."))
-}
-
-// fn thing<D: FragmentData>(input: impl IntoFragment<D>) -> impl IntoFragment<D> {
-//     input.on_start(|mut commands: Commands, asset_server: Res<AssetServer>| {
-//         commands.spawn(AudioBundle {
-//             source: asset_server.load("snd_bell.wav"),
-//             settings: PlaybackSettings {
-//                 mode: bevy::audio::PlaybackMode::Despawn,
-//                 ..Default::default()
-//             },
-//         });
-//     })
-// }
-
-fn scene(mut commands: Commands) {
+fn one() -> impl IntoFragment<bevy_bits::DialogueBoxToken> {
     use characters::*;
     (
-        inner_seq()
+        "Hello!"
             .init_portrait(Transform::from_xyz(-400.0, 200.0, 0.0).with_scale(Vec3::splat(0.2)))
-            .sans(),
-        t!("<20>What are you looking for?").flower(),
-        t!("<15>D-did you... [1] I mean, [0.5] are you a...").sans(),
-        t!("<20>Is something wrong?").flower(),
-        "Are you... talking?".sans(),
+            .flower(),
+        t!("<7>...[0.5]!").sans(),
+        "Are you looking for something?".flower(),
+        t!("D-did you... [1] I mean, [0.5] are you a...").sans(),
+        "Is something wrong?".flower(),
+        t!("Are you... [0.5] talking?").sans(),
         "Well, are you?".flower(),
         t!("<12>But you're a [0.25]<20> {`FLOWER`[wave]}!", |frag| frag
             .on_start(
@@ -69,6 +56,44 @@ fn scene(mut commands: Commands) {
         .sans(),
         "Oh, I guess so...".flower(),
     )
+        .delay(Duration::from_millis(2000), |mut commands: Commands| {
+            two()
+                .dialogue_box(commands.spawn_empty().id(), &DESC)
+                .spawn_fragment(&mut commands);
+        })
+}
+
+fn two() -> impl IntoFragment<bevy_bits::DialogueBoxToken> {
+    use characters::*;
+    (
+        "Do you want to go on a walk?"
+            .init_portrait(Transform::from_xyz(-400.0, 200.0, 0.0).with_scale(Vec3::splat(0.2)))
+            .sans(),
+        "I'd love to!".flower(),
+        t!("But [0.5] I can't move.").flower(),
+    )
+        .delay(Duration::from_millis(4000), |mut commands: Commands| {
+            three()
+                .dialogue_box(commands.spawn_empty().id(), &DESC)
+                .spawn_fragment(&mut commands);
+        })
+}
+
+fn three() -> impl IntoFragment<bevy_bits::DialogueBoxToken> {
+    use characters::*;
+    (
+        t!("I know! [0.25] I'll come by tomorrow.")
+            .init_portrait(Transform::from_xyz(-400.0, 200.0, 0.0).with_scale(Vec3::splat(0.2)))
+            .sans(),
+        "Okay!".flower(),
+        "I'll bring all my friends.".sans(),
+        "I'll be waiting.".flower(),
+    )
+}
+
+fn scene(mut commands: Commands) {
+    use characters::*;
+    one()
         .dialogue_box(commands.spawn_empty().id(), &DESC)
         .spawn_fragment(&mut commands);
 }
