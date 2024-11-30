@@ -38,14 +38,7 @@ fn one() -> impl IntoBox {
         t!("Are you... [0.5] talking?").sans(),
         "Well, are you?".flower(),
         t!("<12>But you're a [0.25]<20> {`FLOWER`[wave]}!", |frag| frag
-            .on_start(
-                |mut commands: Commands, asset_server: Res<AssetServer>| {
-                    commands.spawn(AudioBundle {
-                        source: asset_server.load("snd_bell.wav"),
-                        settings: PlaybackSettings::DESPAWN,
-                    });
-                }
-            ))
+            .sound("snd_bell.wav"))
         .sans(),
         "Oh, I guess so...".flower(),
     )

@@ -1,5 +1,5 @@
 use crate::dialogue::{FragmentEvent, FragmentId, FragmentUpdate};
-use bevy::{ecs::event::EventRegistry, prelude::*};
+use bevy::{asset::AssetPath, ecs::event::EventRegistry, prelude::*};
 use hooks::OnEndCtx;
 use std::marker::PhantomData;
 
@@ -396,6 +396,25 @@ pub trait FragmentExt: Sized {
         OnStart {
             fragment: self,
             on_trigger: IntoSystem::into_system(system),
+        }
+    }
+
+    /// Play a sound at the start of a fragment.
+    fn sound(
+        self,
+        path: impl Into<AssetPath<'static>>,
+    ) -> OnStart<Self, impl System<In = (), Out = ()>> {
+        let path = path.into();
+        OnStart {
+            fragment: self,
+            on_trigger: IntoSystem::into_system(
+                move |mut commands: Commands, asset_server: Res<AssetServer>| {
+                    commands.spawn(AudioBundle {
+                        source: asset_server.load(&path),
+                        settings: PlaybackSettings::DESPAWN,
+                    });
+                },
+            ),
         }
     }
 }

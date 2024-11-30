@@ -63,7 +63,7 @@ impl Default for TextSfxSettings {
         Self {
             pitch: 1.0,
             pitch_variance: 0.0,
-            trigger: Trigger::Rate(1.0 / 10.0),
+            trigger: Trigger::Rate(1.0 / 18.0),
         }
     }
 }
