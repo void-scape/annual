@@ -1,5 +1,6 @@
 use crate::dialogue::{FragmentEvent, FragmentId, FragmentUpdate};
 use bevy::{ecs::event::EventRegistry, prelude::*};
+use hooks::OnEndCtx;
 use std::marker::PhantomData;
 
 mod delay;
@@ -13,7 +14,7 @@ mod sequence;
 
 pub use delay::Delay;
 pub use eval::Evaluated;
-pub use hooks::{OnEnd, OnStart, OnVisit};
+pub use hooks::{OnEnd, OnStart, OnStartCtx, OnVisit, OnVisitCtx};
 pub use leaf::Leaf;
 pub use limit::Limit;
 pub use mapped::Mapped;
@@ -272,6 +273,17 @@ pub trait FragmentExt: Sized {
         }
     }
 
+    /// Run a system that takes the fragment context any time this fragment is visited.
+    fn on_visit_ctx<S, C, M>(self, system: S) -> OnVisitCtx<Self, S::System>
+    where
+        S: IntoSystem<C, (), M>,
+    {
+        OnVisitCtx {
+            fragment: self,
+            on_trigger: IntoSystem::into_system(system),
+        }
+    }
+
     /// Run a system when this fragment is initially triggered.
     fn on_start<S, M>(self, system: S) -> OnStart<Self, S::System>
     where
@@ -283,12 +295,34 @@ pub trait FragmentExt: Sized {
         }
     }
 
+    /// Run a system that takes the fragment context when this fragment is initially triggered.
+    fn on_start_ctx<S, C, M>(self, system: S) -> OnStartCtx<Self, S::System>
+    where
+        S: IntoSystem<C, (), M>,
+    {
+        OnStartCtx {
+            fragment: self,
+            on_trigger: IntoSystem::into_system(system),
+        }
+    }
+
     /// Run a system when this fragment is considered complete.
     fn on_end<S, M>(self, system: S) -> OnEnd<Self, S::System>
     where
         S: IntoSystem<(), (), M>,
     {
         OnEnd {
+            fragment: self,
+            on_trigger: IntoSystem::into_system(system),
+        }
+    }
+
+    /// Run a system that takes the fragment context when this fragment is considered complete.
+    fn on_end_ctx<S, C, M>(self, system: S) -> OnEndCtx<Self, S::System>
+    where
+        S: IntoSystem<C, (), M>,
+    {
+        OnEndCtx {
             fragment: self,
             on_trigger: IntoSystem::into_system(system),
         }
