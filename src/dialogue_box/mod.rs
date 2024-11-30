@@ -30,8 +30,7 @@ pub struct DialogueBoxPlugin;
 
 impl Plugin for DialogueBoxPlugin {
     fn build(&self, app: &mut App) {
-        app.add_event::<DialogueBoxEvent>()
-            .add_plugins(Material2dPlugin::<WaveMaterial>::default())
+        app.add_plugins(Material2dPlugin::<WaveMaterial>::default())
             .add_systems(
                 Startup,
                 material::init_effect_material::<
@@ -51,13 +50,6 @@ impl Plugin for DialogueBoxPlugin {
                 ),
             );
     }
-}
-
-/// Associates a [`FragmentEvent<DialogueBoxToken>`] with a specific [`DialogueBoxBundle`] entity.
-#[derive(Event, Debug, Clone)]
-pub struct DialogueBoxEvent {
-    pub entity: Entity,
-    pub event: FragmentEvent<bevy_bits::DialogueBoxToken>,
 }
 
 /// Spawns a dialogue box with a texture atlas, font, and position.
@@ -158,6 +150,9 @@ impl DialogueBoxDimensions {
     }
 }
 
+#[derive(Component, Debug, Clone)]
+pub struct DialogueBoxFragmentMap(pub Vec<FragmentId>);
+
 /// Maps outgoing [`FragmentEvent`] data into [`DialogueBoxEvent`] events that are binded to a [`DialogueBoxBundle`].
 pub trait WithBox {
     /// Populates `entity` with a dialogue box and children on fragment start.
@@ -194,10 +189,6 @@ where
             //     Transform::from_translation(Vec3::default().with_x(-200.0)),
             // ))
             .on_end(crate::characters::portrait::despawn_portrait)
-            .map_event(move |event| DialogueBoxEvent {
-                event: event.clone(),
-                entity,
-            })
     }
 }
 
