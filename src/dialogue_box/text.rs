@@ -22,7 +22,7 @@ pub fn handle_dialogue_box_events(
     mut reader: EventReader<FragmentEvent<BoxToken>>,
     mut writer: EventWriter<FragmentEndEvent>,
     time: Res<Time>,
-    boxes: Query<(&Children, &DialogueBoxFragmentMap), With<DialogueBox>>,
+    boxes: Query<&Children, With<DialogueBox>>,
     mut type_writers: Query<(
         &mut bevy::text::Text,
         &mut TypeWriterState,
@@ -35,28 +35,22 @@ pub fn handle_dialogue_box_events(
     mut commands: Commands,
 ) {
     for event in reader.read() {
-        for (children, frag_map) in boxes.iter() {
-            if frag_map.0.contains(&event.id) {
-                for child in children.iter() {
-                    match event.data.0.clone() {
-                        bevy_bits::DialogueBoxToken::Section(section) => {
-                            if let Ok((mut text, mut state, box_font)) =
-                                type_writers.get_mut(*child)
-                            {
-                                state.push_section(section, Some(event.id), box_font);
-                            }
+        if let Ok(children) = boxes.get(event.data.1.entity()) {
+            for child in children.iter() {
+                match event.data.0.clone() {
+                    bevy_bits::DialogueBoxToken::Section(section) => {
+                        if let Ok((mut text, mut state, box_font)) = type_writers.get_mut(*child) {
+                            state.push_section(section, Some(event.id), box_font);
                         }
-                        bevy_bits::DialogueBoxToken::Command(cmd) => {
-                            if let Ok((mut text, mut state, _)) = type_writers.get_mut(*child) {
-                                state.push_cmd(cmd, Some(event.id));
-                            }
+                    }
+                    bevy_bits::DialogueBoxToken::Command(cmd) => {
+                        if let Ok((mut text, mut state, _)) = type_writers.get_mut(*child) {
+                            state.push_cmd(cmd, Some(event.id));
                         }
-                        bevy_bits::DialogueBoxToken::Sequence(seq) => {
-                            if let Ok((mut text, mut state, box_font)) =
-                                type_writers.get_mut(*child)
-                            {
-                                state.push_seq(seq, Some(event.id), box_font);
-                            }
+                    }
+                    bevy_bits::DialogueBoxToken::Sequence(seq) => {
+                        if let Ok((mut text, mut state, box_font)) = type_writers.get_mut(*child) {
+                            state.push_seq(seq, Some(event.id), box_font);
                         }
                     }
                 }

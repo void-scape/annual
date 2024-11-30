@@ -112,6 +112,7 @@ pub fn init_effect_material<E: TextMaterial + Asset + Material2d, const LAYER: u
         MaterialMesh2dBundle {
             material: material_handle,
             mesh: meshes.add(Rectangle::default()).into(),
+            transform: Transform::from_xyz(0.0, 0.0, 500.0),
             ..Default::default()
         },
         effect_target_image,

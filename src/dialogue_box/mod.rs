@@ -1,5 +1,6 @@
 #![allow(unused)]
 use crate::{
+    characters::portrait::PortraitBundle,
     dialogue::{FragmentEndEvent, FragmentEvent, FragmentId},
     Fragment, FragmentExt, IntoFragment, SpawnFragment,
 };
@@ -65,7 +66,6 @@ pub struct DialogueBoxBundle {
     pub atlas: DialogueBoxAtlas,
     pub dimensions: DialogueBoxDimensions,
     pub spatial: SpatialBundle,
-    pub dialogue_box: DialogueBox,
 }
 
 impl DialogueBoxBundle {
@@ -75,7 +75,6 @@ impl DialogueBoxBundle {
         spatial: SpatialBundle,
     ) -> Self {
         Self {
-            dialogue_box: DialogueBox,
             atlas,
             dimensions,
             spatial,
@@ -192,17 +191,19 @@ where
     T: IntoFragment<BoxEntity, BoxToken>,
 {
     fn spawn_box(self, commands: &mut Commands, desc: &'static DialogueBoxDescriptor) {
-        let entity = BoxEntity(commands.spawn_empty().id());
+        let entity = BoxEntity(commands.spawn_empty().insert(DialogueBox).id());
 
         let (fragment, tree) = self
             .once()
             .on_start(spawn_dialogue_box(entity.0, desc))
-            .on_end(crate::characters::portrait::despawn_portrait)
+            .on_end(move |mut commands: Commands| commands.entity(entity.0).despawn_recursive())
             .into_fragment(&entity, commands);
 
-        commands
-            .entity(entity.0)
-            .insert(DialogueBoxFragmentMap(tree.leaves()));
+        let portrait = commands
+            .spawn_empty()
+            .insert(PortraitBundle::new_empty(desc.portrait))
+            .id();
+        commands.entity(entity.0).add_child(portrait);
         crate::dialogue::fragment::spawn_fragment(fragment, entity, tree, commands);
     }
 }
@@ -213,6 +214,7 @@ pub struct DialogueBoxDescriptor {
     pub transform: Transform,
     pub atlas: DialogueBoxAtlasDescriptor,
     pub font: DialogueBoxFontDescriptor,
+    pub portrait: Transform,
 }
 
 /// Spawns a [`DialogueBoxBundle`] with a [`TypeWriterBundle`] child.
@@ -236,7 +238,6 @@ pub fn spawn_dialogue_box(
             ),
             dimensions: desc.dimensions,
             spatial: SpatialBundle::from_transform(transform),
-            ..Default::default()
         };
 
         let type_writer = TypeWriterBundle {
@@ -250,7 +251,7 @@ pub fn spawn_dialogue_box(
             spatial: SpatialBundle::from_transform(Transform::default().with_scale(Vec3::new(
                 1.0 / transform.scale.x,
                 1.0 / transform.scale.y,
-                1.0,
+                10.0,
             ))),
             ..Default::default()
         };

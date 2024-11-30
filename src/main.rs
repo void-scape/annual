@@ -1,11 +1,9 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::type_complexity)]
 
-use bevy::prelude::*;
-use bevy_bits::DialogueBoxToken;
-use characters::portrait::Portrait;
+use bevy::{math::VectorSpace, prelude::*};
 use dialogue::fragment::*;
-use dialogue_box::{BoxEntity, DialogueBoxDescriptor, IntoBox, SpawnBox};
+use dialogue_box::{DialogueBoxDescriptor, IntoBox, SpawnBox};
 use macros::t;
 use std::time::Duration;
 
@@ -22,7 +20,7 @@ fn main() {
             editor::EditorPlugin,
             dialogue_box::DialogueBoxPlugin,
             dialogue::DialoguePlugin,
-            ldtk::LdtkPlugin,
+            // ldtk::LdtkPlugin,
         ))
         .add_systems(Update, bevy_bits::close_on_escape)
         .add_systems(Startup, scene)
@@ -32,9 +30,7 @@ fn main() {
 fn one() -> impl IntoBox {
     use characters::*;
     (
-        "Hello!"
-            .init_portrait(Transform::from_xyz(-400., 200., 0.).with_scale(Vec3::splat(0.3)))
-            .flower(),
+        "Hello!".flower(),
         t!("<7>...[0.5]!").sans(),
         "Are you looking for something?".flower(),
         t!("D-did you... [1] I mean, [0.5] are you a...").sans(),
@@ -46,10 +42,7 @@ fn one() -> impl IntoBox {
                 |mut commands: Commands, asset_server: Res<AssetServer>| {
                     commands.spawn(AudioBundle {
                         source: asset_server.load("snd_bell.wav"),
-                        settings: PlaybackSettings {
-                            mode: bevy::audio::PlaybackMode::Despawn,
-                            ..Default::default()
-                        },
+                        settings: PlaybackSettings::DESPAWN,
                     });
                 }
             ))
@@ -64,9 +57,7 @@ fn one() -> impl IntoBox {
 fn two() -> impl IntoBox {
     use characters::*;
     (
-        "Do you want to go on a walk?"
-            .init_portrait(Transform::from_xyz(-400., 200., 0.).with_scale(Vec3::splat(0.3)))
-            .sans(),
+        "Do you want to go on a walk?".sans(),
         "I'd love to!".flower(),
         t!("But [0.5] I can't move.").flower(),
     )
@@ -86,7 +77,6 @@ fn three() -> impl IntoBox {
 }
 
 fn scene(mut commands: Commands) {
-    use characters::*;
     one().spawn_box(&mut commands, &DESC)
 }
 
@@ -102,4 +92,7 @@ const DESC: DialogueBoxDescriptor = DialogueBoxDescriptor {
         default_color: Color::WHITE,
         font: "joystix monospace.otf",
     },
+    portrait: Transform::IDENTITY
+        .with_translation(Vec3::new(0.0, 0.0, -10.0))
+        .with_scale(Vec3::splat(1.0 / 5.0)),
 };
