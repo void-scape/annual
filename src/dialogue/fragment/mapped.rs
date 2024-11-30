@@ -1,4 +1,4 @@
-use super::{FragmentData, FragmentNode, IntoFragment};
+use super::{FragmentNode, IntoFragment, Threaded};
 use crate::dialogue::{FragmentEvent, FragmentUpdate};
 use bevy::{ecs::event::EventRegistry, prelude::*};
 use std::marker::PhantomData;
@@ -15,7 +15,7 @@ where
     F: IntoFragment<Data>,
     S: FnMut(&FragmentEvent<Data>) -> E + Send + Sync + 'static,
     E: Event + Clone,
-    Data: FragmentData,
+    Data: Threaded,
 {
     type Fragment = F::Fragment;
 

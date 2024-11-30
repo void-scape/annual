@@ -1,4 +1,4 @@
-use super::{End, Fragment, FragmentData, FragmentNode, FragmentStates, Start};
+use super::{End, Fragment, FragmentNode, FragmentStates, Start, Threaded};
 use crate::dialogue::{FragmentEvent, FragmentId};
 use bevy::prelude::*;
 
@@ -17,7 +17,7 @@ impl<T> Leaf<T> {
 
 impl<T, Data> Fragment<Data> for Leaf<T>
 where
-    Data: FragmentData + From<T>,
+    Data: Threaded + From<T>,
     T: Clone,
 {
     fn start(

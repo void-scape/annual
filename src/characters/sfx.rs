@@ -1,6 +1,6 @@
 use crate::{
     dialogue_box::audio::{RevealedTextSfx, TextSfxSettings},
-    FragmentData, FragmentExt, IntoFragment,
+    FragmentExt, IntoFragment, Threaded,
 };
 use bevy::{asset::AssetPath, prelude::*};
 
@@ -40,14 +40,14 @@ impl From<&'static str> for SfxDescriptor {
 }
 
 /// Configure dialogue box text sound effects for a fragment.
-pub trait Sfx<D: FragmentData> {
+pub trait Sfx<D: Threaded> {
     fn reveal(self, desc: SfxDescriptor) -> impl IntoFragment<D>;
 }
 
 impl<T, D> Sfx<D> for T
 where
     T: IntoFragment<D>,
-    D: FragmentData,
+    D: Threaded,
 {
     fn reveal(self, desc: SfxDescriptor) -> impl IntoFragment<D> {
         self.on_start(reveal(desc))

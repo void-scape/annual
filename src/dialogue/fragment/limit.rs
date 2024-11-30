@@ -1,4 +1,4 @@
-use super::{FragmentData, FragmentNode, IntoFragment};
+use super::{FragmentNode, IntoFragment, Threaded};
 use crate::dialogue::{
     evaluate::{EvaluatedFragments, FragmentStates},
     FragmentId,
@@ -41,7 +41,7 @@ impl<F> Limit<F> {
 impl<Data, F> IntoFragment<Data> for Limit<F>
 where
     F: IntoFragment<Data>,
-    Data: FragmentData,
+    Data: Threaded,
 {
     type Fragment = F::Fragment;
 

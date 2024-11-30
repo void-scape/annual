@@ -36,7 +36,6 @@ pub fn handle_dialogue_box_events(
 ) {
     for event in reader.read() {
         for (children, frag_map) in boxes.iter() {
-            // if let Ok((children, frag_map)) = boxes.get(event.entity) {
             if frag_map.0.contains(&event.id) {
                 for child in children.iter() {
                     match event.data.clone() {

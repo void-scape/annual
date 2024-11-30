@@ -1,4 +1,4 @@
-use super::{End, Fragment, FragmentData, FragmentNode, FragmentStates, IntoFragment, Start};
+use super::{End, Fragment, FragmentNode, FragmentStates, IntoFragment, Start, Threaded};
 use crate::dialogue::{FragmentEvent, FragmentId};
 use bevy::ecs::system::SystemId;
 use bevy::prelude::*;
@@ -12,7 +12,7 @@ impl<Data, F, T> IntoFragment<Data> for OnVisit<F, T>
 where
     F: IntoFragment<Data>,
     T: System<In = (), Out = ()>,
-    Data: FragmentData,
+    Data: Threaded,
 {
     type Fragment = OnVisit<F::Fragment, SystemId>;
 
@@ -32,7 +32,7 @@ where
 impl<Data, F> Fragment<Data> for OnVisit<F, SystemId>
 where
     F: Fragment<Data>,
-    Data: FragmentData,
+    Data: Threaded,
 {
     fn start(
         &mut self,
@@ -69,7 +69,7 @@ impl<Data, F, T> IntoFragment<Data> for OnStart<F, T>
 where
     F: IntoFragment<Data>,
     T: System<In = (), Out = ()>,
-    Data: FragmentData,
+    Data: Threaded,
 {
     type Fragment = OnStart<F::Fragment, SystemId>;
 
@@ -89,7 +89,7 @@ where
 impl<Data, F> Fragment<Data> for OnStart<F, SystemId>
 where
     F: Fragment<Data>,
-    Data: FragmentData,
+    Data: Threaded,
 {
     fn start(
         &mut self,
@@ -125,7 +125,7 @@ impl<Data, F, T> IntoFragment<Data> for OnEnd<F, T>
 where
     F: IntoFragment<Data>,
     T: System<In = (), Out = ()>,
-    Data: FragmentData,
+    Data: Threaded,
 {
     type Fragment = OnEnd<F::Fragment, SystemId>;
 
@@ -145,7 +145,7 @@ where
 impl<Data, F> Fragment<Data> for OnEnd<F, SystemId>
 where
     F: Fragment<Data>,
-    Data: FragmentData,
+    Data: Threaded,
 {
     fn start(
         &mut self,

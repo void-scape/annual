@@ -1,7 +1,7 @@
-use crate::{FragmentData, FragmentExt, IntoFragment};
+use crate::{FragmentExt, IntoFragment, Threaded};
 use bevy::{asset::AssetPath, ecs::query::QuerySingleError, prelude::*};
 
-pub trait Portrait<D: FragmentData> {
+pub trait Portrait<D: Threaded> {
     /// Initializes portrait entity in the ECS.
     ///
     /// Must be called before [`Portrait::portrait`].
@@ -18,7 +18,7 @@ pub trait Portrait<D: FragmentData> {
 impl<T, D> Portrait<D> for T
 where
     T: IntoFragment<D>,
-    D: FragmentData,
+    D: Threaded,
 {
     fn init_portrait(self, transform: Transform) -> impl IntoFragment<D> {
         self.on_start(init_portrait(transform))

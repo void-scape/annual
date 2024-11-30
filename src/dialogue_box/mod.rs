@@ -184,7 +184,9 @@ where
             .on_end(crate::characters::portrait::despawn_portrait)
             .into_fragment(commands);
 
-        commands.spawn(DialogueBoxFragmentMap(tree.leaves()));
+        commands
+            .entity(entity)
+            .insert(DialogueBoxFragmentMap(tree.leaves()));
         crate::dialogue::fragment::spawn_fragment(fragment, tree, commands);
     }
 }
@@ -347,7 +349,7 @@ impl DialogueBoxComponent {
 
 impl<Data> crate::dialogue::fragment::IntoFragment<Data> for bevy_bits::DialogueBoxToken
 where
-    Data: From<bevy_bits::DialogueBoxToken> + crate::dialogue::fragment::FragmentData,
+    Data: From<bevy_bits::DialogueBoxToken> + crate::dialogue::fragment::Threaded,
 {
     type Fragment = crate::dialogue::fragment::Leaf<bevy_bits::DialogueBoxToken>;
 

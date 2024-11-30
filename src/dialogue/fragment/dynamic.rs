@@ -1,4 +1,4 @@
-use super::{End, Fragment, FragmentData, FragmentNode, IntoFragment, Start};
+use super::{End, Fragment, FragmentNode, IntoFragment, Start, Threaded};
 use crate::dialogue::evaluate::FragmentStates;
 use crate::dialogue::{FragmentEvent, FragmentId};
 use bevy::ecs::system::SystemId;
@@ -25,7 +25,7 @@ where
 
 impl<S, Data> IntoFragment<Data> for Dynamic<S>
 where
-    Data: FragmentData,
+    Data: Threaded,
     S: System<In = ()>,
     S::Out: Send + Sync + 'static + Into<Data>,
 {
@@ -52,7 +52,7 @@ where
 
 impl<Data> Fragment<Data> for Dynamic<SystemId>
 where
-    Data: FragmentData,
+    Data: Threaded,
 {
     fn start(
         &mut self,

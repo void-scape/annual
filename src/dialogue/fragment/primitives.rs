@@ -1,4 +1,4 @@
-use super::{FragmentData, FragmentNode, IntoFragment};
+use super::{FragmentNode, IntoFragment, Threaded};
 
 macro_rules! impl_leaf {
     ($ty:ty) => {

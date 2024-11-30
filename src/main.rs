@@ -33,7 +33,7 @@ fn one() -> impl IntoFragment<bevy_bits::DialogueBoxToken> {
     use characters::*;
     (
         "Hello!"
-            .init_portrait(Transform::from_xyz(-400., 200., 0.))
+            .init_portrait(Transform::from_xyz(-400., 200., 0.).with_scale(Vec3::splat(0.3)))
             .flower(),
         t!("<7>...[0.5]!").sans(),
         "Are you looking for something?".flower(),
@@ -64,7 +64,9 @@ fn one() -> impl IntoFragment<bevy_bits::DialogueBoxToken> {
 fn two() -> impl IntoFragment<bevy_bits::DialogueBoxToken> {
     use characters::*;
     (
-        "Do you want to go on a walk?".sans(),
+        "Do you want to go on a walk?"
+            .init_portrait(Transform::from_xyz(-400., 200., 0.).with_scale(Vec3::splat(0.3)))
+            .sans(),
         "I'd love to!".flower(),
         t!("But [0.5] I can't move.").flower(),
     )

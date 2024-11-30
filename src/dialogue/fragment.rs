@@ -31,7 +31,7 @@ pub struct Unregistered<T>(T);
 
 /// A type-erased fragment component.
 #[derive(Component)]
-pub struct ErasedFragment<Data>(pub Box<dyn Fragment<Data> + Send + Sync>);
+pub struct ErasedFragment<Context, Data>(pub Box<dyn Fragment<Context, Data> + Send + Sync>);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Start {
@@ -121,9 +121,12 @@ pub struct FragmentTree {
     pub fragment: Entity,
 }
 
-pub trait FragmentData: Send + Sync + 'static {}
+#[derive(Component)]
+pub struct FragmentContext<T>(T);
 
-impl<T> FragmentData for T where T: Send + Sync + 'static {}
+pub trait Threaded: Send + Sync + 'static {}
+
+impl<T> Threaded for T where T: Send + Sync + 'static {}
 
 /// A dialogue fragment.
 ///
@@ -135,10 +138,11 @@ impl<T> FragmentData for T where T: Send + Sync + 'static {}
 /// This is intentionally type-eraseable. We can
 /// store top-level fragments as `Box<dyn Fragment>` in entities and
 /// call their `emit` method any time a [FragmentId] is selected.
-pub trait Fragment<Data: FragmentData> {
+pub trait Fragment<Context, Data: Threaded> {
     /// React to a leaf node being selected.
     fn start(
         &mut self,
+        ctx: &Context,
         id: FragmentId,
         state: &mut FragmentStates,
         writer: &mut EventWriter<FragmentEvent<Data>>,
@@ -146,7 +150,13 @@ pub trait Fragment<Data: FragmentData> {
     ) -> Start;
 
     /// React to a leaf node being selected.
-    fn end(&mut self, id: FragmentId, state: &mut FragmentStates, commands: &mut Commands) -> End;
+    fn end(
+        &mut self,
+        ctx: &Context,
+        id: FragmentId,
+        state: &mut FragmentStates,
+        commands: &mut Commands,
+    ) -> End;
 
     /// This fragment's ID.
     ///
@@ -155,27 +165,28 @@ pub trait Fragment<Data: FragmentData> {
 }
 
 /// A convenience trait for type-erasing fragments.
-pub trait BoxedFragment<Data> {
-    fn boxed(self) -> Box<dyn Fragment<Data> + Send + Sync>;
+pub trait BoxedFragment<Context, Data> {
+    fn boxed(self) -> Box<dyn Fragment<Context, Data> + Send + Sync>;
 }
 
-impl<T, Data> BoxedFragment<Data> for T
+impl<T, Context, Data> BoxedFragment<Context, Data> for T
 where
-    T: Fragment<Data> + Send + Sync + 'static,
-    Data: FragmentData,
+    T: Fragment<Context, Data> + Send + Sync + 'static,
+    Data: Threaded,
 {
-    fn boxed(self) -> Box<dyn Fragment<Data> + Send + Sync> {
+    fn boxed(self) -> Box<dyn Fragment<Context, Data> + Send + Sync> {
         Box::new(self)
     }
 }
 
 /// Spawn a fragment with its associated ID tree.
-pub fn spawn_fragment<Data>(
-    fragment: impl Fragment<Data> + Send + Sync + 'static,
+pub fn spawn_fragment<Context, Data>(
+    fragment: impl Fragment<Context, Data> + Send + Sync + 'static,
     tree: FragmentNode,
     commands: &mut Commands,
 ) where
-    Data: FragmentData,
+    Data: Threaded,
+    Context: Threaded,
 {
     commands.add(move |world: &mut World| {
         if !world.contains_resource::<Events<FragmentEvent<Data>>>() {
@@ -186,7 +197,10 @@ pub fn spawn_fragment<Data>(
         let mut schedules = world.resource_mut::<Schedules>();
         schedules.add_systems(
             FragmentUpdate,
-            (evaluated_fragments::<Data>, watch_events::<Data>)
+            (
+                evaluated_fragments::<Context, Data>,
+                watch_events::<Context, Data>,
+            )
                 .chain()
                 .after(EvaluateSet),
         );
@@ -209,27 +223,29 @@ pub trait SpawnFragment: Sized {
     /// spawn_fragment(fragment, tree, &mut commands);
     /// # }
     /// ```
-    fn spawn_fragment<Data>(self, commands: &mut Commands)
+    fn spawn_fragment<Context, Data>(self, commands: &mut Commands)
     where
-        Data: FragmentData,
-        Self: IntoFragment<Data>,
-        <Self as IntoFragment<Data>>::Fragment: Fragment<Data> + Send + Sync + 'static;
+        Data: Threaded,
+        Self: IntoFragment<Context, Data>,
+        <Self as IntoFragment<Context, Data>>::Fragment:
+            Fragment<Context, Data> + Send + Sync + 'static;
 }
 
 impl<T> SpawnFragment for T {
-    fn spawn_fragment<Data>(self, commands: &mut Commands)
+    fn spawn_fragment<Context, Data>(self, commands: &mut Commands)
     where
-        Data: FragmentData,
-        Self: IntoFragment<Data>,
-        <Self as IntoFragment<Data>>::Fragment: Fragment<Data> + Send + Sync + 'static,
+        Data: Threaded,
+        Self: IntoFragment<Context, Data>,
+        <Self as IntoFragment<Context, Data>>::Fragment:
+            Fragment<Context, Data> + Send + Sync + 'static,
     {
         let (fragment, tree) = self.into_fragment(commands);
         spawn_fragment(fragment, tree, commands);
     }
 }
 
-pub trait IntoFragment<Data: FragmentData> {
-    type Fragment: Fragment<Data> + Send + Sync + 'static;
+pub trait IntoFragment<Context, Data: Threaded> {
+    type Fragment: Fragment<Context, Data> + Send + Sync + 'static;
 
     fn into_fragment(self, commands: &mut Commands) -> (Self::Fragment, FragmentNode);
 }
@@ -365,14 +381,19 @@ fn descend_tree(
 }
 
 // TODO: update so this is inserted for every unique event type.
-fn evaluated_fragments<Data: FragmentData>(
-    mut fragments: Query<&mut ErasedFragment<Data>>,
+fn evaluated_fragments<Context, Data: Threaded>(
+    mut fragments: Query<(
+        &mut ErasedFragment<Context, Data>,
+        &FragmentContext<Context>,
+    )>,
     trees: Query<&FragmentTree>,
     mut writer: EventWriter<FragmentEvent<Data>>,
     mut evaluated_dialogue: ResMut<super::evaluate::EvaluatedFragments>,
     mut state: ResMut<FragmentStates>,
     mut commands: Commands,
-) {
+) where
+    Context: Sync + Send + 'static,
+{
     // traverse trees to build up full evaluatinos
     let mut leaves = Vec::new();
     for FragmentTree { tree, fragment } in trees.iter() {
@@ -396,26 +417,34 @@ fn evaluated_fragments<Data: FragmentData>(
     evaluations.sort_by_key(|(_, _, e)| e.count);
 
     if let Some((id, fragment, _)) = evaluations.first() {
-        if let Ok(mut fragment) = fragments.get_mut(*fragment) {
+        if let Ok((mut fragment, ctx)) = fragments.get_mut(*fragment) {
             fragment
                 .0
                 .as_mut()
-                .start(**id, &mut state, &mut writer, &mut commands);
+                .start(ctx, **id, &mut state, &mut writer, &mut commands);
         }
     }
 
     evaluated_dialogue.clear();
 }
 
-fn watch_events<Data: FragmentData>(
-    mut fragments: Query<&mut ErasedFragment<Data>>,
+fn watch_events<Context, Data: Threaded>(
+    mut fragments: Query<(
+        &mut ErasedFragment<Context, Data>,
+        &FragmentContext<Context>,
+    )>,
     mut end: EventReader<super::FragmentEndEvent>,
     mut state: ResMut<FragmentStates>,
     mut commands: Commands,
-) {
+) where
+    Context: Sync + Send + 'static,
+{
     for end in end.read() {
-        for mut fragment in fragments.iter_mut() {
-            fragment.0.as_mut().end(end.id, &mut state, &mut commands);
+        for (mut fragment, ctx) in fragments.iter_mut() {
+            fragment
+                .0
+                .as_mut()
+                .end(&ctx.0, end.id, &mut state, &mut commands);
         }
     }
 }

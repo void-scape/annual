@@ -1,4 +1,4 @@
-use super::{FragmentData, FragmentNode, IntoFragment, Unregistered};
+use super::{FragmentNode, IntoFragment, Threaded, Unregistered};
 use crate::dialogue::evaluate::{Evaluate, EvaluatedFragments};
 use crate::dialogue::{EvaluateSet, FragmentUpdate};
 use bevy::prelude::*;
@@ -15,7 +15,7 @@ where
     F: IntoFragment<Data>,
     T: System<In = (), Out = O>,
     O: Evaluate + Send + 'static,
-    Data: FragmentData,
+    Data: Threaded,
 {
     type Fragment = F::Fragment;
 

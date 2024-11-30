@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use super::{Fragment, FragmentData, IntoFragment};
+use super::{Fragment, IntoFragment, Threaded};
 use bevy::{ecs::system::SystemId, prelude::*};
 
 #[derive(Component, Clone)]
@@ -38,7 +38,7 @@ impl<F, S> Delay<F, S> {
 
 impl<F, S, D> IntoFragment<D> for Delay<F, S>
 where
-    D: FragmentData,
+    D: Threaded,
     F: IntoFragment<D>,
     S: System<In = (), Out = ()> + 'static,
 {
@@ -60,7 +60,7 @@ where
 
 impl<F, D> Fragment<D> for Delay<F, SystemId>
 where
-    D: FragmentData,
+    D: Threaded,
     F: Fragment<D>,
 {
     fn start(

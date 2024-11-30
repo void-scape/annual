@@ -1,4 +1,4 @@
-use super::{End, Fragment, FragmentData, FragmentNode, IntoFragment, Start};
+use super::{End, Fragment, FragmentNode, IntoFragment, Start, Threaded};
 use crate::dialogue::evaluate::{EvaluatedFragments, FragmentStates};
 use crate::dialogue::{FragmentEvent, FragmentId};
 use bevy::prelude::*;
@@ -49,10 +49,10 @@ pub struct Sequence<F> {
 macro_rules! seq_frag {
     ($count:literal, $($ty:ident),*) => {
         #[allow(non_snake_case)]
-        impl<Data, $($ty),*> IntoFragment<Data> for ($($ty,)*)
+        impl<Context, Data, $($ty),*> IntoFragment<Context, Data> for ($($ty,)*)
         where
-            Data: FragmentData,
-            $($ty: IntoFragment<Data>),*
+            Data: Threaded,
+            $($ty: IntoFragment<Context, Data>),*
         {
             type Fragment = Sequence<($($ty::Fragment,)*)>;
 
@@ -94,14 +94,16 @@ macro_rules! seq_frag {
         }
 
         #[allow(non_snake_case)]
-        impl<Data, $($ty),*> Fragment<Data> for Sequence<($($ty,)*)>
+        impl<Context, Data, $($ty),*> Fragment<Context, Data> for Sequence<($($ty,)*)>
         where
-            Data: FragmentData,
-            $($ty: Fragment<Data>),*
+            Data: Threaded,
+            Context: Threaded,
+            $($ty: Fragment<Context, Data>),*
         {
             #[allow(unused)]
             fn start(
                 &mut self,
+                context: &Context,
                 id: FragmentId,
                 state: &mut FragmentStates,
                 writer: &mut EventWriter<FragmentEvent<Data>>,
@@ -109,7 +111,7 @@ macro_rules! seq_frag {
             ) -> Start {
                 let ($($ty,)*) = &mut self.fragments;
                 let states: [Start; $count] = [
-                    $($ty.start(id, state, writer, commands)),*
+                    $($ty.start(context, id, state, writer, commands)),*
                 ];
 
                 if states.first().is_some_and(|f| f.entered()) {
@@ -125,13 +127,14 @@ macro_rules! seq_frag {
             #[allow(unused)]
             fn end(
                 &mut self,
+                context: &Context,
                 id: FragmentId,
                 state: &mut FragmentStates,
                 commands: &mut Commands
             ) -> End {
                 let ($($ty,)*) = &mut self.fragments;
                 let states: [End; $count] = [
-                    $($ty.end(id, state, commands)),*
+                    $($ty.end(context, id, state, commands)),*
                 ];
 
                 if states.last().is_some_and(|f| f.exited()) {
@@ -153,10 +156,10 @@ macro_rules! seq_frag {
 
 all_tuples_with_size!(seq_frag, 0, 15, T);
 
-impl<Data, T> IntoFragment<Data> for Vec<T>
+impl<Context, Data, T> IntoFragment<Context, Data> for Vec<T>
 where
-    Data: FragmentData,
-    T: IntoFragment<Data>,
+    Data: Threaded,
+    T: IntoFragment<Context, Data>,
 {
     type Fragment = Sequence<Vec<T::Fragment>>;
 
@@ -186,10 +189,10 @@ where
     }
 }
 
-impl<Data, T, const LEN: usize> IntoFragment<Data> for [T; LEN]
+impl<Context, Data, T, const LEN: usize> IntoFragment<Context, Data> for [T; LEN]
 where
-    Data: FragmentData,
-    T: IntoFragment<Data>,
+    Data: Threaded,
+    T: IntoFragment<Context, Data>,
 {
     type Fragment = Sequence<[T::Fragment; LEN]>;
 
@@ -219,13 +222,14 @@ where
 
 macro_rules! impl_iterable {
     ($ty:ident, $col:ty) => {
-        impl<Data, $ty> Fragment<Data> for Sequence<$col>
+        impl<Context, Data, $ty> Fragment<Context, Data> for Sequence<$col>
         where
-            Data: FragmentData,
-            $ty: Fragment<Data>,
+            Data: Threaded,
+            $ty: Fragment<Context, Data>,
         {
             fn start(
                 &mut self,
+                context: &Context,
                 id: FragmentId,
                 state: &mut FragmentStates,
                 writer: &mut EventWriter<FragmentEvent<Data>>,
@@ -234,7 +238,7 @@ macro_rules! impl_iterable {
                 let mut start = Start::Unvisited;
 
                 for (i, frag) in self.fragments.iter_mut().enumerate() {
-                    let frag_start = frag.start(id, state, writer, commands);
+                    let frag_start = frag.start(context, id, state, writer, commands);
 
                     if i == 0 && frag_start.entered() {
                         state.update(self.id).triggered += 1;
@@ -251,6 +255,7 @@ macro_rules! impl_iterable {
 
             fn end(
                 &mut self,
+                context: &Context,
                 id: FragmentId,
                 state: &mut FragmentStates,
                 commands: &mut Commands,
@@ -259,7 +264,7 @@ macro_rules! impl_iterable {
                 let len = self.fragments.len();
 
                 for (i, frag) in self.fragments.iter_mut().enumerate() {
-                    let frag_end = frag.end(id, state, commands);
+                    let frag_end = frag.end(context, id, state, commands);
 
                     if i == len - 1 && frag_end.exited() {
                         state.update(self.id).completed += 1;
@@ -284,13 +289,14 @@ macro_rules! impl_iterable {
 impl_iterable!(T, Vec<T>);
 
 // TODO: consolidate this somehow
-impl<Data, T, const LEN: usize> Fragment<Data> for Sequence<[T; LEN]>
+impl<Context, Data, T, const LEN: usize> Fragment<Context, Data> for Sequence<[T; LEN]>
 where
-    Data: FragmentData,
-    T: Fragment<Data>,
+    Data: Threaded,
+    T: Fragment<Context, Data>,
 {
     fn start(
         &mut self,
+        context: &Context,
         id: FragmentId,
         state: &mut FragmentStates,
         writer: &mut EventWriter<FragmentEvent<Data>>,
@@ -299,7 +305,7 @@ where
         let mut start = Start::Unvisited;
 
         for (i, frag) in self.fragments.iter_mut().enumerate() {
-            let frag_start = frag.start(id, state, writer, commands);
+            let frag_start = frag.start(context, id, state, writer, commands);
 
             if i == 0 && frag_start.entered() {
                 state.update(self.id).triggered += 1;
@@ -314,12 +320,18 @@ where
         start
     }
 
-    fn end(&mut self, id: FragmentId, state: &mut FragmentStates, commands: &mut Commands) -> End {
+    fn end(
+        &mut self,
+        context: &Context,
+        id: FragmentId,
+        state: &mut FragmentStates,
+        commands: &mut Commands,
+    ) -> End {
         let mut end = End::Unvisited;
         let len = self.fragments.len();
 
         for (i, frag) in self.fragments.iter_mut().enumerate() {
-            let frag_end = frag.end(id, state, commands);
+            let frag_end = frag.end(context, id, state, commands);
 
             if i == len - 1 && frag_end.exited() {
                 state.update(self.id).completed += 1;
