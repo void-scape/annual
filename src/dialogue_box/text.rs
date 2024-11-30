@@ -1,7 +1,7 @@
 use super::{
     material::{TextMaterial, TextMaterialMarker},
-    DialogueBox, DialogueBoxAtlas, DialogueBoxDimensions, DialogueBoxFont, DialogueBoxFragmentMap,
-    SectionOccurance, TypeWriterState,
+    BoxToken, DialogueBox, DialogueBoxAtlas, DialogueBoxDimensions, DialogueBoxFont,
+    DialogueBoxFragmentMap, SectionOccurance, TypeWriterState,
 };
 use crate::dialogue::{FragmentEndEvent, FragmentEvent};
 use bevy::{
@@ -19,7 +19,7 @@ use rand::Rng;
 use std::marker::PhantomData;
 
 pub fn handle_dialogue_box_events(
-    mut reader: EventReader<FragmentEvent<DialogueBoxToken>>,
+    mut reader: EventReader<FragmentEvent<BoxToken>>,
     mut writer: EventWriter<FragmentEndEvent>,
     time: Res<Time>,
     boxes: Query<(&Children, &DialogueBoxFragmentMap), With<DialogueBox>>,
@@ -38,7 +38,7 @@ pub fn handle_dialogue_box_events(
         for (children, frag_map) in boxes.iter() {
             if frag_map.0.contains(&event.id) {
                 for child in children.iter() {
-                    match event.data.clone() {
+                    match event.data.0.clone() {
                         bevy_bits::DialogueBoxToken::Section(section) => {
                             if let Ok((mut text, mut state, box_font)) =
                                 type_writers.get_mut(*child)

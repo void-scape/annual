@@ -45,8 +45,12 @@ where
 {
     type Fragment = Delay<F::Fragment, SystemId>;
 
-    fn into_fragment(self, commands: &mut Commands) -> (Self::Fragment, super::FragmentNode) {
-        let (fragment, n) = self.fragment.into_fragment(commands);
+    fn into_fragment(
+        self,
+        context: &C,
+        commands: &mut Commands,
+    ) -> (Self::Fragment, super::FragmentNode) {
+        let (fragment, n) = self.fragment.into_fragment(context, commands);
 
         (
             Delay {

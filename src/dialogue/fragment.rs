@@ -9,7 +9,6 @@ mod hooks;
 mod leaf;
 mod limit;
 mod mapped;
-mod primitives;
 mod sequence;
 
 pub use delay::Delay;
@@ -181,6 +180,7 @@ where
 /// Spawn a fragment with its associated ID tree.
 pub fn spawn_fragment<Context, Data>(
     fragment: impl Fragment<Context, Data> + Send + Sync + 'static,
+    context: Context,
     tree: FragmentNode,
     commands: &mut Commands,
 ) where
@@ -205,7 +205,9 @@ pub fn spawn_fragment<Context, Data>(
         );
     });
 
-    let associated_frag = commands.spawn(ErasedFragment(fragment.boxed())).id();
+    let associated_frag = commands
+        .spawn((ErasedFragment(fragment.boxed()), FragmentContext(context)))
+        .id();
     commands.spawn(FragmentTree {
         tree,
         fragment: associated_frag,
@@ -242,7 +244,7 @@ impl<T> SpawnFragment for T {
             Fragment<Context, Data> + Send + Sync + 'static,
     {
         let (fragment, tree) = self.into_fragment(&context, commands);
-        spawn_fragment(fragment, tree, commands);
+        spawn_fragment(fragment, context, tree, commands);
     }
 }
 

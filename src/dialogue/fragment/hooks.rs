@@ -123,7 +123,7 @@ where
             .start(context, selected_id, state, writer, commands);
 
         if start.entered() {
-            commands.run_system_with_input(self.on_trigger, context.clone());
+            commands.run_system(self.on_trigger);
         }
 
         start

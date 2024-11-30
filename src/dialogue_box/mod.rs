@@ -52,7 +52,7 @@ impl Plugin for DialogueBoxPlugin {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct BoxToken(pub bevy_bits::DialogueBoxToken, pub BoxEntity);
 
 pub trait IntoBox: IntoFragment<BoxEntity, BoxToken> {}
@@ -189,21 +189,21 @@ pub trait SpawnBox {
 
 impl<T> SpawnBox for T
 where
-    T: IntoFragment<BoxEntity, bevy_bits::DialogueBoxToken>,
+    T: IntoFragment<BoxEntity, BoxToken>,
 {
     fn spawn_box(self, commands: &mut Commands, desc: &'static DialogueBoxDescriptor) {
-        let entity = commands.spawn_empty().id();
+        let entity = BoxEntity(commands.spawn_empty().id());
 
         let (fragment, tree) = self
             .once()
-            .on_start(spawn_dialogue_box(entity, desc))
+            .on_start(spawn_dialogue_box(entity.0, desc))
             .on_end(crate::characters::portrait::despawn_portrait)
-            .into_fragment(commands);
+            .into_fragment(&entity, commands);
 
         commands
-            .entity(entity)
+            .entity(entity.0)
             .insert(DialogueBoxFragmentMap(tree.leaves()));
-        crate::dialogue::fragment::spawn_fragment(fragment, tree, commands);
+        crate::dialogue::fragment::spawn_fragment(fragment, entity, tree, commands);
     }
 }
 
@@ -363,16 +363,38 @@ impl DialogueBoxComponent {
     }
 }
 
-impl<Data> crate::dialogue::fragment::IntoFragment<BoxEntity, Data> for bevy_bits::DialogueBoxToken
-where
-    Data: From<bevy_bits::DialogueBoxToken> + crate::dialogue::fragment::Threaded,
-{
-    type Fragment = crate::dialogue::fragment::Leaf<bevy_bits::DialogueBoxToken>;
+impl crate::dialogue::fragment::IntoFragment<BoxEntity, BoxToken> for bevy_bits::DialogueBoxToken {
+    type Fragment = crate::dialogue::fragment::Leaf<BoxToken>;
 
     fn into_fragment(
         self,
+        context: &BoxEntity,
         _: &mut bevy::prelude::Commands,
     ) -> (Self::Fragment, crate::dialogue::fragment::FragmentNode) {
-        crate::dialogue::fragment::Leaf::new(self)
+        crate::dialogue::fragment::Leaf::new(BoxToken(self, context.clone()))
+    }
+}
+
+impl crate::dialogue::fragment::IntoFragment<BoxEntity, BoxToken> for &'static str {
+    type Fragment = crate::dialogue::fragment::Leaf<BoxToken>;
+
+    fn into_fragment(
+        self,
+        context: &BoxEntity,
+        _: &mut bevy::prelude::Commands,
+    ) -> (Self::Fragment, crate::dialogue::fragment::FragmentNode) {
+        crate::dialogue::fragment::Leaf::new(BoxToken(self.into(), context.clone()))
+    }
+}
+
+impl crate::dialogue::fragment::IntoFragment<BoxEntity, BoxToken> for String {
+    type Fragment = crate::dialogue::fragment::Leaf<BoxToken>;
+
+    fn into_fragment(
+        self,
+        context: &BoxEntity,
+        _: &mut bevy::prelude::Commands,
+    ) -> (Self::Fragment, crate::dialogue::fragment::FragmentNode) {
+        crate::dialogue::fragment::Leaf::new(BoxToken(self.into(), context.clone()))
     }
 }
