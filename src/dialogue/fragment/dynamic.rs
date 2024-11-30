@@ -23,7 +23,7 @@ where
     }
 }
 
-impl<S, Data> IntoFragment<Data> for Dynamic<S>
+impl<S, Context, Data> IntoFragment<Context, Data> for Dynamic<S>
 where
     Data: Threaded,
     S: System<In = ()>,
@@ -50,12 +50,13 @@ where
     }
 }
 
-impl<Data> Fragment<Data> for Dynamic<SystemId>
+impl<Context, Data> Fragment<Context, Data> for Dynamic<SystemId>
 where
     Data: Threaded,
 {
     fn start(
         &mut self,
+        context: &Context,
         id: FragmentId,
         state: &mut FragmentStates,
         _writer: &mut EventWriter<FragmentEvent<Data>>,
@@ -74,7 +75,13 @@ where
         }
     }
 
-    fn end(&mut self, id: FragmentId, state: &mut FragmentStates, _commands: &mut Commands) -> End {
+    fn end(
+        &mut self,
+        context: &Context,
+        id: FragmentId,
+        state: &mut FragmentStates,
+        _commands: &mut Commands,
+    ) -> End {
         if id == self.id {
             let state = state.update(id);
             state.completed += 1;

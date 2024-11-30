@@ -36,10 +36,10 @@ impl<F, S> Delay<F, S> {
     }
 }
 
-impl<F, S, D> IntoFragment<D> for Delay<F, S>
+impl<F, S, D, C> IntoFragment<D, C> for Delay<F, S>
 where
     D: Threaded,
-    F: IntoFragment<D>,
+    F: IntoFragment<D, C>,
     S: System<In = (), Out = ()> + 'static,
 {
     type Fragment = Delay<F::Fragment, SystemId>;
@@ -58,28 +58,30 @@ where
     }
 }
 
-impl<F, D> Fragment<D> for Delay<F, SystemId>
+impl<F, D, C> Fragment<D, C> for Delay<F, SystemId>
 where
     D: Threaded,
-    F: Fragment<D>,
+    F: Fragment<D, C>,
 {
     fn start(
         &mut self,
+        context: &C,
         id: crate::dialogue::FragmentId,
         state: &mut crate::dialogue::evaluate::FragmentStates,
         writer: &mut EventWriter<crate::dialogue::FragmentEvent<D>>,
         commands: &mut Commands,
     ) -> super::Start {
-        self.fragment.start(id, state, writer, commands)
+        self.fragment.start(context, id, state, writer, commands)
     }
 
     fn end(
         &mut self,
+        context: &C,
         id: crate::dialogue::FragmentId,
         state: &mut crate::dialogue::evaluate::FragmentStates,
         commands: &mut Commands,
     ) -> super::End {
-        let end = self.fragment.end(id, state, commands);
+        let end = self.fragment.end(context, id, state, commands);
 
         if end.exited() {
             commands.spawn(AfterSystem(
