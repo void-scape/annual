@@ -91,7 +91,8 @@ impl Plugin for DialoguePlugin {
                     fragment::update_limit_items,
                 )
                     .in_set(EvaluateSet),
-            );
+            )
+            .add_systems(Update, fragment::manage_delay);
     }
 }
 

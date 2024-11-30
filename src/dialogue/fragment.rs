@@ -2,6 +2,7 @@ use crate::dialogue::{FragmentEvent, FragmentId, FragmentUpdate};
 use bevy::{ecs::event::EventRegistry, prelude::*};
 use std::marker::PhantomData;
 
+mod delay;
 mod dynamic;
 mod eval;
 mod hooks;
@@ -11,6 +12,7 @@ mod mapped;
 mod primitives;
 mod sequence;
 
+pub use delay::Delay;
 pub use dynamic::dynamic;
 pub use eval::Evaluated;
 pub use hooks::{OnEnd, OnStart, OnVisit};
@@ -18,6 +20,7 @@ pub use leaf::Leaf;
 pub use limit::Limit;
 pub use mapped::Mapped;
 
+pub(crate) use delay::manage_delay;
 pub(crate) use limit::update_limit_items;
 pub(crate) use sequence::update_sequence_items;
 
@@ -246,6 +249,14 @@ pub trait FragmentExt: Sized {
             fragment: self,
             on_trigger: IntoSystem::into_system(system),
         }
+    }
+
+    /// Run a system when this fragment is considered complete after the given delay.
+    fn delay<S, M>(self, duration: std::time::Duration, system: S) -> Delay<Self, S::System>
+    where
+        S: IntoSystem<(), (), M>,
+    {
+        Delay::new(self, duration, IntoSystem::into_system(system))
     }
 
     /// Map a dialogue event.

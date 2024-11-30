@@ -239,7 +239,7 @@ pub fn spawn_dialogue_box(
                 font_size: desc.font.font_size,
                 default_color: desc.font.default_color,
             },
-            state: TypeWriterState::new(20.0),
+            state: TypeWriterState::new(35.0),
             text_anchor: Anchor::TopLeft,
             spatial: SpatialBundle::from_transform(Transform::default().with_scale(Vec3::new(
                 1.0 / transform.scale.x,
