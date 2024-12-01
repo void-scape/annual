@@ -78,6 +78,15 @@ pub struct OnStart<F, T> {
     pub(super) on_trigger: T,
 }
 
+impl<F, T> OnStart<F, T> {
+    pub fn new(fragment: F, on_trigger: T) -> Self {
+        Self {
+            fragment,
+            on_trigger,
+        }
+    }
+}
+
 impl<Context, Data, F, T> IntoFragment<Context, Data> for OnStart<F, T>
 where
     F: IntoFragment<Context, Data>,
@@ -147,6 +156,15 @@ where
 pub struct OnEnd<F, T> {
     pub(super) fragment: F,
     pub(super) on_trigger: T,
+}
+
+impl<F, T> OnEnd<F, T> {
+    pub fn new(fragment: F, on_trigger: T) -> Self {
+        Self {
+            fragment,
+            on_trigger,
+        }
+    }
 }
 
 impl<Context, Data, F, T> IntoFragment<Context, Data> for OnEnd<F, T>

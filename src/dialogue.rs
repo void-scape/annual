@@ -89,6 +89,7 @@ impl Plugin for DialoguePlugin {
                 (
                     fragment::update_sequence_items,
                     fragment::update_limit_items,
+                    fragment::update_all_items,
                 )
                     .in_set(EvaluateSet),
             )

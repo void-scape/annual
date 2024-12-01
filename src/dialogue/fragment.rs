@@ -3,6 +3,7 @@ use bevy::{asset::AssetPath, ecs::event::EventRegistry, prelude::*};
 use hooks::OnEndCtx;
 use std::marker::PhantomData;
 
+mod all;
 mod delay;
 mod dynamic;
 mod eval;
@@ -12,13 +13,16 @@ mod limit;
 mod mapped;
 mod sequence;
 
-pub use delay::Delay;
+pub use all::{all, All};
+pub use delay::{run_after, Delay};
 pub use eval::Evaluated;
 pub use hooks::{OnEnd, OnStart, OnStartCtx, OnVisit, OnVisitCtx};
 pub use leaf::Leaf;
 pub use limit::Limit;
 pub use mapped::Mapped;
+pub use sequence::Sequence;
 
+pub(crate) use all::update_all_items;
 pub(crate) use delay::manage_delay;
 pub(crate) use limit::update_limit_items;
 pub(crate) use sequence::update_sequence_items;
@@ -482,12 +486,8 @@ fn evaluated_fragments<Context, Data: Threaded>(
     // traverse trees to build up full evaluatinos
     let mut leaves = Vec::new();
     for FragmentTree { tree, fragment } in trees.iter() {
-        // info!("tree: {tree:#?}");
         descend_tree(tree, *fragment, &mut evaluated_dialogue, &mut leaves);
     }
-
-    // info!("leaves: {leaves:#?}");
-    // info!("evals: {evaluated_dialogue:#?}");
 
     let mut evaluations: Vec<_> = leaves
         .iter()
@@ -501,12 +501,16 @@ fn evaluated_fragments<Context, Data: Threaded>(
         .collect();
     evaluations.sort_by_key(|(_, _, e)| e.count);
 
-    if let Some((id, fragment, _)) = evaluations.first() {
-        if let Ok((mut fragment, ctx)) = fragments.get_mut(*fragment) {
-            fragment
-                .0
-                .as_mut()
-                .start(&ctx.0, **id, &mut state, &mut writer, &mut commands);
+    if let Some((id, fragment, eval)) = evaluations.first() {
+        let selections = evaluations.iter().take_while(|e| e.2.count == eval.count);
+
+        for (id, fragment, _) in selections {
+            if let Ok((mut fragment, ctx)) = fragments.get_mut(*fragment) {
+                fragment
+                    .0
+                    .as_mut()
+                    .start(&ctx.0, **id, &mut state, &mut writer, &mut commands);
+            }
         }
     }
 

@@ -26,7 +26,7 @@ impl CharacterAssets for Flower {
 #[allow(unused_macros)]
 macro_rules! character_stub {
     ($name:ident, $texture:expr, $sfx:expr) => {
-        #[derive(macros::Character)]
+        #[derive(macros::Character, bevy::prelude::Component, Default)]
         pub struct $name;
 
         impl CharacterAssets for $name {

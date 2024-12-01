@@ -1,6 +1,7 @@
 use crate::{
     animation::{AnimationController, AnimationPlugin},
     asset_loading::loaded,
+    cutscene::{CutsceneMovement, CutsceneVelocity},
 };
 use bevy::prelude::*;
 use bevy_ecs_ldtk::app::LdtkEntityAppExt;
@@ -29,13 +30,14 @@ impl Plugin for PlayerPlugin {
         ))
         .register_ldtk_entity::<PlayerBundle>("Player")
         .add_systems(Update, init_camera)
-        .add_systems(Update, walk.run_if(loaded()));
+        .add_systems(Update, (walk, animate_cutscene).run_if(loaded()));
     }
 }
 
 #[derive(Default, Bundle, LdtkEntity)]
 pub struct PlayerBundle {
     player: Player,
+    izzy: crate::characters::Izzy,
     #[with(init_animation_controller)]
     animation: AnimationController<PlayerAnimation>,
     #[with(init_input_map)]
@@ -71,6 +73,22 @@ impl Direction {
             Self::Down => Vec2::NEG_Y,
             Self::Left => Vec2::NEG_X,
             Self::Right => Vec2::X,
+        }
+    }
+
+    pub fn from_velocity(velocity: Vec2) -> Self {
+        if velocity.x.abs() > velocity.y.abs() {
+            if velocity.x > 0.0 {
+                Direction::Right
+            } else {
+                Direction::Left
+            }
+        } else {
+            if velocity.y > 0.0 {
+                Direction::Up
+            } else {
+                Direction::Down
+            }
         }
     }
 }
@@ -121,7 +139,7 @@ fn walk(
             &mut Transform,
             &mut AnimationController<PlayerAnimation>,
         ),
-        With<Player>,
+        (With<Player>, Without<CutsceneMovement>),
     >,
     time: Res<Time>,
 ) {
@@ -175,5 +193,43 @@ fn walk(
         vel = vel.clamp_length_max(1.0) * PLAYER_SPEED;
         transform.translation.x += vel.x * time.delta_seconds();
         transform.translation.y += vel.y * time.delta_seconds();
+    }
+}
+
+fn animate_cutscene(
+    mut player: Query<
+        (&mut AnimationController<PlayerAnimation>, &CutsceneVelocity),
+        (With<Player>, With<CutsceneMovement>),
+    >,
+    time: Res<Time>,
+    mut last_direction: Local<Option<Direction>>,
+) {
+    if let Ok((mut animation, velocity)) = player.get_single_mut() {
+        let vel = velocity.0.xy();
+
+        if vel == Vec2::ZERO {
+            if last_direction.is_some() {
+                *last_direction = None;
+                animation.set_animation(PlayerAnimation::Idle);
+            }
+        } else {
+            let direction = Direction::from_velocity(vel);
+
+            let update = match *last_direction {
+                None => {
+                    *last_direction = Some(direction);
+                    true
+                }
+                Some(ld) if ld != direction => {
+                    *last_direction = Some(direction);
+                    true
+                }
+                _ => false,
+            };
+
+            if update {
+                animation.set_animation(PlayerAnimation::Walk(Direction::from_velocity(vel)));
+            }
+        }
     }
 }

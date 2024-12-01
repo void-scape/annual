@@ -1,7 +1,7 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::type_complexity)]
 
-use bevy::{audio::Volume, math::VectorSpace, prelude::*};
+use bevy::{audio::Volume, prelude::*};
 use dialogue::fragment::*;
 use dialogue_box::{DialogueBoxDescriptor, IntoBox, SpawnBox};
 use macros::t;
@@ -10,6 +10,7 @@ use std::time::Duration;
 mod animation;
 mod asset_loading;
 mod characters;
+mod cutscene;
 mod dialogue;
 mod dialogue_box;
 mod editor;
@@ -28,17 +29,25 @@ fn main() {
             flower::FlowerPlugin,
             dialogue_box::DialogueBoxPlugin,
             dialogue::DialoguePlugin,
+            cutscene::CutscenePlugin,
         ))
         .add_systems(Update, bevy_bits::close_on_escape)
-        // .add_systems(Startup, scene)
+        .add_systems(Startup, scene)
         .run();
 }
 
 fn one() -> impl IntoBox {
     use characters::*;
+    use cutscene::CutsceneFragment;
     (
-        "Hello!".flower(),
-        t!("<7>...[0.5]!").izzy(),
+        "Hello!"
+            .flower()
+            .move_to(Izzy, Vec3::new(600., 600., 0.), Duration::from_secs(1)),
+        t!("<7>...[0.5]!").izzy().move_to(
+            Izzy,
+            Vec3::new(620., 620., 0.),
+            Duration::from_millis(500),
+        ),
         "Are you looking for something?".flower(),
         t!("D-did you... [1] I mean, [0.5] are you a...").izzy(),
         "Is something wrong?".flower(),
@@ -49,6 +58,7 @@ fn one() -> impl IntoBox {
         .izzy(),
         "Oh, I guess so...".flower(),
     )
+        .lock(Izzy)
         .sound_with(
             "night.mp3",
             PlaybackSettings::LOOP.with_volume(Volume::new(0.5)),
@@ -81,7 +91,11 @@ fn three() -> impl IntoBox {
 }
 
 fn scene(mut commands: Commands) {
-    one().spawn_box(&mut commands, &DESC)
+    crate::dialogue::fragment::run_after(
+        Duration::from_secs(1),
+        |mut commands: Commands| one().spawn_box(&mut commands, &DESC),
+        &mut commands,
+    );
 }
 
 const DESC: DialogueBoxDescriptor = DialogueBoxDescriptor {

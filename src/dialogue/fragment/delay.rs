@@ -6,6 +6,16 @@ use bevy::{ecs::system::SystemId, prelude::*};
 #[derive(Component, Clone)]
 pub(crate) struct AfterSystem(SystemId, Timer);
 
+/// Run a one-shot system after the specified delay.
+pub fn run_after<M>(
+    delay: Duration,
+    system: impl IntoSystem<(), (), M> + Send + Sync + 'static,
+    commands: &mut Commands,
+) {
+    let system = commands.register_one_shot_system(system);
+    commands.spawn(AfterSystem(system, Timer::new(delay, TimerMode::Once)));
+}
+
 pub(crate) fn manage_delay(
     mut q: Query<(Entity, &mut AfterSystem)>,
     time: Res<Time>,
