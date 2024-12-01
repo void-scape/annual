@@ -1,4 +1,4 @@
-use crate::{OnEnd, OnStart};
+use crate::{dialogue_box::IntoBox, OnEnd, OnStart};
 use bevy::prelude::*;
 use std::time::Duration;
 
@@ -44,12 +44,14 @@ impl MovementClip {
 }
 
 pub trait CutsceneFragment: Sized {
-    fn move_to<M: Component>(
+    fn move_to<M: Component, C: Component>(
         self,
         marker: M,
         position: Vec3,
         duration: Duration,
-    ) -> OnStart<Self, impl System<In = (), Out = ()>>;
+    ) -> impl IntoBox<C>
+    where
+        Self: IntoBox<C>;
 
     /// Lock entity movement during a cutscene.
     fn lock<M: Component>(
@@ -59,20 +61,31 @@ pub trait CutsceneFragment: Sized {
 }
 
 impl<T> CutsceneFragment for T {
-    fn move_to<M: Component>(
+    fn move_to<M: Component, C: Component>(
         self,
         _marker: M,
         position: Vec3,
         duration: Duration,
-    ) -> OnStart<Self, impl System<In = (), Out = ()>> {
-        let system = move |q: Query<(Entity, &Transform), With<M>>, mut commands: Commands| {
+    ) -> impl IntoBox<C>
+    where
+        Self: IntoBox<C>,
+    {
+        let system = move |q: Query<(Entity, &Transform), With<M>>,
+                           root: Query<&Transform, With<C>>,
+                           mut commands: Commands| {
+            let root = root
+                .get_single()
+                .ok()
+                .map(|t| t.translation)
+                .unwrap_or_default();
+
             for (entity, transform) in q.iter() {
                 commands.entity(entity).insert((
                     CutsceneMovement,
                     CutsceneVelocity(Vec3::ZERO),
                     MovementClip {
                         start: transform.translation,
-                        end: position,
+                        end: root - position,
                         timer: Timer::new(duration, TimerMode::Once),
                     },
                 ));

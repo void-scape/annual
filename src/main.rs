@@ -36,16 +36,19 @@ fn main() {
         .run();
 }
 
-fn one() -> impl IntoBox {
+#[derive(Component)]
+pub struct Opening;
+
+fn one() -> impl IntoBox<Opening> {
     use characters::*;
     use cutscene::CutsceneFragment;
     (
         "Hello!"
             .flower()
-            .move_to(Izzy, Vec3::new(600., 600., 0.), Duration::from_secs(1)),
+            .move_to(Izzy, Vec3::new(20., 15., 0.), Duration::from_secs(1)),
         t!("<7>...[0.5]!").izzy().move_to(
             Izzy,
-            Vec3::new(620., 620., 0.),
+            Vec3::new(40., 20., 0.),
             Duration::from_millis(500),
         ),
         "Are you looking for something?".flower(),
@@ -68,7 +71,7 @@ fn one() -> impl IntoBox {
         })
 }
 
-fn two() -> impl IntoBox {
+fn two() -> impl IntoBox<Opening> {
     use characters::*;
     (
         "Do you want to go on a walk?".izzy(),
@@ -80,7 +83,7 @@ fn two() -> impl IntoBox {
         })
 }
 
-fn three() -> impl IntoBox {
+fn three() -> impl IntoBox<Opening> {
     use characters::*;
     (
         t!("I know! [0.25] I'll come by tomorrow.").izzy(),
@@ -91,6 +94,11 @@ fn three() -> impl IntoBox {
 }
 
 fn scene(mut commands: Commands) {
+    commands.spawn((
+        Opening,
+        Transform::default().with_translation(Vec3::new(800., 800., 0.)),
+    ));
+
     crate::dialogue::fragment::run_after(
         Duration::from_secs(1),
         |mut commands: Commands| one().spawn_box(&mut commands, &DESC),

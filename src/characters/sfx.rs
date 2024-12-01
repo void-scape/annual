@@ -44,14 +44,18 @@ impl From<&'static str> for SfxDescriptor {
 
 /// Configure dialogue box text sound effects for a fragment.
 pub trait Sfx {
-    fn reveal(self, desc: SfxDescriptor) -> impl IntoBox;
+    fn reveal<C>(self, desc: SfxDescriptor) -> impl IntoBox<C>
+    where
+        C: Component,
+        Self: IntoBox<C>;
 }
 
-impl<T> Sfx for T
-where
-    T: IntoBox,
-{
-    fn reveal(self, desc: SfxDescriptor) -> impl IntoBox {
+impl<T> Sfx for T {
+    fn reveal<C>(self, desc: SfxDescriptor) -> impl IntoBox<C>
+    where
+        C: Component,
+        Self: IntoBox<C>,
+    {
         self.on_start(reveal(desc))
     }
 }

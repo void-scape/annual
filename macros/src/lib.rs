@@ -40,14 +40,17 @@ fn character(input: TokenStream) -> syn::Result<proc_macro2::TokenStream> {
 
     Ok(quote! {
         pub trait #trait_name {
-            fn #fn_name(self) -> impl crate::dialogue_box::IntoBox;
+            fn #fn_name<C: bevy::prelude::Component>(self) -> impl crate::dialogue_box::IntoBox<C>
+                where Self: crate::dialogue_box::IntoBox<C>;
         }
 
         impl<T> #trait_name for T
         where
             T: crate::dialogue_box::IntoBox,
         {
-            fn #fn_name(self) -> impl crate::dialogue_box::IntoBox {
+            fn #fn_name<C: bevy::prelude::Component>(self) -> impl crate::dialogue_box::IntoBox<C>
+                where Self: crate::dialogue_box::IntoBox<C>
+            {
                 use crate::characters::CharacterAssets;
                 use crate::characters::sfx::Sfx;
                 self.portrait(#ident::texture().into(), None).reveal(#ident::text_sfx())

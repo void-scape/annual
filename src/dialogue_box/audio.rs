@@ -96,20 +96,31 @@ pub enum Trigger {
 }
 
 pub trait SetDialogueTextSfx {
-    fn reveal_sfx(self, bundle: AudioBundle, settings: TextSfxSettings) -> impl IntoBox;
+    fn reveal_sfx<C>(self, bundle: AudioBundle, settings: TextSfxSettings) -> impl IntoBox<C>
+    where
+        C: Component,
+        Self: IntoBox<C>;
 
-    fn delete_sfx(self, bundle: AudioBundle, settings: TextSfxSettings) -> impl IntoBox;
+    fn delete_sfx<C>(self, bundle: AudioBundle, settings: TextSfxSettings) -> impl IntoBox<C>
+    where
+        C: Component,
+        Self: IntoBox<C>;
 }
 
-impl<T> SetDialogueTextSfx for T
-where
-    T: IntoBox,
-{
-    fn reveal_sfx(self, bundle: AudioBundle, settings: TextSfxSettings) -> impl IntoBox {
+impl<T> SetDialogueTextSfx for T {
+    fn reveal_sfx<C>(self, bundle: AudioBundle, settings: TextSfxSettings) -> impl IntoBox<C>
+    where
+        C: Component,
+        Self: IntoBox<C>,
+    {
         self.set_resource(RevealedTextSfx { bundle, settings })
     }
 
-    fn delete_sfx(self, bundle: AudioBundle, settings: TextSfxSettings) -> impl IntoBox {
+    fn delete_sfx<C>(self, bundle: AudioBundle, settings: TextSfxSettings) -> impl IntoBox<C>
+    where
+        C: Component,
+        Self: IntoBox<C>,
+    {
         self.set_resource(DeletedTextSfx { bundle, settings })
     }
 }

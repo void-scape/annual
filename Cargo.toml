@@ -16,7 +16,7 @@ bevy_asset_loader = "0.21.0"
 
 [dependencies.bevy]
 version = "0.14.1"
-features = ["dynamic_linking", "wav", "mp3", "jpeg"]
+features = ["wav", "mp3", "jpeg"]
 
 [dependencies.pulldown-cmark]
 version = "0.12.2"

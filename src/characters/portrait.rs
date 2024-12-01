@@ -1,31 +1,43 @@
 use crate::dialogue::fragment::FragmentExt;
-use crate::dialogue_box::{BoxEntity, DialogueBox, IntoBox};
+use crate::dialogue_box::{BoxContext, DialogueBox, IntoBox};
 use bevy::{asset::AssetPath, prelude::*};
 
 pub trait Portrait {
     /// Set the texture and, optionally, the position of the active character portrait
-    fn portrait(self, texture: AssetPath<'static>, position: Option<Transform>) -> impl IntoBox;
+    fn portrait<C>(
+        self,
+        texture: AssetPath<'static>,
+        position: Option<Transform>,
+    ) -> impl IntoBox<C>
+    where
+        C: Component,
+        Self: IntoBox<C>;
 }
 
-impl<T> Portrait for T
-where
-    T: IntoBox,
-{
-    fn portrait(self, texture: AssetPath<'static>, transform: Option<Transform>) -> impl IntoBox {
-        self.on_start_ctx(portrait(texture, transform))
+impl<T> Portrait for T {
+    fn portrait<C>(
+        self,
+        texture: AssetPath<'static>,
+        transform: Option<Transform>,
+    ) -> impl IntoBox<C>
+    where
+        C: Component,
+        Self: IntoBox<C>,
+    {
+        self.on_start_ctx(portrait::<C>(texture, transform))
     }
 }
 
-pub fn portrait(
+pub fn portrait<C>(
     texture: AssetPath<'static>,
     transform: Option<Transform>,
 ) -> impl Fn(
-    In<BoxEntity>,
+    In<BoxContext<C>>,
     Query<(&mut Handle<Image>, &mut Transform), With<PortraitMarker>>,
     Query<&Children, With<DialogueBox>>,
     Res<AssetServer>,
 ) {
-    move |ctx: In<BoxEntity>,
+    move |ctx: In<BoxContext<C>>,
           mut portraits: Query<(&mut Handle<Image>, &mut Transform), With<PortraitMarker>>,
           boxes: Query<&Children, With<DialogueBox>>,
           asset_server: Res<AssetServer>| {
