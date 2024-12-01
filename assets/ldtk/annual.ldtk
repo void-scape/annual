@@ -11,7 +11,7 @@
 	"iid": "0e151070-9b00-11ef-938a-45a412ef1142",
 	"jsonVersion": "1.5.3",
 	"appBuildId": 473703,
-	"nextUid": 7,
+	"nextUid": 9,
 	"identifierStyle": "Capitalize",
 	"toc": [],
 	"worldLayout": "Free",
@@ -146,6 +146,41 @@
 			"pivotX": 0,
 			"pivotY": 0,
 			"fieldDefs": []
+		},
+		{
+			"identifier": "Flower",
+			"uid": 7,
+			"tags": [],
+			"exportToToc": false,
+			"allowOutOfBounds": false,
+			"doc": null,
+			"width": 32,
+			"height": 32,
+			"resizableX": false,
+			"resizableY": false,
+			"minWidth": null,
+			"maxWidth": null,
+			"minHeight": null,
+			"maxHeight": null,
+			"keepAspectRatio": false,
+			"tileOpacity": 1,
+			"fillOpacity": 0.08,
+			"lineOpacity": 0,
+			"hollow": false,
+			"color": "#D77643",
+			"renderMode": "Tile",
+			"showName": true,
+			"tilesetId": 8,
+			"tileRenderMode": "FitInside",
+			"tileRect": { "tilesetUid": 8, "x": 0, "y": 0, "w": 31, "h": 31 },
+			"uiTileRect": null,
+			"nineSliceBorders": [],
+			"maxCount": 0,
+			"limitScope": "PerLevel",
+			"limitBehavior": "MoveLastOne",
+			"pivotX": 0,
+			"pivotY": 0,
+			"fieldDefs": []
 		}
 	], "tilesets": [
 		{
@@ -191,6 +226,25 @@
 				"opaqueTiles": "0000000000000000000000000000000000000000000000000000000000000000",
 				"averageColors": "1b861a861a861b861b861a751a861b861b861b861b861b861b861b961a851b861b861a751a751a751a751a751a861b861b861a751a751a751a751a751a861b861b861b861b861b861b861a861a861a751b861b861b861b861b861b861a861a861a861a751a751a751a861a851a751a751a861a751a751a751a861a851a751a75"
 			}
+		},
+		{
+			"__cWid": 2,
+			"__cHei": 1,
+			"identifier": "Flower",
+			"uid": 8,
+			"relPath": "../Flower 1 - TEAL.png",
+			"embedAtlas": null,
+			"pxWid": 42,
+			"pxHei": 31,
+			"tileGridSize": 31,
+			"spacing": 0,
+			"padding": 0,
+			"tags": [],
+			"tagsSourceEnumUid": null,
+			"enumTags": [],
+			"customData": [],
+			"savedSelections": [],
+			"cachedPixelData": { "opaqueTiles": "01", "averageColors": "66980000" }
 		}
 	], "enums": [], "externalEnums": [], "levelFields": [] },
 	"levels": [
@@ -241,7 +295,7 @@
 					"entityInstances": [
 						{
 							"__identifier": "Player",
-							"__grid": [0,92],
+							"__grid": [42,44],
 							"__pivot": [0,0],
 							"__tags": [],
 							"__tile": { "tilesetUid": 6, "x": 0, "y": 0, "w": 64, "h": 64 },
@@ -250,10 +304,26 @@
 							"width": 64,
 							"height": 64,
 							"defUid": 4,
-							"px": [0,1472],
+							"px": [672,704],
 							"fieldInstances": [],
-							"__worldX": 0,
-							"__worldY": 1472
+							"__worldX": 672,
+							"__worldY": 704
+						},
+						{
+							"__identifier": "Flower",
+							"__grid": [39,50],
+							"__pivot": [0,0],
+							"__tags": [],
+							"__tile": { "tilesetUid": 8, "x": 0, "y": 0, "w": 31, "h": 31 },
+							"__smartColor": "#D77643",
+							"iid": "3c3893f0-9b00-11ef-bd0e-916a5b16e721",
+							"width": 32,
+							"height": 32,
+							"defUid": 7,
+							"px": [624,800],
+							"fieldInstances": [],
+							"__worldX": 624,
+							"__worldY": 800
 						}
 					]
 				},

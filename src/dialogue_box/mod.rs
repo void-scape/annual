@@ -31,7 +31,8 @@ pub struct DialogueBoxPlugin;
 
 impl Plugin for DialogueBoxPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(Material2dPlugin::<WaveMaterial>::default())
+        app.add_event::<FragmentEvent<BoxToken>>()
+            .add_plugins(Material2dPlugin::<WaveMaterial>::default())
             .add_systems(
                 Startup,
                 material::init_effect_material::<

@@ -15,7 +15,7 @@ pub struct Flower;
 
 impl CharacterAssets for Flower {
     fn texture() -> impl Into<AssetPath<'static>> {
-        "flowey.png"
+        "flower.png"
     }
 
     fn text_sfx() -> SfxDescriptor {
@@ -41,4 +41,4 @@ macro_rules! character_stub {
     };
 }
 
-character_stub!(Sans, "sans.jpg", "snd_txtsans.wav".into());
+character_stub!(Izzy, "girl.png", "girl.mp3".into());

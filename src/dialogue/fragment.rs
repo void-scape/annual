@@ -400,6 +400,8 @@ pub trait FragmentExt: Sized {
     }
 
     /// Play a sound at the start of a fragment.
+    ///
+    /// The sound will despawn after it is finished.
     fn sound(
         self,
         path: impl Into<AssetPath<'static>>,
@@ -412,6 +414,28 @@ pub trait FragmentExt: Sized {
                     commands.spawn(AudioBundle {
                         source: asset_server.load(&path),
                         settings: PlaybackSettings::DESPAWN,
+                    });
+                },
+            ),
+        }
+    }
+
+    /// Play a sound at the start of a fragment.
+    ///
+    /// Supply [`bevy::audio::PlaybackSettings`] for the spawned audio bundle.
+    fn sound_with(
+        self,
+        path: impl Into<AssetPath<'static>>,
+        settings: PlaybackSettings,
+    ) -> OnStart<Self, impl System<In = (), Out = ()>> {
+        let path = path.into();
+        OnStart {
+            fragment: self,
+            on_trigger: IntoSystem::into_system(
+                move |mut commands: Commands, asset_server: Res<AssetServer>| {
+                    commands.spawn(AudioBundle {
+                        source: asset_server.load(&path),
+                        settings,
                     });
                 },
             ),

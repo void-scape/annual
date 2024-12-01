@@ -1,6 +1,14 @@
-use app::LdtkEntityAppExt;
-use bevy::{prelude::*, window::PrimaryWindow};
+use crate::asset_loading::AssetState;
+use assets::LdtkProject;
+use bevy::prelude::*;
+use bevy_asset_loader::asset_collection::AssetCollection;
 use bevy_ecs_ldtk::*;
+
+#[derive(AssetCollection, Resource)]
+pub struct LdtkAssets {
+    #[asset(path = "ldtk/annual.ldtk")]
+    pub annual: Handle<LdtkProject>,
+}
 
 pub struct LdtkPlugin;
 
@@ -15,49 +23,13 @@ impl Plugin for LdtkPlugin {
                 // },
                 ..default()
             })
-            .register_ldtk_entity::<PlayerBundle>("Player")
-            .add_systems(Startup, startup);
+            .add_systems(OnEnter(AssetState::Loaded), startup);
     }
 }
 
-fn startup(
-    mut commands: Commands,
-    asset_server: Res<AssetServer>,
-    window: Query<&Window, With<PrimaryWindow>>,
-) {
-    let window = window.single();
-    let (width, height) = (window.width(), window.height());
-
+fn startup(mut commands: Commands, assets: Res<LdtkAssets>) {
     commands.spawn(LdtkWorldBundle {
-        ldtk_handle: asset_server.load("ldtk/annual.ldtk"),
-        transform: Transform::default().with_translation(Vec3::new(
-            -width / 2.0,
-            -height / 2.0,
-            -100.0,
-        )),
+        ldtk_handle: assets.annual.clone(),
         ..Default::default()
     });
-}
-
-#[derive(Default, Component)]
-struct Player;
-
-impl Player {
-    pub fn new(_: &EntityInstance) -> Self {
-        Self {}
-    }
-}
-
-#[derive(Bundle, LdtkEntity)]
-struct PlayerBundle {
-    #[with(Player::new)]
-    player: Player,
-    #[ldtk_entity]
-    sprite: AnimatedSpriteSheetBundle,
-}
-
-#[derive(Bundle, LdtkEntity)]
-struct AnimatedSpriteSheetBundle {
-    #[sprite_sheet_bundle]
-    sprite_sheet: LdtkSpriteSheetBundle,
 }
