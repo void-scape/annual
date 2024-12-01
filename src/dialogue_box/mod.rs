@@ -2,6 +2,7 @@
 use crate::{
     characters::portrait::PortraitBundle, dialogue::FragmentEvent, FragmentExt, IntoFragment,
 };
+use audio::{DeletedTextSfx, RevealedTextSfx};
 use bevy::{
     asset::AssetPath,
     prelude::*,
@@ -83,28 +84,17 @@ pub struct DialogueBoxBundle {
     pub atlas: DialogueBoxAtlas,
     pub dimensions: DialogueBoxDimensions,
     pub spatial: SpatialBundle,
+    pub sfx: DialogueBoxSfxBundle,
 }
 
 impl DialogueBoxBundle {
-    pub fn new(
-        atlas: DialogueBoxAtlas,
-        dimensions: DialogueBoxDimensions,
-        spatial: SpatialBundle,
-    ) -> Self {
-        Self {
-            atlas,
-            dimensions,
-            spatial,
-        }
-    }
-
     pub fn text_bounds(&self) -> Text2dBounds {
         Text2dBounds {
             size: Vec2::new(
                 (self.atlas.tile_size.x * self.dimensions.inner_width as u32 + 1) as f32
-                    * self.spatial.transform.scale.x,
+                    * self.dimensions.scale.x,
                 (self.atlas.tile_size.y * self.dimensions.inner_height as u32 + 1) as f32
-                    * self.spatial.transform.scale.y,
+                    * self.dimensions.scale.y,
             ),
         }
     }
@@ -181,6 +171,12 @@ impl DialogueBoxDimensions {
             scale,
         }
     }
+}
+
+#[derive(Bundle, Default, Clone)]
+pub struct DialogueBoxSfxBundle {
+    pub reveal: RevealedTextSfx,
+    pub delete: DeletedTextSfx,
 }
 
 /// Represents an empty cutscene.
@@ -284,6 +280,7 @@ pub fn spawn_dialogue_box(
             ),
             dimensions: desc.dimensions,
             spatial: SpatialBundle::from_transform(transform),
+            ..Default::default()
         };
 
         let type_writer = TypeWriterBundle {
@@ -294,6 +291,7 @@ pub fn spawn_dialogue_box(
             },
             state: TypeWriterState::new(35.),
             text_anchor: Anchor::TopLeft,
+            text_2d_bounds: dialogue_box.text_bounds(),
             ..Default::default()
         };
 

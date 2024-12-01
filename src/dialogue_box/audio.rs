@@ -1,12 +1,11 @@
 #![allow(unused)]
-use super::IntoBox;
+use super::{BoxContext, DialogueBox, IntoBox};
 use crate::FragmentExt;
 use bevy::{audio::PlaybackMode, prelude::*};
 use rand::Rng;
 
-/// [`AudioSourceBundle<AudioSource>`] that globally defines `revealed` text sfx for all dialogue
-/// boxes.
-#[derive(Resource, Clone)]
+/// [`AudioSourceBundle<AudioSource>`] that defines `revealed` text sfx for a dialogue box.
+#[derive(Component, Default, Clone)]
 pub struct RevealedTextSfx {
     pub bundle: bevy::audio::AudioBundle,
     pub settings: TextSfxSettings,
@@ -28,9 +27,8 @@ impl RevealedTextSfx {
     }
 }
 
-/// [`AudioSourceBundle<AudioSource>`] that globally defines `deleted` text sfx for all dialogue
-/// boxes.
-#[derive(Resource, Clone)]
+/// [`AudioSourceBundle<AudioSource>`] that defines `deleted` text sfx for a dialogue box.
+#[derive(Component, Default, Clone)]
 pub struct DeletedTextSfx {
     pub bundle: bevy::audio::AudioBundle,
     pub settings: TextSfxSettings,
@@ -114,7 +112,17 @@ impl<T> SetDialogueTextSfx for T {
         C: Component,
         Self: IntoBox<C>,
     {
-        self.set_resource(RevealedTextSfx { bundle, settings })
+        self.on_start_ctx(
+            move |ctx: In<BoxContext<C>>,
+                  mut boxes: Query<&mut RevealedTextSfx, With<DialogueBox>>| {
+                if let Ok(mut sfx) = boxes.get_mut(ctx.entity()) {
+                    sfx.bundle = bundle.clone();
+                    sfx.settings = settings;
+                } else {
+                    warn!("could not set reveal sfx for box: {}", ctx.entity());
+                }
+            },
+        )
     }
 
     fn delete_sfx<C>(self, bundle: AudioBundle, settings: TextSfxSettings) -> impl IntoBox<C>
@@ -122,6 +130,16 @@ impl<T> SetDialogueTextSfx for T {
         C: Component,
         Self: IntoBox<C>,
     {
-        self.set_resource(DeletedTextSfx { bundle, settings })
+        self.on_start_ctx(
+            move |ctx: In<BoxContext<C>>,
+                  mut boxes: Query<&mut DeletedTextSfx, With<DialogueBox>>| {
+                if let Ok(mut sfx) = boxes.get_mut(ctx.entity()) {
+                    sfx.bundle = bundle.clone();
+                    sfx.settings = settings;
+                } else {
+                    warn!("could not set delete sfx for box: {}", ctx.entity());
+                }
+            },
+        )
     }
 }

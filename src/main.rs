@@ -133,7 +133,7 @@ const DESC: DialogueBoxDescriptor = DialogueBoxDescriptor {
         tile_size: UVec2::new(16, 16),
     },
     font: dialogue_box::DialogueBoxFontDescriptor {
-        font_size: 32.,
+        font_size: 42.,
         default_color: Color::WHITE,
         font: "joystix monospace.otf",
     },

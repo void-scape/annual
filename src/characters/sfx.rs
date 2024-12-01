@@ -1,3 +1,4 @@
+use crate::dialogue_box::{BoxContext, DialogueBox};
 use crate::{
     dialogue_box::{
         audio::{RevealedTextSfx, TextSfxSettings},
@@ -57,18 +58,20 @@ impl<T> Sfx for T {
         C: Component,
         Self: IntoBox<C>,
     {
-        self.on_start(reveal(desc))
-    }
-}
-
-fn reveal(desc: SfxDescriptor) -> impl Fn(Commands, Res<AssetServer>) {
-    move |mut commands: Commands, asset_server: Res<AssetServer>| {
-        commands.insert_resource(RevealedTextSfx {
-            bundle: AudioBundle {
-                source: asset_server.load(desc.path.clone()),
-                settings: desc.playback_settings,
+        self.on_start_ctx(
+            move |ctx: In<BoxContext<C>>,
+                  asset_server: Res<AssetServer>,
+                  mut boxes: Query<&mut RevealedTextSfx, With<DialogueBox>>| {
+                if let Ok(mut sfx) = boxes.get_mut(ctx.entity()) {
+                    sfx.bundle = AudioBundle {
+                        source: asset_server.load(&desc.path),
+                        settings: desc.playback_settings,
+                    };
+                    sfx.settings = desc.sfx_settings;
+                } else {
+                    warn!("could not set reveal sfx for box: {}", ctx.entity());
+                }
             },
-            settings: desc.sfx_settings,
-        });
+        )
     }
 }
