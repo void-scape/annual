@@ -26,7 +26,8 @@ pub trait TextMaterial: Send + Sync + 'static {
     fn target() -> bevy_bits::TextEffect;
 }
 
-pub const WAVE_MATERIAL_LAYER: usize = 1;
+pub const DIALOGUE_BOX_RENDER_LAYER: RenderLayers = RenderLayers::layer(1);
+pub const WAVE_MATERIAL_LAYER: RenderLayers = RenderLayers::layer(2);
 
 #[derive(AsBindGroup, Debug, Clone, Asset, TypePath)]
 pub struct WaveMaterial {
@@ -59,7 +60,6 @@ pub fn init_effect_material<E: TextMaterial + Asset + Material2d, const LAYER: u
     mut commands: Commands,
     mut custom_materials: ResMut<Assets<E>>,
     mut images: ResMut<Assets<Image>>,
-    asset_server: Res<AssetServer>,
     mut meshes: ResMut<Assets<Mesh>>,
     window: Query<&Window, With<PrimaryWindow>>,
 ) {
@@ -116,6 +116,7 @@ pub fn init_effect_material<E: TextMaterial + Asset + Material2d, const LAYER: u
             ..Default::default()
         },
         effect_target_image,
+        DIALOGUE_BOX_RENDER_LAYER,
     ));
 }
 

@@ -1,22 +1,10 @@
-use super::{
-    material::{TextMaterial, TextMaterialMarker},
-    BoxToken, DialogueBox, DialogueBoxAtlas, DialogueBoxDimensions, DialogueBoxFont,
-    DialogueBoxFragmentMap, SectionOccurance, TypeWriterState,
-};
+use super::{BoxToken, DialogueBox, DialogueBoxFont, TypeWriterState};
 use crate::dialogue::{FragmentEndEvent, FragmentEvent};
 use bevy::{
-    input::{
-        keyboard::{Key, KeyboardInput},
-        ButtonState,
-    },
+    input::{keyboard::KeyboardInput, ButtonState},
     prelude::*,
-    sprite::Anchor,
-    text::Text2dBounds,
     window::PrimaryWindow,
 };
-use bevy_bits::DialogueBoxToken;
-use rand::Rng;
-use std::marker::PhantomData;
 
 pub fn handle_dialogue_box_events(
     mut reader: EventReader<FragmentEvent<BoxToken>>,
@@ -39,17 +27,17 @@ pub fn handle_dialogue_box_events(
             for child in children.iter() {
                 match event.data.0.clone() {
                     bevy_bits::DialogueBoxToken::Section(section) => {
-                        if let Ok((mut text, mut state, box_font)) = type_writers.get_mut(*child) {
+                        if let Ok((_, mut state, box_font)) = type_writers.get_mut(*child) {
                             state.push_section(section, Some(event.id), box_font);
                         }
                     }
                     bevy_bits::DialogueBoxToken::Command(cmd) => {
-                        if let Ok((mut text, mut state, _)) = type_writers.get_mut(*child) {
+                        if let Ok((_, mut state, _)) = type_writers.get_mut(*child) {
                             state.push_cmd(cmd, Some(event.id));
                         }
                     }
                     bevy_bits::DialogueBoxToken::Sequence(seq) => {
-                        if let Ok((mut text, mut state, box_font)) = type_writers.get_mut(*child) {
+                        if let Ok((_, mut state, box_font)) = type_writers.get_mut(*child) {
                             state.push_seq(seq, Some(event.id), box_font);
                         }
                     }

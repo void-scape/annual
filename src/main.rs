@@ -1,14 +1,18 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::type_complexity)]
 
+use asset_loading::AssetState;
 use bevy::{audio::Volume, prelude::*};
+use camera::CameraFragment;
+use characters::Izzy;
 use dialogue::fragment::*;
-use dialogue_box::{DialogueBoxDescriptor, IntoBox, SpawnBox};
+use dialogue_box::{DialogueBoxDescriptor, IntoBox, SpawnBox, DIALOGUE_BOX_SPRITE_Z};
 use macros::t;
 use std::time::Duration;
 
 mod animation;
 mod asset_loading;
+mod camera;
 mod characters;
 mod cutscene;
 mod dialogue;
@@ -30,9 +34,10 @@ fn main() {
             dialogue_box::DialogueBoxPlugin,
             dialogue::DialoguePlugin,
             cutscene::CutscenePlugin,
+            camera::CameraPlugin,
         ))
         .add_systems(Update, bevy_bits::close_on_escape)
-        .add_systems(Startup, scene)
+        .add_systems(OnEnter(AssetState::Loaded), scene)
         .run();
 }
 
@@ -51,10 +56,24 @@ fn one() -> impl IntoBox<Opening> {
             Vec3::new(40., 20., 0.),
             Duration::from_millis(500),
         ),
-        "Are you looking for something?".flower(),
-        t!("D-did you... [1] I mean, [0.5] are you a...").izzy(),
-        "Is something wrong?".flower(),
-        t!("Are you... [0.5] talking?").izzy(),
+        "Are you looking for something?".flower().move_camera_to(
+            flower::Flower,
+            Vec3::ZERO,
+            Duration::from_secs(1),
+        ),
+        t!("D-did you... [1] I mean, [0.5] are you a...")
+            .izzy()
+            .move_then_bind_camera(Izzy, Vec3::ZERO, Duration::from_secs_f32(0.5)),
+        "Is something wrong?".flower().move_to(
+            Izzy,
+            Vec3::new(20., 20., 0.),
+            Duration::from_millis(500),
+        ),
+        t!("Are you... [0.5] talking?").izzy().move_to(
+            Izzy,
+            Vec3::new(20., 20., 0.),
+            Duration::from_millis(500),
+        ),
         "Well, are you?".flower(),
         t!("<12>But you're a [0.25]<20> {`FLOWER`[wave]}!", |frag| frag
             .sound("snd_bell.wav"))
@@ -101,24 +120,24 @@ fn scene(mut commands: Commands) {
 
     crate::dialogue::fragment::run_after(
         Duration::from_secs(1),
-        |mut commands: Commands| one().spawn_box(&mut commands, &DESC),
+        |mut commands: Commands| one().bind_camera(Izzy).spawn_box(&mut commands, &DESC),
         &mut commands,
     );
 }
 
 const DESC: DialogueBoxDescriptor = DialogueBoxDescriptor {
-    transform: Transform::from_xyz(-200.0, 0.0, 0.0).with_scale(Vec3::new(3.0, 3.0, 1.0)),
-    dimensions: dialogue_box::DialogueBoxDimensions::new(15, 4),
+    transform: Transform::from_xyz(-250., -50., 0.),
+    dimensions: dialogue_box::DialogueBoxDimensions::new_with_scale(15, 4, Vec3::new(3., 3., 1.)),
     atlas: dialogue_box::DialogueBoxAtlasDescriptor {
         texture: "Scalable txt screen x1.png",
         tile_size: UVec2::new(16, 16),
     },
     font: dialogue_box::DialogueBoxFontDescriptor {
-        font_size: 32.0,
+        font_size: 32.,
         default_color: Color::WHITE,
         font: "joystix monospace.otf",
     },
     portrait: Transform::IDENTITY
-        .with_translation(Vec3::new(-80.0, -40.0, -10.0))
-        .with_scale(Vec3::splat(1.0 / 6.0)),
+        .with_translation(Vec3::new(-230., -100., DIALOGUE_BOX_SPRITE_Z - 1.))
+        .with_scale(Vec3::splat(1. / 2.0)),
 };

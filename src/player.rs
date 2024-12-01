@@ -1,6 +1,6 @@
 use crate::{
     animation::{AnimationController, AnimationPlugin},
-    asset_loading::loaded,
+    asset_loading::{loaded, AssetState},
     cutscene::{CutsceneMovement, CutsceneVelocity},
 };
 use bevy::prelude::*;
@@ -29,7 +29,6 @@ impl Plugin for PlayerPlugin {
             AnimationPlugin::<PlayerAnimation>::default(),
         ))
         .register_ldtk_entity::<PlayerBundle>("Player")
-        .add_systems(Update, init_camera)
         .add_systems(Update, (walk, animate_cutscene).run_if(loaded()));
     }
 }
@@ -115,18 +114,6 @@ fn init_input_map(_: &EntityInstance) -> InputManagerBundle<Action> {
         (Action::Interact, KeyCode::KeyE),
     ]);
     InputManagerBundle::with_map(input_map)
-}
-
-fn init_camera(query: Query<Entity, Added<Player>>, mut commands: Commands) {
-    if let Ok(player) = query.get_single() {
-        let mut camera = Camera2dBundle::default();
-        camera.projection.scale = 0.25;
-        // camera.transform.translation.x += 500.0;
-        // camera.transform.translation.y += 500.0;
-        commands.entity(player).with_children(|p| {
-            p.spawn(camera);
-        });
-    }
 }
 
 #[derive(Default, Component)]

@@ -36,8 +36,8 @@ fn startup(mut commands: Commands, assets: Res<LdtkAssets>) {
     });
 }
 
-fn test(query: Query<&TileEnumTags>) {
+fn test(query: Query<&TileEnumTags, Added<TileEnumTags>>) {
     for tile in query.iter() {
-        println!("{tile:#?}");
+        // println!("{tile:#?}");
     }
 }
