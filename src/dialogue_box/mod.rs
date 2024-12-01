@@ -271,7 +271,7 @@ pub fn spawn_dialogue_box(
     move |mut commands: Commands,
           asset_server: Res<AssetServer>,
           mut texture_atlases: ResMut<Assets<TextureAtlasLayout>>| {
-        error!("Creating new dialogue_box: {entity:?}");
+        error!("Creating new dialogue_box: {entity}");
         let transform = desc.transform;
 
         let dialogue_box = DialogueBoxBundle {
@@ -377,13 +377,13 @@ pub fn spawn_dialogue_box(
     }
 }
 
-fn despawn_dialogue_box(dialogue_box: Entity) -> impl Fn(Commands, Query<&DialogueBox>) {
-    move |mut commands: Commands, boxes: Query<&DialogueBox>| {
+fn despawn_dialogue_box(dialogue_box: Entity) -> impl Fn(Commands, Query<Entity>) {
+    move |mut commands: Commands, boxes: Query<Entity>| {
         if boxes.get(dialogue_box).is_ok() {
-            error!("Despawning dialogue_box: {dialogue_box:?}");
+            error!("Despawning dialogue_box: {dialogue_box}");
             commands.entity(dialogue_box).despawn_recursive();
         } else {
-            error!("tried to despawn dialogue box that does not exist");
+            error!("tried to despawn dialogue box that does not exist: {dialogue_box}");
         }
     }
 }

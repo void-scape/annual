@@ -13,14 +13,12 @@ mod limit;
 mod mapped;
 mod sequence;
 
-pub use all::{all, All};
 pub use delay::{run_after, Delay};
 pub use eval::Evaluated;
 pub use hooks::{OnEnd, OnStart, OnStartCtx, OnVisit, OnVisitCtx};
 pub use leaf::Leaf;
 pub use limit::Limit;
 pub use mapped::Mapped;
-pub use sequence::Sequence;
 
 pub(crate) use all::update_all_items;
 pub(crate) use delay::manage_delay;
