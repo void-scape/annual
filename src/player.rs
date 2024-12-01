@@ -80,10 +80,10 @@ fn init_animation_controller(_: &EntityInstance) -> AnimationController<PlayerAn
         5.0,
         [
             (PlayerAnimation::Idle, (0, 1)),
-            (PlayerAnimation::Walk(Direction::Up), (40, 46)),
-            (PlayerAnimation::Walk(Direction::Down), (32, 38)),
-            (PlayerAnimation::Walk(Direction::Left), (56, 62)),
-            (PlayerAnimation::Walk(Direction::Right), (48, 54)),
+            (PlayerAnimation::Walk(Direction::Up), (8, 12)),
+            (PlayerAnimation::Walk(Direction::Right), (0, 4)),
+            (PlayerAnimation::Walk(Direction::Left), (4, 8)),
+            (PlayerAnimation::Walk(Direction::Down), (4, 8)),
         ],
     )
 }
@@ -102,7 +102,7 @@ fn init_input_map(_: &EntityInstance) -> InputManagerBundle<Action> {
 fn init_camera(query: Query<Entity, Added<Player>>, mut commands: Commands) {
     if let Ok(player) = query.get_single() {
         let mut camera = Camera2dBundle::default();
-        camera.projection.scale = 0.5;
+        camera.projection.scale = 0.25;
         // camera.transform.translation.x += 500.0;
         // camera.transform.translation.y += 500.0;
         commands.entity(player).with_children(|p| {
@@ -171,7 +171,7 @@ fn walk(
             animation.set_animation(PlayerAnimation::Idle);
         }
 
-        const PLAYER_SPEED: f32 = 100.0;
+        const PLAYER_SPEED: f32 = 50.0;
         vel = vel.clamp_length_max(1.0) * PLAYER_SPEED;
         transform.translation.x += vel.x * time.delta_seconds();
         transform.translation.y += vel.y * time.delta_seconds();

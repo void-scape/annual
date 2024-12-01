@@ -3,6 +3,7 @@ use assets::LdtkProject;
 use bevy::prelude::*;
 use bevy_asset_loader::asset_collection::AssetCollection;
 use bevy_ecs_ldtk::*;
+use ldtk::TileInstance;
 
 #[derive(AssetCollection, Resource)]
 pub struct LdtkAssets {
@@ -23,7 +24,8 @@ impl Plugin for LdtkPlugin {
                 // },
                 ..default()
             })
-            .add_systems(OnEnter(AssetState::Loaded), startup);
+            .add_systems(OnEnter(AssetState::Loaded), startup)
+            .add_systems(Update, test);
     }
 }
 
@@ -32,4 +34,10 @@ fn startup(mut commands: Commands, assets: Res<LdtkAssets>) {
         ldtk_handle: assets.annual.clone(),
         ..Default::default()
     });
+}
+
+fn test(query: Query<&TileEnumTags>) {
+    for tile in query.iter() {
+        println!("{tile:#?}");
+    }
 }
