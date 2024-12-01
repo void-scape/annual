@@ -1,24 +1,12 @@
-use super::material::{
-    TextMaterialMarker, TextMaterialMarkerNone, WaveMaterial, WAVE_MATERIAL_LAYER,
-};
-use crate::{
-    dialogue::{FragmentEndEvent, FragmentEvent, FragmentId},
-    Fragment, FragmentExt, IntoFragment, SpawnFragment,
-};
+use super::DialogueBoxFont;
+use crate::dialogue::{FragmentEndEvent, FragmentId};
 use bevy::{
-    asset::AssetPath,
-    input::{keyboard::KeyboardInput, ButtonState},
     prelude::*,
-    render::view::RenderLayers,
-    sprite::{Anchor, Material2dPlugin, SpriteSource},
+    sprite::{Anchor, SpriteSource},
     text::{Text2dBounds, TextLayoutInfo},
-    utils::HashMap,
 };
 use bevy_bits::{DialogueBoxToken, TextCommand};
-use rand::Rng;
-use std::{borrow::Cow, collections::VecDeque, path::Path, time::Duration};
-
-use super::DialogueBoxFont;
+use std::{borrow::Cow, time::Duration};
 
 #[derive(Bundle, Default, Clone)]
 pub struct TypeWriterBundle {
@@ -36,7 +24,6 @@ pub struct TypeWriterBundle {
 pub struct TypeWriterState {
     chars_per_sec: f32,
     state: State,
-    force_update: bool,
     effect_mapping: Vec<Option<bevy_bits::TextEffect>>,
     fragment_id: Option<FragmentId>,
     reveal_accum: f32,
@@ -49,7 +36,6 @@ impl Default for TypeWriterState {
         Self {
             chars_per_sec: 20.0,
             state: State::Ready,
-            force_update: false,
             effect_mapping: Vec::new(),
             fragment_id: None,
             reveal_accum: 0.0,
@@ -71,12 +57,11 @@ impl TypeWriterState {
         &mut self,
         section: bevy_bits::tokens::TextSection,
         id: Option<FragmentId>,
-        font: &DialogueBoxFont,
     ) {
         debug_assert!(!matches!(self.state, State::Sequence { .. }));
 
         self.state = State::Section {
-            section: TypeWriterSectionBuffer::new(section, font),
+            section: TypeWriterSectionBuffer::new(section),
             timer: Timer::new(
                 Duration::from_secs_f32(1.0 / self.chars_per_sec),
                 TimerMode::Repeating,
@@ -92,22 +77,17 @@ impl TypeWriterState {
         self.fragment_id = id;
     }
 
-    pub fn push_seq(
-        &mut self,
-        sequence: Cow<'static, [DialogueBoxToken]>,
-        id: Option<FragmentId>,
-        font: &DialogueBoxFont,
-    ) {
+    pub fn push_seq(&mut self, sequence: Cow<'static, [DialogueBoxToken]>, id: Option<FragmentId>) {
         debug_assert!(sequence.len() > 0);
 
         let mut type_writer = TypeWriterState::new(self.chars_per_sec);
         match sequence[0].clone() {
             DialogueBoxToken::Section(sec) => {
-                type_writer.push_section(sec, Some(FragmentId::random()), font)
+                type_writer.push_section(sec, Some(FragmentId::random()))
             }
             DialogueBoxToken::Command(cmd) => type_writer.push_cmd(cmd, Some(FragmentId::random())),
             DialogueBoxToken::Sequence(seq) => {
-                type_writer.push_seq(seq, Some(FragmentId::random()), font)
+                type_writer.push_seq(seq, Some(FragmentId::random()))
             }
         }
 
@@ -123,7 +103,7 @@ impl TypeWriterState {
     pub fn tick(
         &mut self,
         time: &Time,
-        mut received_input: bool,
+        received_input: bool,
         text: &mut Text,
         box_font: &DialogueBoxFont,
         commands: &mut Commands,
@@ -430,13 +410,13 @@ impl TypeWriterState {
         {
             match sequence[*index].clone() {
                 DialogueBoxToken::Section(sec) => {
-                    type_writer.push_section(sec, Some(FragmentId::random()), box_font)
+                    type_writer.push_section(sec, Some(FragmentId::random()))
                 }
                 DialogueBoxToken::Command(cmd) => {
                     type_writer.push_cmd(cmd, Some(FragmentId::random()))
                 }
                 DialogueBoxToken::Sequence(seq) => {
-                    type_writer.push_seq(seq, Some(FragmentId::random()), box_font)
+                    type_writer.push_seq(seq, Some(FragmentId::random()))
                 }
             }
 
@@ -608,7 +588,7 @@ enum SectionBufferState {
 }
 
 impl TypeWriterSectionBuffer {
-    pub fn new(section: bevy_bits::tokens::TextSection, font: &DialogueBoxFont) -> Self {
+    pub fn new(section: bevy_bits::tokens::TextSection) -> Self {
         Self {
             state: SectionBufferState::First,
             section,
@@ -619,12 +599,12 @@ impl TypeWriterSectionBuffer {
         match &self.state {
             SectionBufferState::First => bevy_bits::tokens::TextSection {
                 color: self.section.color.clone(),
-                effect: self.section.effect.clone(),
+                effect: self.section.effect,
                 text: Cow::Owned(self.section.text[..1].to_string()),
             },
             SectionBufferState::Repeated(index) => bevy_bits::tokens::TextSection {
                 color: self.section.color.clone(),
-                effect: self.section.effect.clone(),
+                effect: self.section.effect,
                 text: Cow::Owned(self.section.text[..*index].to_owned()),
             },
             SectionBufferState::End => self.section.clone(),
@@ -647,7 +627,7 @@ impl TypeWriterSectionBuffer {
                 SectionOccurance::First(
                     bevy_bits::tokens::TextSection {
                         color: self.section.color.clone(),
-                        effect: self.section.effect.clone(),
+                        effect: self.section.effect,
                         text: Cow::Owned(self.section.text[..1].to_owned()),
                     },
                     padding,
@@ -675,7 +655,7 @@ impl TypeWriterSectionBuffer {
                 SectionOccurance::Repeated(
                     bevy_bits::tokens::TextSection {
                         color: self.section.color.clone(),
-                        effect: self.section.effect.clone(),
+                        effect: self.section.effect,
                         text: Cow::Owned(self.section.text[..*index].to_owned()),
                     },
                     padding,
@@ -701,10 +681,6 @@ impl TypeWriterSectionBuffer {
         }
 
         section
-    }
-
-    pub fn finish(&mut self) {
-        self.state = SectionBufferState::End;
     }
 
     pub fn finished(&self) -> bool {

@@ -2,7 +2,7 @@ use super::{End, Fragment, FragmentNode, IntoFragment, Start, Threaded};
 use crate::dialogue::evaluate::{EvaluatedFragments, FragmentStates};
 use crate::dialogue::{FragmentEvent, FragmentId};
 use bevy::prelude::*;
-use bevy::utils::{all_tuples, all_tuples_with_size};
+use bevy::utils::all_tuples_with_size;
 
 #[derive(Debug, Component)]
 pub struct SequenceItems {
@@ -57,7 +57,7 @@ macro_rules! seq_frag {
         {
             type Fragment = Sequence<($($ty::Fragment,)*)>;
 
-            #[allow(unused_mut)]
+            #[allow(unused)]
             fn into_fragment(self, context: &Context, commands: &mut Commands) -> (Self::Fragment, FragmentNode) {
                 let id = FragmentId::random();
                 let mut ids = Vec::new();

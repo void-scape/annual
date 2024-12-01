@@ -4,7 +4,7 @@ use bevy::{
     prelude::*,
     render::{render_resource::*, view::RenderLayers},
     sprite::{Material2d, MaterialMesh2dBundle},
-    window::{PrimaryWindow, WindowResized},
+    window::PrimaryWindow,
 };
 
 use super::TypeWriterState;
@@ -152,10 +152,9 @@ pub fn update_effect_type_writer<E: TextMaterial + Asset + Material2d>(
 }
 
 // TODO: resizing will prevent the camera from rendering to the texture
-pub fn resize_text_effect_textures(
-    mut reader: EventReader<WindowResized>,
-    image_handles: Query<&Handle<Image>>,
-    mut images: ResMut<Assets<Image>>,
+pub fn resize_text_effect_textures(// mut reader: EventReader<WindowResized>,
+    // image_handles: Query<&Handle<Image>>,
+    // mut images: ResMut<Assets<Image>>,
 ) {
     // for event in reader.read() {
     //     for handle in image_handles.iter() {

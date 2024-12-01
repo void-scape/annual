@@ -1,7 +1,6 @@
-use std::time::Duration;
-
 use crate::{asset_loading::AssetState, IntoFragment, OnEnd, OnStart, Threaded};
 use bevy::prelude::*;
+use std::time::Duration;
 
 pub struct CameraPlugin;
 
@@ -13,6 +12,7 @@ impl Plugin for CameraPlugin {
 }
 
 // TODO: curves, curves, curves
+#[allow(unused)]
 pub trait CameraFragment<C, D>: Sized
 where
     C: Threaded + Clone,

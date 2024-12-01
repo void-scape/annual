@@ -61,17 +61,6 @@ pub struct PortraitBundle {
 }
 
 impl PortraitBundle {
-    pub fn new(texture: Handle<Image>, transform: Transform) -> Self {
-        Self {
-            sprite: SpriteBundle {
-                texture,
-                transform,
-                ..Default::default()
-            },
-            marker: PortraitMarker,
-        }
-    }
-
     pub fn new_empty(transform: Transform) -> Self {
         Self {
             sprite: SpriteBundle {

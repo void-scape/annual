@@ -27,8 +27,8 @@ pub fn handle_dialogue_box_events(
             for child in children.iter() {
                 match event.data.0.clone() {
                     bevy_bits::DialogueBoxToken::Section(section) => {
-                        if let Ok((_, mut state, box_font)) = type_writers.get_mut(*child) {
-                            state.push_section(section, Some(event.id), box_font);
+                        if let Ok((_, mut state, _)) = type_writers.get_mut(*child) {
+                            state.push_section(section, Some(event.id));
                         }
                     }
                     bevy_bits::DialogueBoxToken::Command(cmd) => {
@@ -37,8 +37,8 @@ pub fn handle_dialogue_box_events(
                         }
                     }
                     bevy_bits::DialogueBoxToken::Sequence(seq) => {
-                        if let Ok((_, mut state, box_font)) = type_writers.get_mut(*child) {
-                            state.push_seq(seq, Some(event.id), box_font);
+                        if let Ok((_, mut state, _)) = type_writers.get_mut(*child) {
+                            state.push_seq(seq, Some(event.id));
                         }
                     }
                 }

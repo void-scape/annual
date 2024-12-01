@@ -1,6 +1,6 @@
 use crate::{
     animation::{AnimationController, AnimationPlugin},
-    asset_loading::{loaded, AssetState},
+    asset_loading::loaded,
     cutscene::{CutsceneMovement, CutsceneVelocity},
 };
 use bevy::prelude::*;
@@ -76,6 +76,7 @@ impl Direction {
     }
 
     pub fn from_velocity(velocity: Vec2) -> Self {
+        #[allow(clippy::collapsible_else_if)]
         if velocity.x.abs() > velocity.y.abs() {
             if velocity.x > 0.0 {
                 Direction::Right
@@ -188,7 +189,6 @@ fn animate_cutscene(
         (&mut AnimationController<PlayerAnimation>, &CutsceneVelocity),
         (With<Player>, With<CutsceneMovement>),
     >,
-    time: Res<Time>,
     mut last_direction: Local<Option<Direction>>,
 ) {
     if let Ok((mut animation, velocity)) = player.get_single_mut() {

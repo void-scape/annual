@@ -1,3 +1,4 @@
+#![allow(unused)]
 use bevy::{
     input::{
         keyboard::{Key, KeyboardInput},

@@ -17,6 +17,7 @@ pub struct SfxDescriptor {
     pub sfx_settings: TextSfxSettings,
 }
 
+#[allow(dead_code)]
 impl SfxDescriptor {
     pub fn from_path(path: impl Into<AssetPath<'static>>) -> Self {
         Self {

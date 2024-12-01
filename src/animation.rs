@@ -40,6 +40,7 @@ impl<A> Default for AnimationController<A> {
     }
 }
 
+#[allow(dead_code)]
 impl<A: Animation> AnimationController<A> {
     pub fn new(speed: f32, map: impl std::iter::IntoIterator<Item = (A, (usize, usize))>) -> Self {
         let mut index_map = HashMap::default();

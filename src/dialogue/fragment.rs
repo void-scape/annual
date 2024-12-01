@@ -217,6 +217,7 @@ pub fn spawn_fragment<Context, Data>(
     });
 }
 
+#[allow(unused)]
 pub trait SpawnFragment: Sized {
     /// A convenience method for spawning fragments.
     ///
@@ -263,6 +264,7 @@ pub trait IntoFragment<Context, Data: Threaded> {
 
 impl<T> FragmentExt for T {}
 
+#[allow(unused)]
 pub trait FragmentExt: Sized {
     /// Run a system any time this fragment is visited.
     fn on_visit<S, M>(self, system: S) -> OnVisit<Self, S::System>
@@ -499,7 +501,7 @@ fn evaluated_fragments<Context, Data: Threaded>(
         .collect();
     evaluations.sort_by_key(|(_, _, e)| e.count);
 
-    if let Some((id, fragment, eval)) = evaluations.first() {
+    if let Some((_, _, eval)) = evaluations.first() {
         let selections = evaluations.iter().take_while(|e| e.2.count == eval.count);
 
         for (id, fragment, _) in selections {

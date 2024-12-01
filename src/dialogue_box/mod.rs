@@ -1,3 +1,4 @@
+#![allow(unused)]
 use crate::{
     characters::portrait::PortraitBundle, dialogue::FragmentEvent, FragmentExt, IntoFragment,
 };

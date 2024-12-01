@@ -1,7 +1,7 @@
 use bevy_bits::{DialogueBoxToken, TokenGroup};
 use proc_macro::TokenStream;
 use proc_macro2::Span;
-use quote::{quote, ToTokens, TokenStreamExt};
+use quote::{quote, ToTokens};
 use syn::{parse::Parse, spanned::Spanned};
 
 fn fragment(input: TokenStream) -> syn::Result<proc_macro2::TokenStream> {
