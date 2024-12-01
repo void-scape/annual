@@ -310,6 +310,20 @@ pub fn spawn_dialogue_box(
             .insert(dialogue_box.clone())
             .with_children(move |parent| {
                 parent.spawn((
+                    SpriteBundle {
+                        texture: asset_server.load("black.png"),
+                        transform: Transform::from_scale(Vec3::splat(10.))
+                            .with_translation(Vec3::new(0., 0., -100.)),
+                        sprite: Sprite {
+                            color: Color::srgba(1., 1., 1., 0.8),
+                            ..Default::default()
+                        },
+                        ..Default::default()
+                    },
+                    DIALOGUE_BOX_RENDER_LAYER,
+                ));
+
+                parent.spawn((
                     type_writer.clone(),
                     TextMaterialMarkerNone,
                     DIALOGUE_BOX_RENDER_LAYER,

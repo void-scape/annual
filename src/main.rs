@@ -51,33 +51,33 @@ fn one() -> impl IntoBox<Opening> {
         "Hello!"
             .flower()
             .move_to(Izzy, Vec3::new(20., 15., 0.), Duration::from_secs(1)),
-        // t!("<7>...[0.5]!").izzy().move_to(
-        //     Izzy,
-        //     Vec3::new(40., 20., 0.),
-        //     Duration::from_millis(500),
-        // ),
-        // "Are you looking for something?".flower().move_camera_to(
-        //     flower::Flower,
-        //     Vec3::ZERO,
-        //     Duration::from_secs(1),
-        // ),
-        // t!("D-did you... [1] I mean, [0.5] are you a...")
-        //     .izzy()
-        //     .move_then_bind_camera(Izzy, Vec3::ZERO, Duration::from_secs_f32(0.5)),
-        // "Is something wrong?".flower().move_to(
-        //     Izzy,
-        //     Vec3::new(20., 20., 0.),
-        //     Duration::from_millis(500),
-        // ),
-        // t!("Are you... [0.5] talking?").izzy().move_to(
-        //     Izzy,
-        //     Vec3::new(20., 20., 0.),
-        //     Duration::from_millis(500),
-        // ),
-        // "Well, are you?".flower(),
-        // t!("<12>But you're a [0.25]<20> {`FLOWER`[wave]}!", |frag| frag
-        //     .sound("snd_bell.wav"))
-        // .izzy(),
+        t!("<7>...[0.5]!").izzy().move_to(
+            Izzy,
+            Vec3::new(40., 20., 0.),
+            Duration::from_millis(500),
+        ),
+        "Are you looking for something?".flower().move_camera_to(
+            flower::Flower,
+            Vec3::ZERO,
+            Duration::from_secs(1),
+        ),
+        t!("D-did you... [1] I mean, [0.5] are you a...")
+            .izzy()
+            .move_then_bind_camera(Izzy, Vec3::ZERO, Duration::from_secs_f32(0.5)),
+        "Is something wrong?".flower().move_to(
+            Izzy,
+            Vec3::new(60., 30., 0.),
+            Duration::from_millis(1500),
+        ),
+        t!("Are you... [0.5] talking?").izzy().move_to(
+            Izzy,
+            Vec3::new(70., 50., 0.),
+            Duration::from_millis(800),
+        ),
+        "Well, are you?".flower(),
+        t!("<12>But you're a [0.25]<20> {`FLOWER`[wave]}!", |frag| frag
+            .sound("snd_bell.wav"))
+        .izzy(),
         "Oh, I guess so...".flower(),
     )
         .lock(Izzy)
