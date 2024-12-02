@@ -1,4 +1,4 @@
-use crate::{asset_loading::AssetState, IntoFragment, OnEnd, OnStart, Threaded};
+use crate::{IntoFragment, OnEnd, OnStart, Threaded};
 use bevy::prelude::*;
 use std::time::Duration;
 
@@ -6,7 +6,7 @@ pub struct CameraPlugin;
 
 impl Plugin for CameraPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(AssetState::Loaded), init_camera)
+        app.add_systems(Startup, init_camera)
             .add_systems(Update, (camera_move_to, camera_binded));
     }
 }
@@ -80,17 +80,7 @@ where
         self,
         _marker: M,
     ) -> OnStart<Self, impl System<In = (), Out = ()>> {
-        let system = move |entity: Query<Entity, (With<M>, With<Transform>)>,
-                           camera: Query<Entity, With<MainCamera>>,
-                           mut commands: Commands| {
-            if let Ok(camera) = camera.get_single() {
-                if let Ok(entity) = entity.get_single() {
-                    commands.entity(camera).insert(Binded(entity));
-                }
-            }
-        };
-
-        OnStart::new(self, IntoSystem::into_system(system))
+        OnStart::new(self, IntoSystem::into_system(bind_camera::<M>))
     }
 
     fn move_then_bind_camera<M: Component>(
@@ -114,20 +104,26 @@ where
             }
         };
 
-        let bind = move |entity: Query<Entity, (With<M>, With<Transform>)>,
-                         camera: Query<Entity, With<MainCamera>>,
-                         mut commands: Commands| {
-            if let Ok(camera) = camera.get_single() {
-                if let Ok(entity) = entity.get_single() {
-                    commands.entity(camera).insert(Binded(entity));
-                }
-            }
-        };
-
         OnStart::new(
-            OnEnd::new(self, IntoSystem::into_system(bind)),
+            OnEnd::new(self, IntoSystem::into_system(bind_camera::<M>)),
             IntoSystem::into_system(mov),
         )
+    }
+}
+
+pub fn bind_camera<M: Component>(
+    entity: Query<Entity, (With<M>, With<Transform>)>,
+    camera: Query<Entity, With<MainCamera>>,
+    mut commands: Commands,
+) {
+    if let Ok(camera) = camera.get_single() {
+        if let Ok(entity) = entity.get_single() {
+            commands.entity(camera).insert(Binded(entity));
+        } else {
+            error!("Could not bind camera to entity: Entity not found");
+        }
+    } else {
+        error!("Could not bind camera to entity: Camera not found");
     }
 }
 
@@ -165,7 +161,7 @@ impl MoveTo {
 }
 
 #[derive(Component)]
-struct Binded(Entity);
+pub struct Binded(pub Entity);
 
 fn init_camera(mut commands: Commands) {
     let mut camera = Camera2dBundle::default();

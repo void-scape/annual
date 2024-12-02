@@ -2,7 +2,15 @@
 #![allow(clippy::type_complexity)]
 
 use asset_loading::AssetState;
-use bevy::{audio::Volume, prelude::*};
+use bevy::{
+    audio::Volume,
+    diagnostic::FrameTimeDiagnosticsPlugin,
+    prelude::*,
+    render::{
+        settings::{RenderCreation, WgpuSettings},
+        RenderPlugin,
+    },
+};
 use camera::CameraFragment;
 use characters::Izzy;
 use dialogue::fragment::*;
@@ -14,6 +22,7 @@ mod animation;
 mod asset_loading;
 mod camera;
 mod characters;
+mod collision;
 mod cutscene;
 mod dialogue;
 mod dialogue_box;
@@ -24,7 +33,19 @@ mod player;
 
 fn main() {
     App::default()
-        .add_plugins(DefaultPlugins.set(ImagePlugin::default_nearest()))
+        .add_plugins((
+            DefaultPlugins
+                .set(ImagePlugin::default_nearest())
+                .set(RenderPlugin {
+                    render_creation: RenderCreation::Automatic(WgpuSettings {
+                        // WARN this is a native only feature. It will not work with webgl or webgpu
+                        features: bevy::render::render_resource::WgpuFeatures::POLYGON_MODE_LINE,
+                        ..default()
+                    }),
+                    ..default()
+                }),
+            FrameTimeDiagnosticsPlugin,
+        ))
         .add_plugins((
             editor::EditorPlugin,
             asset_loading::AssetLoadingPlugin,
@@ -35,6 +56,7 @@ fn main() {
             dialogue::DialoguePlugin,
             cutscene::CutscenePlugin,
             camera::CameraPlugin,
+            collision::CollisionPlugin,
         ))
         .add_systems(Update, bevy_bits::close_on_escape)
         .add_systems(OnEnter(AssetState::Loaded), scene)
@@ -113,16 +135,16 @@ fn three() -> impl IntoBox<Opening> {
 }
 
 fn scene(mut commands: Commands) {
-    commands.spawn((
-        Opening,
-        Transform::default().with_translation(Vec3::new(800., 800., 0.)),
-    ));
-
-    crate::dialogue::fragment::run_after(
-        Duration::from_secs(1),
-        |mut commands: Commands| one().bind_camera(Izzy).spawn_box(&mut commands, &DESC),
-        &mut commands,
-    );
+    // commands.spawn((
+    //     Opening,
+    //     Transform::default().with_translation(Vec3::new(800., 800., 0.)),
+    // ));
+    //
+    // crate::dialogue::fragment::run_after(
+    //     Duration::from_secs(1),
+    //     |mut commands: Commands| one().bind_camera(Izzy).spawn_box(&mut commands, &DESC),
+    //     &mut commands,
+    // );
 }
 
 const DESC: DialogueBoxDescriptor = DialogueBoxDescriptor {

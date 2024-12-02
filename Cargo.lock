@@ -180,6 +180,7 @@ dependencies = [
  "bevy_asset_loader",
  "bevy_bits",
  "bevy_ecs_ldtk",
+ "bevy_ecs_tilemap",
  "bevy_editor_pls",
  "leafwing-input-manager",
  "macros",

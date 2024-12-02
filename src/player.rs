@@ -1,6 +1,9 @@
 use crate::{
     animation::{AnimationController, AnimationPlugin},
     asset_loading::loaded,
+    camera::MainCamera,
+    characters::Izzy,
+    collision::{Collider, DynamicBody},
     cutscene::{CutsceneMovement, CutsceneVelocity},
 };
 use bevy::prelude::*;
@@ -29,20 +32,55 @@ impl Plugin for PlayerPlugin {
             AnimationPlugin::<PlayerAnimation>::default(),
         ))
         .register_ldtk_entity::<PlayerBundle>("Player")
+        .add_systems(PreUpdate, init_camera)
         .add_systems(Update, (walk, animate_cutscene).run_if(loaded()));
     }
 }
 
-#[derive(Default, Bundle, LdtkEntity)]
+fn init_camera(
+    mut commands: Commands,
+    camera: Query<Entity, With<MainCamera>>,
+    player: Query<Entity, Added<Izzy>>,
+) {
+    if let Ok(player) = player.get_single() {
+        if let Ok(camera) = camera.get_single() {
+            commands
+                .entity(camera)
+                .insert(crate::camera::Binded(player));
+        } else {
+            error!("could not bind camera to player on startup: no camera found");
+        }
+    }
+}
+
+#[derive(Bundle, LdtkEntity)]
 pub struct PlayerBundle {
+    #[default]
     player: Player,
+    #[default]
     izzy: crate::characters::Izzy,
+    #[default]
+    body: DynamicBody,
+    #[with(init_collider)]
+    collider: Collider,
     #[with(init_animation_controller)]
     animation: AnimationController<PlayerAnimation>,
     #[with(init_input_map)]
     input: InputManagerBundle<Action>,
     #[sprite_sheet_bundle]
     sprite_sheet: LdtkSpriteSheetBundle,
+}
+
+fn init_collider(_: &EntityInstance) -> Collider {
+    Collider::from_circle(crate::collision::CircleCollider {
+        radius: 10.,
+        position: Vec2::ZERO,
+    })
+
+    // Collider::from_rect(crate::collision::RectCollider {
+    //     tl: Vec2::new(-10., -10.),
+    //     size: Vec2::new(40., 40.),
+    // })
 }
 
 #[derive(Clone, Copy, Hash, PartialEq, Eq)]
