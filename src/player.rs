@@ -3,7 +3,7 @@ use crate::{
     asset_loading::loaded,
     camera::MainCamera,
     characters::Izzy,
-    collision::{Collider, DynamicBody},
+    collision::{Collider, DynamicBody, DynamicBodyBundle},
     cutscene::{CutsceneMovement, CutsceneVelocity},
 };
 use bevy::prelude::*;
@@ -61,8 +61,8 @@ pub struct PlayerBundle {
     izzy: crate::characters::Izzy,
     #[default]
     body: DynamicBody,
-    #[with(init_collider)]
-    collider: Collider,
+    #[with(init_dyn_body)]
+    dynamic_body: DynamicBodyBundle,
     #[with(init_animation_controller)]
     animation: AnimationController<PlayerAnimation>,
     #[with(init_input_map)]
@@ -71,16 +71,11 @@ pub struct PlayerBundle {
     sprite_sheet: LdtkSpriteSheetBundle,
 }
 
-fn init_collider(_: &EntityInstance) -> Collider {
-    Collider::from_circle(crate::collision::CircleCollider {
-        radius: 10.,
-        position: Vec2::ZERO,
-    })
-
-    // Collider::from_rect(crate::collision::RectCollider {
-    //     tl: Vec2::new(-10., -10.),
-    //     size: Vec2::new(40., 40.),
-    // })
+fn init_dyn_body(_: &EntityInstance) -> DynamicBodyBundle {
+    DynamicBodyBundle {
+        collider: Collider::from_circle(Vec2::ZERO, 10.),
+        ..Default::default()
+    }
 }
 
 #[derive(Clone, Copy, Hash, PartialEq, Eq)]

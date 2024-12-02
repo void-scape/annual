@@ -8,43 +8,61 @@ pub struct CollisionPlugin;
 
 impl Plugin for CollisionPlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(debug::ShowCollision(false))
+        app.add_event::<TriggerEvent>()
+            .insert_resource(debug::ShowCollision(false))
             .add_systems(
-                Update,
+                PostUpdate,
                 (
-                    update_player_collision,
+                    handle_collisions,
                     debug::debug_display_collider_wireframe,
                     debug::update_show_collision,
                     debug::debug_show_collision_color,
                 )
-                    .run_if(loaded()),
+                    .run_if(loaded())
+                    .before(TransformSystem::TransformPropagate),
             );
     }
 }
 
+/// Emitted when a [`Trigger`] entity's collider is entered by a [`DynamicBody`] entity's collider.
 #[derive(Debug, Clone, Copy, Event)]
-pub struct PlayerCollideEvent {
-    /// The entity the player collided with.
-    pub with: Entity,
+pub struct TriggerEvent {
+    pub receiver: Entity,
+    /// The entity who `pulled` the trigger
+    pub emitter: Entity,
 }
-
-/// A marker component that indicates this entity should
-/// collide with the player.
-#[derive(Debug, Component, Clone, Copy)]
-pub struct CollideWithPlayer;
-
-#[derive(Debug, Component, Clone, Copy)]
-pub struct RemoveOnPlayerCollision;
 
 pub trait CollidesWith<T> {
     fn collides_with(&self, other: &T) -> bool;
+    fn resolution(&self, other: &T) -> Vec2;
 }
 
 #[derive(Debug, Default, Clone, Copy, Component)]
 pub struct StaticBody;
 
+#[derive(Default, Bundle)]
+pub struct StaticBodyBundle {
+    pub static_body: StaticBody,
+    pub collider: Collider,
+}
+
 #[derive(Debug, Default, Clone, Copy, Component)]
 pub struct DynamicBody;
+
+#[derive(Default, Bundle)]
+pub struct DynamicBodyBundle {
+    pub dynamic_body: DynamicBody,
+    pub collider: Collider,
+}
+
+#[derive(Debug, Default, Clone, Copy, Component)]
+pub struct Trigger;
+
+#[derive(Default, Bundle)]
+pub struct TriggerBundle {
+    pub trigger: Trigger,
+    pub collider: Collider,
+}
 
 /// To check for collisions, first convert this enum into an [AbsoluteCollider]
 /// with [Collider::absolute].
@@ -54,13 +72,19 @@ pub enum Collider {
     Circle(CircleCollider),
 }
 
+impl Default for Collider {
+    fn default() -> Self {
+        Self::from_rect(Vec2::ZERO, Vec2::ZERO)
+    }
+}
+
 impl Collider {
-    pub fn from_rect(rect: RectCollider) -> Self {
-        Self::Rect(rect)
+    pub fn from_rect(tl: Vec2, size: Vec2) -> Self {
+        Self::Rect(RectCollider { tl, size })
     }
 
-    pub fn from_circle(circle: CircleCollider) -> Self {
-        Self::Circle(circle)
+    pub fn from_circle(position: Vec2, radius: f32) -> Self {
+        Self::Circle(CircleCollider { position, radius })
     }
 
     // TODO: make this work in bevy
@@ -102,6 +126,15 @@ impl CollidesWith<Self> for AbsoluteCollider {
             (Self::Circle(s), Self::Circle(o)) => s.collides_with(o),
         }
     }
+
+    fn resolution(&self, other: &Self) -> Vec2 {
+        match (self, other) {
+            (Self::Rect(s), Self::Rect(o)) => s.resolution(o),
+            (Self::Rect(s), Self::Circle(o)) => s.resolution(o),
+            (Self::Circle(s), Self::Rect(o)) => s.resolution(o),
+            (Self::Circle(s), Self::Circle(o)) => s.resolution(o),
+        }
+    }
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Component)]
@@ -125,6 +158,20 @@ impl CollidesWith<Self> for RectCollider {
 
         !not_collided
     }
+
+    // TODO: this does not work
+    fn resolution(&self, other: &Self) -> Vec2 {
+        // Calculate the center points of both rectangles
+        let self_center = self.tl + self.size * 0.5;
+        let other_center = other.tl + other.size * 0.5;
+
+        // Determine push direction based on relative positions
+        let diff = self_center - other_center;
+        Vec2::new(
+            if diff.x == 0.0 { 0.0 } else { diff.x.signum() },
+            if diff.y == 0.0 { 0.0 } else { diff.y.signum() },
+        )
+    }
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Component)]
@@ -139,6 +186,30 @@ impl CollidesWith<Self> for CircleCollider {
         let combined_radii = self.radius.powi(2) + other.radius.powi(2);
 
         distance <= combined_radii
+    }
+
+    fn resolution(&self, other: &Self) -> Vec2 {
+        let diff = self.position - other.position;
+        let distance = diff.length();
+
+        // If not overlapping, return zero vector
+        if distance >= self.radius + other.radius {
+            return Vec2::ZERO;
+        }
+
+        // Handle the case where circles are at the same position
+        if distance == 0.0 {
+            return Vec2::new(self.radius + other.radius, 0.0); // Arbitrary direction
+        }
+
+        // Calculate how much the circles overlap
+        let overlap = (self.radius + other.radius) - distance;
+
+        // Calculate the direction to move
+        let direction = diff / distance; // Normalized direction vector
+
+        // Return the vector that will move self out of overlap
+        direction * overlap
     }
 }
 
@@ -168,23 +239,100 @@ impl CollidesWith<RectCollider> for CircleCollider {
 
         corner_dist <= self.radius.powi(2)
     }
+
+    fn resolution(&self, other: &RectCollider) -> Vec2 {
+        // Find the closest point on the rectangle to the circle's center
+        let closest = Vec2::new(
+            self.position.x.clamp(other.tl.x, other.tl.x + other.size.x),
+            self.position.y.clamp(other.tl.y, other.tl.y + other.size.y),
+        );
+
+        let diff = self.position - closest;
+        let distance = diff.length();
+
+        // If not overlapping, return zero vector
+        if distance >= self.radius {
+            return Vec2::ZERO;
+        }
+
+        // Handle case where circle center is exactly on rectangle edge
+        if distance == 0.0 {
+            // Find which edge we're closest to and push out accordingly
+            let to_left = self.position.x - other.tl.x;
+            let to_right = (other.tl.x + other.size.x) - self.position.x;
+            let to_top = self.position.y - other.tl.y;
+            let to_bottom = (other.tl.y + other.size.y) - self.position.y;
+
+            let min_dist = to_left.min(to_right).min(to_top).min(to_bottom);
+
+            if min_dist == to_left {
+                return Vec2::new(-self.radius, 0.0);
+            }
+            if min_dist == to_right {
+                return Vec2::new(self.radius, 0.0);
+            }
+            if min_dist == to_top {
+                return Vec2::new(0.0, -self.radius);
+            }
+            return Vec2::new(0.0, self.radius);
+        }
+
+        // Calculate the overlap and direction
+        let overlap = self.radius - distance;
+        let direction = diff / distance; // Normalized direction vector
+
+        // Return the vector that will move the circle out of overlap
+        direction * overlap
+    }
 }
 
 impl CollidesWith<CircleCollider> for RectCollider {
     fn collides_with(&self, other: &CircleCollider) -> bool {
         other.collides_with(self)
     }
+
+    fn resolution(&self, other: &CircleCollider) -> Vec2 {
+        other.resolution(self)
+    }
 }
 
-pub fn update_player_collision(
-    static_bodies: Query<(&Transform, &Collider), With<StaticBody>>,
-    dynamic_bodies: Query<(&Transform, &Collider), With<DynamicBody>>,
+pub fn handle_collisions(
+    bodies: Query<
+        (
+            Entity,
+            &Transform,
+            &Collider,
+            Option<&Trigger>,
+            Option<&StaticBody>,
+        ),
+        (Or<(With<Trigger>, With<StaticBody>)>, Without<DynamicBody>),
+    >,
+    mut dynamic_bodies: Query<(Entity, &mut Transform, &Collider), With<DynamicBody>>,
+    mut writer: EventWriter<TriggerEvent>,
 ) {
-    for (dyn_t, dyn_c) in dynamic_bodies.iter() {
-        let dyn_c = dyn_c.absolute(dyn_t);
-        for (t, c) in static_bodies.iter() {
-            if dyn_c.collides_with(&c.absolute(t)) {
-                // error!("static body collision with dynamic body!");
+    for (dyn_entity, mut dyn_trans, dyn_collider) in dynamic_bodies.iter_mut() {
+        let dyn_collider = dyn_collider.absolute(&dyn_trans);
+        for (body_entity, trans, c, trigger, static_body) in bodies.iter() {
+            let c = c.absolute(trans);
+            if dyn_collider.collides_with(&c) {
+                match (trigger, static_body) {
+                    (Some(_), Some(_)) => {
+                        warn!("StaticBody entity has Trigger component, this will not send trigger events!");
+                    }
+                    (Some(_), None) => {
+                        writer.send(TriggerEvent {
+                            receiver: body_entity,
+                            emitter: dyn_entity,
+                        });
+                    }
+                    (None, Some(_)) => {}
+                    (None, None) => unreachable!(),
+                }
+
+                if static_body.is_some() {
+                    let res_v = dyn_collider.resolution(&c);
+                    dyn_trans.translation += Vec3::new(res_v.x, res_v.y, 0.);
+                }
             }
         }
     }

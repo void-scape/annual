@@ -1,6 +1,6 @@
 use crate::{
     asset_loading::AssetState,
-    collision::{Collider, RectCollider, StaticBody},
+    collision::{Collider, RectCollider, StaticBody, StaticBodyBundle},
 };
 use bevy::{prelude::*, sprite::Wireframe2dPlugin};
 use bevy_asset_loader::asset_collection::AssetCollection;
@@ -92,25 +92,15 @@ fn build_tile_set_colliders(
         return;
     }
 
-    // for v in cached_collider_positions.into_iter() {
-    //     commands.spawn((
-    //         SpatialBundle::from_transform(Transform::from_xyz(v.x, v.y, 0.)),
-    //         Collider::from_rect(RectCollider {
-    //             tl: Vec2::ZERO,
-    //             size: Vec2::new(tile_size, tile_size),
-    //         }),
-    //         StaticBody,
-    //     ));
-    //     num_colliders += 1;
-    // }
-
     for (pos, collider) in
         build_colliders_from_vec2(cached_collider_positions, tile_size).into_iter()
     {
         commands.spawn((
             SpatialBundle::from_transform(Transform::from_xyz(pos.x, pos.y, 0.)),
-            collider,
-            StaticBody,
+            StaticBodyBundle {
+                collider,
+                ..Default::default()
+            },
         ));
         num_colliders += 1;
     }
@@ -215,10 +205,10 @@ pub fn build_colliders_from_vec2(
         for plate in plates.into_iter() {
             output.push((
                 Vec2::new(plate.x_start, plate.y),
-                Collider::from_rect(RectCollider {
-                    tl: Vec2::ZERO,
-                    size: Vec2::new(plate.x_end - plate.x_start, tile_size),
-                }),
+                Collider::from_rect(
+                    Vec2::ZERO,
+                    Vec2::new(plate.x_end - plate.x_start, tile_size),
+                ),
             ));
         }
     }
