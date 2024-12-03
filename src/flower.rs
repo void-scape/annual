@@ -1,4 +1,4 @@
-use crate::{asset_loading::loaded, player::Player};
+use crate::{asset_loading::loaded, ldtk::Entities, player::Player};
 use bevy::prelude::*;
 use bevy_ecs_ldtk::{app::LdtkEntityAppExt, LdtkEntity};
 
@@ -6,7 +6,7 @@ pub struct FlowerPlugin;
 
 impl Plugin for FlowerPlugin {
     fn build(&self, app: &mut App) {
-        app.register_ldtk_entity::<FlowerBundle>("Flower")
+        app.register_ldtk_entity::<FlowerBundle>(Entities::Flower.identifier())
             .add_systems(
                 Update,
                 talk.run_if(crate::player::on_player_interact)

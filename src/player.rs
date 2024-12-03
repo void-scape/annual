@@ -5,6 +5,7 @@ use crate::{
     characters::Izzy,
     collision::{Collider, DynamicBody, DynamicBodyBundle},
     cutscene::{CutsceneMovement, CutsceneVelocity},
+    ldtk::Entities,
 };
 use bevy::prelude::*;
 use bevy_ecs_ldtk::app::LdtkEntityAppExt;
@@ -31,7 +32,7 @@ impl Plugin for PlayerPlugin {
             InputManagerPlugin::<Action>::default(),
             AnimationPlugin::<PlayerAnimation>::default(),
         ))
-        .register_ldtk_entity::<PlayerBundle>("Player")
+        .register_ldtk_entity::<PlayerBundle>(Entities::Player.identifier())
         .add_systems(PreUpdate, init_camera)
         .add_systems(Update, (walk, animate_cutscene).run_if(loaded()));
     }
@@ -59,8 +60,6 @@ pub struct PlayerBundle {
     player: Player,
     #[default]
     izzy: crate::characters::Izzy,
-    #[default]
-    body: DynamicBody,
     #[with(init_dyn_body)]
     dynamic_body: DynamicBodyBundle,
     #[with(init_animation_controller)]
@@ -145,8 +144,8 @@ fn init_input_map(_: &EntityInstance) -> InputManagerBundle<Action> {
         (Action::Walk(Direction::Down), KeyCode::KeyS),
         (Action::Walk(Direction::Left), KeyCode::KeyA),
         (Action::Walk(Direction::Right), KeyCode::KeyD),
-        (Action::Interact, KeyCode::KeyE),
-    ]);
+    ])
+    .with_one_to_many(Action::Interact, [KeyCode::KeyE, KeyCode::Space]);
     InputManagerBundle::with_map(input_map)
 }
 

@@ -93,7 +93,7 @@ impl Plugin for DialoguePlugin {
                 )
                     .in_set(EvaluateSet),
             )
-            .add_systems(Update, fragment::manage_delay);
+            .add_systems(PreUpdate, fragment::manage_delay);
     }
 }
 

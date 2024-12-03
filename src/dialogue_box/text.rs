@@ -2,12 +2,16 @@ use super::{
     audio::{DeletedTextSfx, RevealedTextSfx},
     BoxToken, DialogueBox, DialogueBoxFont, TypeWriterState,
 };
-use crate::dialogue::{FragmentEndEvent, FragmentEvent};
+use crate::{
+    dialogue::{FragmentEndEvent, FragmentEvent},
+    player::Action,
+};
 use bevy::{
     input::{keyboard::KeyboardInput, ButtonState},
     prelude::*,
     window::PrimaryWindow,
 };
+use leafwing_input_manager::prelude::ActionState;
 
 pub fn handle_dialogue_box_events(
     mut reader: EventReader<FragmentEvent<BoxToken>>,
@@ -20,7 +24,7 @@ pub fn handle_dialogue_box_events(
         &mut TypeWriterState,
         &DialogueBoxFont,
     )>,
-    mut input: EventReader<KeyboardInput>,
+    input: Query<&ActionState<Action>>,
     window: Query<Entity, With<PrimaryWindow>>,
     mut commands: Commands,
 ) {
@@ -48,10 +52,11 @@ pub fn handle_dialogue_box_events(
         }
     }
 
-    let received_input = input.read().next().is_some_and(|i| {
-        (i.state == ButtonState::Pressed && i.window == window.single())
-            && (i.key_code == KeyCode::Space || i.key_code == KeyCode::Enter)
-    });
+    let received_input = if let Ok(a) = input.get_single() {
+        a.just_pressed(&Action::Interact)
+    } else {
+        false
+    };
 
     for (i, (entity, mut text, mut state, box_font)) in type_writers.iter_mut().enumerate() {
         // TODO: this will be cheap in the custom pipeline

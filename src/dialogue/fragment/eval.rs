@@ -1,6 +1,6 @@
 use super::{FragmentNode, IntoFragment, Threaded, Unregistered};
 use crate::dialogue::evaluate::{Evaluate, EvaluatedFragments};
-use crate::dialogue::{EvaluateSet, FragmentUpdate};
+use crate::dialogue::{EvaluateSet, FragmentId, FragmentUpdate};
 use bevy::prelude::*;
 use std::marker::PhantomData;
 
@@ -13,7 +13,7 @@ pub struct Evaluated<F, T, O> {
 impl<Context, Data, F, T, O> IntoFragment<Context, Data> for Evaluated<F, Unregistered<T>, O>
 where
     F: IntoFragment<Context, Data>,
-    T: System<In = (), Out = O>,
+    T: System<In = FragmentId, Out = O>,
     O: Evaluate + Send + 'static,
     Data: Threaded,
 {
@@ -31,8 +31,8 @@ where
             let mut schedules = world.resource_mut::<Schedules>();
             schedules.add_systems(
                 FragmentUpdate,
-                self.evaluation
-                    .0
+                (move || id)
+                    .pipe(self.evaluation.0)
                     .pipe(
                         move |eval: In<O>, mut evaluated_dialogue: ResMut<EvaluatedFragments>| {
                             let eval = eval.0.evaluate();

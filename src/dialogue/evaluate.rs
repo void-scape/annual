@@ -79,6 +79,10 @@ impl FragmentStates {
         self.state.entry(id).or_default()
     }
 
+    pub fn get(&self, id: FragmentId) -> Option<&FragmentState> {
+        self.state.get(&id)
+    }
+
     pub fn is_done(&self, id: FragmentId) -> bool {
         self.state
             .get(&id)

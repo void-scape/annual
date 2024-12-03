@@ -5,6 +5,8 @@ use asset_loading::AssetState;
 use bevy::{
     audio::Volume,
     diagnostic::FrameTimeDiagnosticsPlugin,
+    input::keyboard::{Key, KeyboardInput},
+    prelude::*,
     prelude::*,
     render::{
         settings::{RenderCreation, WgpuSettings},
@@ -13,8 +15,8 @@ use bevy::{
 };
 use camera::CameraFragment;
 use characters::Izzy;
-use dialogue::fragment::*;
-use dialogue_box::{DialogueBoxDescriptor, IntoBox, SpawnBox, DIALOGUE_BOX_SPRITE_Z};
+use dialogue::{fragment::*, FragmentEndEvent, FragmentEvent, FragmentId};
+use dialogue_box::{BoxToken, DialogueBoxDescriptor, IntoBox, SpawnBox, DIALOGUE_BOX_SPRITE_Z};
 use macros::t;
 use std::time::Duration;
 
@@ -28,6 +30,7 @@ mod dialogue;
 mod dialogue_box;
 mod editor;
 mod flower;
+mod interactions;
 mod ldtk;
 mod player;
 
@@ -57,7 +60,9 @@ fn main() {
             cutscene::CutscenePlugin,
             camera::CameraPlugin,
             collision::CollisionPlugin,
+            interactions::InteractionPlugin,
         ))
+        .add_event::<FragmentEvent<BoxToken>>()
         .add_systems(Update, bevy_bits::close_on_escape)
         .add_systems(OnEnter(AssetState::Loaded), scene)
         .run();
@@ -130,16 +135,16 @@ fn three() -> impl IntoBox<Opening> {
         t!("I know! [0.25] I'll come by tomorrow.").izzy(),
         "Okay!".flower(),
         "I'll bring all my friends.".izzy(),
-        "I'll be waiting.".flower(),
+        "I'll be right here!".flower(),
     )
 }
 
 fn scene(mut commands: Commands) {
-    // commands.spawn((
-    //     Opening,
-    //     Transform::default().with_translation(Vec3::new(800., 800., 0.)),
-    // ));
-    //
+    commands.spawn((
+        Opening,
+        Transform::default().with_translation(Vec3::new(800., 800., 0.)),
+    ));
+
     // crate::dialogue::fragment::run_after(
     //     Duration::from_secs(1),
     //     |mut commands: Commands| one().bind_camera(Izzy).spawn_box(&mut commands, &DESC),

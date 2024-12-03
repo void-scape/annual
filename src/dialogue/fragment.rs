@@ -1,7 +1,12 @@
 use crate::dialogue::{FragmentEvent, FragmentId, FragmentUpdate};
-use bevy::{asset::AssetPath, ecs::event::EventRegistry, prelude::*};
+use bevy::{
+    asset::AssetPath,
+    ecs::event::EventRegistry,
+    prelude::*,
+    utils::{HashMap, HashSet},
+};
 use hooks::OnEndCtx;
-use std::marker::PhantomData;
+use std::{any::TypeId, marker::PhantomData};
 
 mod all;
 mod delay;
@@ -180,6 +185,9 @@ where
     }
 }
 
+#[derive(Resource)]
+struct ContextDataPair(HashSet<TypeId>);
+
 /// Spawn a fragment with its associated ID tree.
 pub fn spawn_fragment<Context, Data>(
     fragment: impl Fragment<Context, Data> + Send + Sync + 'static,
@@ -195,17 +203,22 @@ pub fn spawn_fragment<Context, Data>(
             EventRegistry::register_event::<FragmentEvent<Data>>(world);
         }
 
-        // TODO: make sure these can't overlap
-        let mut schedules = world.resource_mut::<Schedules>();
-        schedules.add_systems(
-            FragmentUpdate,
-            (
-                evaluated_fragments::<Context, Data>,
-                watch_events::<Context, Data>,
-            )
-                .chain()
-                .after(EvaluateSet),
-        );
+        // These systems should only be inserted once per `Context`, `Data` pair.
+        let id = std::any::TypeId::of::<(Context, Data)>();
+        let mut pairs = world.get_resource_or_insert_with(|| ContextDataPair(Default::default()));
+
+        if pairs.0.insert(id) {
+            let mut schedules = world.resource_mut::<Schedules>();
+            schedules.add_systems(
+                FragmentUpdate,
+                (
+                    evaluated_fragments::<Context, Data>,
+                    watch_events::<Context, Data>,
+                )
+                    .chain()
+                    .after(EvaluateSet),
+            );
+        }
     });
 
     let associated_frag = commands
@@ -356,7 +369,7 @@ pub trait FragmentExt: Sized {
     /// Wrap this fragment in an evaluation.
     fn eval<S, M, O>(self, system: S) -> Evaluated<Self, Unregistered<S::System>, O>
     where
-        S: IntoSystem<(), O, M>,
+        S: IntoSystem<FragmentId, O, M>,
     {
         Evaluated {
             fragment: self,
@@ -504,7 +517,7 @@ fn evaluated_fragments<Context, Data: Threaded>(
     if let Some((_, _, eval)) = evaluations.first() {
         let selections = evaluations.iter().take_while(|e| e.2.count == eval.count);
 
-        for (id, fragment, _) in selections {
+        for (id, fragment, e) in selections {
             if let Ok((mut fragment, ctx)) = fragments.get_mut(*fragment) {
                 fragment
                     .0

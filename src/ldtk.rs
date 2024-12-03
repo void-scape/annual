@@ -7,6 +7,10 @@ use bevy_asset_loader::asset_collection::AssetCollection;
 use bevy_ecs_ldtk::prelude::*;
 use bevy_ecs_tilemap::map::TilemapTileSize;
 
+mod entities;
+
+pub use entities::{Entities, Interactions};
+
 #[derive(AssetCollection, Resource)]
 pub struct LdtkAssets {
     #[asset(path = "ldtk/annual.ldtk")]
