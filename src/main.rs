@@ -5,8 +5,6 @@ use asset_loading::AssetState;
 use bevy::{
     audio::Volume,
     diagnostic::FrameTimeDiagnosticsPlugin,
-    input::keyboard::{Key, KeyboardInput},
-    prelude::*,
     prelude::*,
     render::{
         settings::{RenderCreation, WgpuSettings},
@@ -15,6 +13,7 @@ use bevy::{
 };
 use camera::CameraFragment;
 use characters::Izzy;
+use dialogue::fragment::*;
 use dialogue::{fragment::*, FragmentEndEvent, FragmentEvent, FragmentId};
 use dialogue_box::{BoxToken, DialogueBoxDescriptor, IntoBox, SpawnBox, DIALOGUE_BOX_SPRITE_Z};
 use macros::t;
@@ -140,11 +139,20 @@ fn three() -> impl IntoBox<Opening> {
 }
 
 fn scene(mut commands: Commands) {
+    use collision::trigger::*;
+    use collision::*;
+
     commands.spawn((
-        Opening,
-        Transform::default().with_translation(Vec3::new(800., 800., 0.)),
+        SpatialBundle::from_transform(Transform::from_xyz(700., 700., 0.)),
+        Trigger(Collider::from_rect(Vec2::ZERO, Vec2::splat(40.))),
+        TriggerLayer(0),
     ));
 
+    // commands.spawn((
+    //     Opening,
+    //     Transform::default().with_translation(Vec3::new(800., 800., 0.)),
+    // ));
+    //
     // crate::dialogue::fragment::run_after(
     //     Duration::from_secs(1),
     //     |mut commands: Commands| one().bind_camera(Izzy).spawn_box(&mut commands, &DESC),

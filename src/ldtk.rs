@@ -1,6 +1,6 @@
 use crate::{
     asset_loading::AssetState,
-    collision::{Collider, RectCollider, StaticBody, StaticBodyBundle},
+    collision::{Collider, StaticBodyBundle},
 };
 use bevy::{prelude::*, sprite::Wireframe2dPlugin};
 use bevy_asset_loader::asset_collection::AssetCollection;
@@ -112,10 +112,7 @@ fn build_tile_set_colliders(
     println!("num_colliders: {num_colliders}");
 }
 
-pub fn build_colliders_from_vec2(
-    mut positions: Vec<Vec2>,
-    tile_size: f32,
-) -> Vec<(Vec2, Collider)> {
+fn build_colliders_from_vec2(mut positions: Vec<Vec2>, tile_size: f32) -> Vec<(Vec2, Collider)> {
     positions.sort_by(|a, b| {
         let y_cmp = a.y.partial_cmp(&b.y).unwrap_or(std::cmp::Ordering::Equal);
         if y_cmp == std::cmp::Ordering::Equal {

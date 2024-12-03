@@ -3,7 +3,7 @@ use crate::{
     asset_loading::loaded,
     camera::MainCamera,
     characters::Izzy,
-    collision::{Collider, DynamicBody, DynamicBodyBundle},
+    collision::{trigger::TriggerLayer, Collider, DynamicBodyBundle, StaticBodyBundle},
     cutscene::{CutsceneMovement, CutsceneVelocity},
     ldtk::Entities,
 };
@@ -33,8 +33,9 @@ impl Plugin for PlayerPlugin {
             AnimationPlugin::<PlayerAnimation>::default(),
         ))
         .register_ldtk_entity::<PlayerBundle>(Entities::Player.identifier())
+        .register_ldtk_entity::<NpcBundle>("Npc")
         .add_systems(PreUpdate, init_camera)
-        .add_systems(Update, (walk, animate_cutscene).run_if(loaded()));
+        .add_systems(FixedUpdate, (walk, animate_cutscene).run_if(loaded()));
     }
 }
 
@@ -54,12 +55,30 @@ fn init_camera(
     }
 }
 
-#[derive(Bundle, LdtkEntity)]
+#[derive(Bundle, Default, LdtkEntity)]
+pub struct NpcBundle {
+    massive: crate::collision::Massive,
+    #[with(init_dyn_body)]
+    dynamic_body: DynamicBodyBundle,
+    // #[with(init_static_body)]
+    // dynamic_body: crate::collision::StaticBodyBundle,
+    #[sprite_sheet_bundle]
+    sprite_sheet: LdtkSpriteSheetBundle,
+}
+
+// fn init_static_body(_: &EntityInstance) -> crate::collision::StaticBodyBundle {
+//     crate::collision::StaticBodyBundle {
+//         collider: Collider::from_circle(Vec2::ZERO, 10.),
+//         // collider: Collider::from_rect(Vec2::ZERO, Vec2::splat(10.)),
+//         ..Default::default()
+//     }
+// }
+
+#[derive(Bundle, Default, LdtkEntity)]
 pub struct PlayerBundle {
-    #[default]
     player: Player,
-    #[default]
     izzy: crate::characters::Izzy,
+    trigger: TriggerLayer,
     #[with(init_dyn_body)]
     dynamic_body: DynamicBodyBundle,
     #[with(init_animation_controller)]
@@ -73,6 +92,7 @@ pub struct PlayerBundle {
 fn init_dyn_body(_: &EntityInstance) -> DynamicBodyBundle {
     DynamicBodyBundle {
         collider: Collider::from_circle(Vec2::ZERO, 10.),
+        // collider: Collider::from_rect(Vec2::ZERO, Vec2::splat(10.)),
         ..Default::default()
     }
 }

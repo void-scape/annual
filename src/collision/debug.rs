@@ -1,3 +1,4 @@
+use super::trigger::{Trigger, TriggerEvent};
 use super::{Collider, CollidesWith, DynamicBody, StaticBody};
 use bevy::input::keyboard::KeyboardInput;
 use bevy::input::ButtonState;
@@ -72,6 +73,7 @@ pub fn update_show_collision(
 
 pub fn debug_display_collider_wireframe(
     naked_colliders: Query<(Entity, &Collider), (Without<Marked>, With<Transform>)>,
+    naked_trigger_colliders: Query<(Entity, &Trigger), (Without<Marked>, With<Transform>)>,
     frames: Query<Entity, With<DebugWireframe>>,
     marked: Query<Entity, With<Marked>>,
     mut commands: Commands,
@@ -80,7 +82,10 @@ pub fn debug_display_collider_wireframe(
     show: Res<ShowCollision>,
 ) {
     if show.0 {
-        for (entity, collider) in naked_colliders.iter() {
+        for (entity, collider) in naked_colliders
+            .iter()
+            .chain(naked_trigger_colliders.iter().map(|(e, t)| (e, &t.0)))
+        {
             let wireframe = commands
                 .spawn((
                     DebugWireframe(entity),
@@ -96,6 +101,22 @@ pub fn debug_display_collider_wireframe(
 
         for entity in marked.iter() {
             commands.entity(entity).remove::<Marked>();
+        }
+    }
+}
+
+pub fn debug_show_trigger_color(
+    triggers: Query<&Children, (With<Trigger>, With<Marked>)>,
+    mut wireframes: Query<&mut Wireframe2dColor>,
+    mut reader: EventReader<TriggerEvent>,
+) {
+    for event in reader.read() {
+        if let Ok(children) = triggers.get(event.trigger) {
+            for child in children.iter() {
+                if let Ok(mut frame) = wireframes.get_mut(*child) {
+                    frame.color = Srgba::GREEN;
+                }
+            }
         }
     }
 }
