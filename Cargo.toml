@@ -4,41 +4,23 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-macros = { path = "macros" }
+# macros = { path = "macros" }
 bevy_bits = { path = "bevy_bits" }
 paste = "1.0.15"
 rand = "0.8.5"
 winnow = "0.6.20"
-bevy_editor_pls = "0.10.0"
-bevy_ecs_ldtk = { version = "0.10.0", features = ["atlas"] }
-leafwing-input-manager = "0.15.1"
-bevy_asset_loader = "0.21.0"
-bevy_ecs_tilemap = "0.14.0"
+# leafwing-input-manager = "0.15.1"
+bevy_asset_loader = "0.22.0"
+bevy_ldtk_scene = { path = "bevy_ldtk_scene" }
+bevy_sequence = { path = "bevy_sequence" }
 
 [dependencies.bevy]
-version = "0.14.1"
+version = "0.15"
 features = ["dynamic_linking", "wav", "mp3", "jpeg"]
 
-[dependencies.pulldown-cmark]
-version = "0.12.2"
-default-features = false
-features = ["simd"]
-
 [build-dependencies]
-bevy_ecs_ldtk = { version = "0.10.0" }
-serde_json = "1.0"
-serde = "1.0"
-walkdir = "2.5"
-convert_case = "0.6"
-syn = { version = "2.0", default-features = false, features = ["full"] }
-quote = { version = "1.0", default-features = false }
-prettyplease = { version = "0.2", default-features = false }
-proc-macro2 = { version = "1.0", default-features = false }
+bevy_ldtk_scene = { path = "bevy_ldtk_scene" }
 
-
-[features]
-default = ["editor"]
-editor = []
 
 # Enable a small amount of optimization in the dev profile.
 [profile.dev]

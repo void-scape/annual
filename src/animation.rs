@@ -93,13 +93,15 @@ impl<A: Animation> AnimationController<A> {
 }
 
 fn animation<A: Animation>(
-    mut query: Query<(&mut TextureAtlas, &mut AnimationController<A>)>,
+    mut query: Query<(&mut Sprite, &mut AnimationController<A>)>,
     time: Res<Time>,
 ) {
-    for (mut atlas, mut animation) in query.iter_mut() {
+    for (mut sprite, mut animation) in query.iter_mut() {
         animation.update(&time);
         if let Some(index) = animation.index() {
-            atlas.index = index;
+            if let Some(atlas) = &mut sprite.texture_atlas {
+                atlas.index = index;
+            }
         }
     }
 }

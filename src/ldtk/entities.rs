@@ -1,1 +1,1 @@
-include!(concat!(env!("OUT_DIR"), "/entities.rs"));
+include!(concat!(env!("OUT_DIR"), "/ldtk.rs"));

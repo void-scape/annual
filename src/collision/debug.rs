@@ -15,11 +15,11 @@ impl Collider {
         meshes: &mut Assets<Mesh>,
         materials: &mut Assets<ColorMaterial>,
     ) -> impl Bundle {
-        let bundle: MaterialMesh2dBundle<ColorMaterial> = match self {
-            Self::Rect(rect) => MaterialMesh2dBundle {
-                mesh: meshes.add(Rectangle::new(rect.size.x, rect.size.y)).into(),
-                material: materials.add(Color::NONE),
-                transform: Transform::from_xyz(
+        ( match self {
+            Self::Rect(rect) => (
+                Mesh2d(meshes.add(Rectangle::new(rect.size.x, rect.size.y)).into()),
+                MeshMaterial2d(materials.add(Color::NONE)),
+                Transform::from_xyz(
                     // 0., 0.,
                     rect.tl.x + rect.size.x / 2.,
                     rect.tl.y + rect.size.y / 2.,
@@ -27,21 +27,17 @@ impl Collider {
                     // rect.tl.y,
                     100.,
                 ),
-                ..default()
-            },
-            Self::Circle(circle) => MaterialMesh2dBundle {
-                mesh: meshes.add(Circle::new(circle.radius)).into(),
-                material: materials.add(Color::NONE),
-                transform: Transform::from_xyz(circle.position.x, circle.position.y, 100.),
-                ..default()
-            },
-        };
+            ),
+            Self::Circle(circle) => (
+                Mesh2d(meshes.add(Circle::new(circle.radius)).into()),
+                MeshMaterial2d(materials.add(Color::NONE)),
+                Transform::from_xyz(circle.position.x, circle.position.y, 100.),
+            ),
+        },
 
-        (
-            bundle,
             Wireframe2d,
             Wireframe2dColor {
-                color: Srgba::WHITE,
+                color: Srgba::WHITE.into(),
             },
         )
     }
@@ -114,7 +110,7 @@ pub fn debug_show_trigger_color(
         if let Ok(children) = triggers.get(event.trigger) {
             for child in children.iter() {
                 if let Ok(mut frame) = wireframes.get_mut(*child) {
-                    frame.color = Srgba::GREEN;
+                    frame.color = Srgba::GREEN.into();
                 }
             }
         }
@@ -127,7 +123,7 @@ pub fn debug_show_collision_color(
     mut wireframes: Query<&mut Wireframe2dColor>,
 ) {
     for mut frame in wireframes.iter_mut() {
-        frame.color = Srgba::WHITE;
+        frame.color = Srgba::WHITE.into();
     }
 
     for (dyn_t, dyn_c) in dynamic_bodies.iter() {
@@ -136,7 +132,7 @@ pub fn debug_show_collision_color(
             if dyn_c.collides_with(&c.absolute(t)) {
                 for child in children.iter() {
                     if let Ok(mut frame) = wireframes.get_mut(*child) {
-                        frame.color = Srgba::RED;
+                        frame.color = Srgba::RED.into();
                     }
                 }
             }

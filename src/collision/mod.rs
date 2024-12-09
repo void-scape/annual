@@ -51,26 +51,16 @@ impl Plugin for CollisionPlugin {
 ///
 /// Moving a static body entity will NOT result in their collision being updated.
 #[derive(Debug, Default, Clone, Copy, Component)]
+#[require(Collider)]
 pub struct StaticBody;
 
-#[derive(Default, Bundle)]
-pub struct StaticBodyBundle {
-    pub static_body: StaticBody,
-    pub collider: Collider,
-}
-
 #[derive(Debug, Default, Clone, Copy, Component)]
+#[require(Collider)]
 pub struct DynamicBody;
 
 /// Prevents a dynamic body entity from being pushed.
 #[derive(Debug, Default, Clone, Copy, Component)]
 pub struct Massive;
-
-#[derive(Default, Bundle)]
-pub struct DynamicBodyBundle {
-    pub dynamic_body: DynamicBody,
-    pub collider: Collider,
-}
 
 /// To check for collisions, first convert this enum into an [`AbsoluteCollider`]
 /// with [`Collider::absolute`].

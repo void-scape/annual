@@ -1,4 +1,3 @@
-use crate::ldtk::LdtkAssets;
 use bevy::prelude::*;
 use bevy_asset_loader::loading_state::*;
 use config::ConfigureLoadingState;
@@ -19,7 +18,7 @@ impl Plugin for AssetLoadingPlugin {
         app.init_state::<AssetState>().add_loading_state(
             LoadingState::new(AssetState::Loading)
                 .continue_to_state(AssetState::Loaded)
-                .load_collection::<LdtkAssets>(),
+                // .load_collection::<LdtkAssets>(),
             // .load_collection::<AudioAssets>(),
         );
     }

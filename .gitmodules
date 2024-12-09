@@ -4,3 +4,9 @@
 [submodule "bevy-tilemap-editor-pls"]
 	path = bevy-tilemap-editor-pls
 	url = https://github.com/InnocentusLime/bevy-tilemap-editor-pls
+[submodule "bevy_ldtk_scene"]
+	path = bevy_ldtk_scene
+	url = https://github.com/void-scape/bevy_ldtk_scene
+[submodule "bevy_sequence"]
+	path = bevy_sequence
+	url = https://github.com/corvusprudens/bevy_sequence

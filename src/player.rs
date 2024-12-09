@@ -3,13 +3,11 @@ use crate::{
     asset_loading::loaded,
     camera::MainCamera,
     characters::Izzy,
-    collision::{trigger::TriggerLayer, Collider, DynamicBodyBundle, StaticBodyBundle},
+    collision::{trigger::TriggerLayer, Collider, DynamicBody},
     cutscene::{CutsceneMovement, CutsceneVelocity},
     ldtk::Entities,
 };
 use bevy::prelude::*;
-use bevy_ecs_ldtk::app::LdtkEntityAppExt;
-use bevy_ecs_ldtk::prelude::*;
 use leafwing_input_manager::{
     plugin::InputManagerPlugin,
     prelude::{ActionState, InputMap},
@@ -32,8 +30,8 @@ impl Plugin for PlayerPlugin {
             InputManagerPlugin::<Action>::default(),
             AnimationPlugin::<PlayerAnimation>::default(),
         ))
-        .register_ldtk_entity::<PlayerBundle>(Entities::Player.identifier())
-        .register_ldtk_entity::<NpcBundle>("Npc")
+        // .register_ldtk_entity::<PlayerBundle>(Entities::Player.identifier())
+        // .register_ldtk_entity::<NpcBundle>("Npc")
         .add_systems(PreUpdate, init_camera)
         .add_systems(FixedUpdate, (walk, animate_cutscene).run_if(loaded()));
     }
@@ -55,16 +53,16 @@ fn init_camera(
     }
 }
 
-#[derive(Bundle, Default, LdtkEntity)]
-pub struct NpcBundle {
-    massive: crate::collision::Massive,
-    #[with(init_dyn_body)]
-    dynamic_body: DynamicBodyBundle,
-    // #[with(init_static_body)]
-    // dynamic_body: crate::collision::StaticBodyBundle,
-    #[sprite_sheet_bundle]
-    sprite_sheet: LdtkSpriteSheetBundle,
-}
+// #[derive(Bundle, Default, LdtkEntity)]
+// pub struct NpcBundle {
+//     massive: crate::collision::Massive,
+//     #[with(init_dyn_body)]
+//     dynamic_body: DynamicBodyBundle,
+//     // #[with(init_static_body)]
+//     // dynamic_body: crate::collision::StaticBodyBundle,
+//     #[sprite_sheet_bundle]
+//     sprite_sheet: LdtkSpriteSheetBundle,
+// }
 
 // fn init_static_body(_: &EntityInstance) -> crate::collision::StaticBodyBundle {
 //     crate::collision::StaticBodyBundle {
@@ -74,27 +72,27 @@ pub struct NpcBundle {
 //     }
 // }
 
-#[derive(Bundle, Default, LdtkEntity)]
-pub struct PlayerBundle {
-    player: Player,
-    izzy: crate::characters::Izzy,
-    trigger: TriggerLayer,
-    #[with(init_dyn_body)]
-    dynamic_body: DynamicBodyBundle,
-    #[with(init_animation_controller)]
-    animation: AnimationController<PlayerAnimation>,
-    #[with(init_input_map)]
-    input: InputManagerBundle<Action>,
-    #[sprite_sheet_bundle]
-    sprite_sheet: LdtkSpriteSheetBundle,
-}
+#[derive(Component)]
+#[require(Izzy, TriggerLayer(|| TriggerLayer(0)), DynamicBody, Collider(player_collider), AnimationController<PlayerAnimation>)]
+pub struct Player;
 
-fn init_dyn_body(_: &EntityInstance) -> DynamicBodyBundle {
-    DynamicBodyBundle {
-        collider: Collider::from_circle(Vec2::ZERO, 10.),
-        // collider: Collider::from_rect(Vec2::ZERO, Vec2::splat(10.)),
-        ..Default::default()
-    }
+// #[derive(Bundle, Default, LdtkEntity)]
+// pub struct PlayerBundle {
+//     player: Player,
+//     izzy: crate::characters::Izzy,
+//     trigger: TriggerLayer,
+//     #[with(init_dyn_body)]
+//     dynamic_body: DynamicBodyBundle,
+//     #[with(init_animation_controller)]
+//     animation: AnimationController<PlayerAnimation>,
+//     #[with(init_input_map)]
+//     input: InputManagerBundle<Action>,
+//     #[sprite_sheet_bundle]
+//     sprite_sheet: LdtkSpriteSheetBundle,
+// }
+
+fn player_collider() -> Collider {
+    Collider::from_circle(Vec2::ZERO, 10.)
 }
 
 #[derive(Clone, Copy, Hash, PartialEq, Eq)]
@@ -145,7 +143,7 @@ impl Direction {
     }
 }
 
-fn init_animation_controller(_: &EntityInstance) -> AnimationController<PlayerAnimation> {
+fn init_animation_controller() -> AnimationController<PlayerAnimation> {
     AnimationController::new(
         5.0,
         [
@@ -158,7 +156,7 @@ fn init_animation_controller(_: &EntityInstance) -> AnimationController<PlayerAn
     )
 }
 
-fn init_input_map(_: &EntityInstance) -> InputManagerBundle<Action> {
+fn init_input_map() -> InputManagerBundle<Action> {
     let input_map = InputMap::new([
         (Action::Walk(Direction::Up), KeyCode::KeyW),
         (Action::Walk(Direction::Down), KeyCode::KeyS),
@@ -168,9 +166,6 @@ fn init_input_map(_: &EntityInstance) -> InputManagerBundle<Action> {
     .with_one_to_many(Action::Interact, [KeyCode::KeyE, KeyCode::Space]);
     InputManagerBundle::with_map(input_map)
 }
-
-#[derive(Default, Component)]
-pub struct Player;
 
 fn walk(
     mut player: Query<
