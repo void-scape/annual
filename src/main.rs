@@ -11,6 +11,8 @@ use bevy::{
         RenderPlugin,
     },
 };
+use bevy_bits::text::TypeWriterSection;
+use bevy_sequence::prelude::*;
 // use camera::CameraFragment;
 // use characters::Izzy;
 // use dialogue::fragment::*;
@@ -21,13 +23,12 @@ use std::time::Duration;
 
 mod animation;
 mod asset_loading;
-mod text;
 // mod camera;
 // mod characters;
 mod collision;
 // mod cutscene;
 // mod dialogue;
-// mod dialogue_box;
+mod dialogue_box;
 mod flower;
 // mod interactions;
 mod ldtk;
@@ -54,7 +55,7 @@ fn main() {
             ldtk::LdtkPlugin,
             // player::PlayerPlugin,
             flower::FlowerPlugin,
-            // dialogue_box::DialogueBoxPlugin,
+            dialogue_box::DialogueBoxPlugin,
             // dialogue::DialoguePlugin,
             // cutscene::CutscenePlugin,
             // camera::CameraPlugin,
@@ -62,19 +63,47 @@ fn main() {
             // interactions::InteractionPlugin,
         ))
         .add_systems(Update, bevy_bits::close_on_escape)
-        .add_systems(Startup, load_level)
+        .add_systems(Startup, (load_level, scene_startup))
+        // .add_systems(Update, ping_pong)
         // .add_systems(OnEnter(AssetState::Loaded), scene)
         .run();
 }
 
 fn load_level(mut commands: Commands, asset_server: Res<AssetServer>) {
-    let mut proj = OrthographicProjection::default_2d();
-    proj.scale = 0.5;
-    commands.spawn((Camera2d, Transform::from_xyz(500., -750., 0.), proj));
-    commands.spawn(DynamicSceneRoot(
-        asset_server.load("ldtk/annual_scene/annual.scn.ron"),
-    ));
+    // let mut proj = OrthographicProjection::default_2d();
+    // proj.scale = 0.5;
+    // commands.spawn((Camera2d, Transform::from_xyz(500., -750., 0.), proj));
+    // commands.spawn(DynamicSceneRoot(
+    //     asset_server.load("ldtk/annual_scene/annual.scn.ron"),
+    // ));
 }
+
+fn scene_startup(mut commands: Commands) {
+    // info!("Starting up");
+    // spawn_root(scene(), &mut commands);
+}
+
+// fn scene() -> impl IntoFragment<TypeWriterToken> {
+//     (
+//         ("Hello, Alice!", "hey"),
+//         "Hey Bob...",
+//         ("Hello, Alice!", "hey"),
+//         "Hey Bob...",
+//         "Crazy weather we're having, huh?",
+//     )
+//         .always()
+//         .once()
+// }
+//
+// fn ping_pong(
+//     mut reader: EventReader<FragmentEvent<TypeWriterToken>>,
+//     mut writer: EventWriter<FragmentEndEvent>,
+// ) {
+//     for event in reader.read() {
+//         println!("{:?}", &event.data);
+//         writer.send(event.end());
+//     }
+// }
 
 // #[derive(Component)]
 // pub struct Opening;

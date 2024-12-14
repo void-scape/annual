@@ -1,11 +1,8 @@
-use crate::dialogue_box::{BoxContext, DialogueBox};
-use crate::{
-    dialogue_box::{
-        audio::{RevealedTextSfx, TextSfxSettings},
-        IntoBox,
-    },
-    FragmentExt,
+use crate::dialogue_box::{
+    audio::{RevealedTextSfx, TextSfxSettings},
+    IntoBox,
 };
+use crate::dialogue_box::{BoxContext, DialogueBox};
 use bevy::{asset::AssetPath, prelude::*};
 
 /// Configuration for dialogue box text sound effects.
@@ -53,25 +50,26 @@ pub trait Sfx {
 }
 
 impl<T> Sfx for T {
-    fn reveal<C>(self, desc: SfxDescriptor) -> impl IntoBox<C>
+    fn reveal<C>(self, _desc: SfxDescriptor) -> impl IntoBox<C>
     where
         C: Component,
         Self: IntoBox<C>,
     {
-        self.on_start_ctx(
-            move |ctx: In<BoxContext<C>>,
-                  asset_server: Res<AssetServer>,
-                  mut boxes: Query<&mut RevealedTextSfx, With<DialogueBox>>| {
-                if let Ok(mut sfx) = boxes.get_mut(ctx.entity()) {
-                    sfx.bundle = AudioBundle {
-                        source: asset_server.load(&desc.path),
-                        settings: desc.playback_settings,
-                    };
-                    sfx.settings = desc.sfx_settings;
-                } else {
-                    warn!("could not set reveal sfx for box: {}", ctx.entity());
-                }
-            },
-        )
+        self
+        // .on_start_ctx(
+        // move |ctx: In<BoxContext<C>>,
+        //       asset_server: Res<AssetServer>,
+        //       mut boxes: Query<&mut RevealedTextSfx, With<DialogueBox>>| {
+        //     if let Ok(mut sfx) = boxes.get_mut(ctx.entity()) {
+        //         sfx.bundle = AudioBundle {
+        //             source: asset_server.load(&desc.path),
+        //             settings: desc.playback_settings,
+        //         };
+        //         sfx.settings = desc.sfx_settings;
+        //     } else {
+        //         warn!("could not set reveal sfx for box: {}", ctx.entity());
+        //     }
+        // },
+        // )
     }
 }

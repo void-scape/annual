@@ -1,4 +1,3 @@
-use crate::dialogue::fragment::FragmentExt;
 use crate::dialogue_box::{BoxContext, DialogueBox, IntoBox};
 use bevy::{asset::AssetPath, prelude::*};
 
@@ -17,14 +16,15 @@ pub trait Portrait {
 impl<T> Portrait for T {
     fn portrait<C>(
         self,
-        texture: AssetPath<'static>,
-        transform: Option<Transform>,
+        _texture: AssetPath<'static>,
+        _transform: Option<Transform>,
     ) -> impl IntoBox<C>
     where
         C: Component,
         Self: IntoBox<C>,
     {
-        self.on_start_ctx(portrait::<C>(texture, transform))
+        // self.on_start_ctx(portrait::<C>(texture, transform))
+        self
     }
 }
 
@@ -33,18 +33,18 @@ pub fn portrait<C>(
     transform: Option<Transform>,
 ) -> impl Fn(
     In<BoxContext<C>>,
-    Query<(&mut Handle<Image>, &mut Transform), With<PortraitMarker>>,
+    Query<(&mut Sprite, &mut Transform), With<CharacterPortrait>>,
     Query<&Children, With<DialogueBox>>,
     Res<AssetServer>,
 ) {
     move |ctx: In<BoxContext<C>>,
-          mut portraits: Query<(&mut Handle<Image>, &mut Transform), With<PortraitMarker>>,
+          mut portraits: Query<(&mut Sprite, &mut Transform), With<CharacterPortrait>>,
           boxes: Query<&Children, With<DialogueBox>>,
           asset_server: Res<AssetServer>| {
         if let Ok(children) = boxes.get(ctx.entity()) {
             for child in children.iter() {
-                if let Ok((mut tex, mut trans)) = portraits.get_mut(*child) {
-                    *tex = asset_server.load(texture.clone());
+                if let Ok((mut sprite, mut trans)) = portraits.get_mut(*child) {
+                    sprite.image = asset_server.load(texture.clone());
                     if let Some(transform) = transform {
                         *trans = transform;
                     }
@@ -54,23 +54,6 @@ pub fn portrait<C>(
     }
 }
 
-#[derive(Bundle, Default, Clone)]
-pub struct PortraitBundle {
-    sprite: SpriteBundle,
-    marker: PortraitMarker,
-}
-
-impl PortraitBundle {
-    pub fn new_empty(transform: Transform) -> Self {
-        Self {
-            sprite: SpriteBundle {
-                transform,
-                ..Default::default()
-            },
-            marker: PortraitMarker,
-        }
-    }
-}
-
-#[derive(Component, Default, Clone)]
-pub struct PortraitMarker;
+#[derive(Component)]
+#[require(Sprite)]
+pub struct CharacterPortrait;

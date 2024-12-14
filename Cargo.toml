@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-# macros = { path = "macros" }
+macros = { path = "macros" }
 bevy_bits = { path = "bevy_bits" }
 paste = "1.0.15"
 rand = "0.8.5"
@@ -13,6 +13,7 @@ winnow = "0.6.20"
 bevy_asset_loader = "0.22.0"
 bevy_ldtk_scene = { path = "bevy_ldtk_scene" }
 bevy_sequence = { path = "bevy_sequence" }
+bytemuck = "1.20.0"
 
 [dependencies.bevy]
 version = "0.15"
