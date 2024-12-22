@@ -11,6 +11,8 @@
               tile_size: 8,
               width: 62,
               height: 34,
+              spacing: 0,
+              padding: 0,
               uid: (137),
               tiles: [
                 (
@@ -1682,6 +1684,8 @@
               tile_size: 8,
               width: 64,
               height: 25,
+              spacing: 0,
+              padding: 0,
               uid: (14),
               tiles: [
                 (
@@ -5141,6 +5145,8 @@
               tile_size: 8,
               width: 30,
               height: 52,
+              spacing: 0,
+              padding: 0,
               uid: (65),
               tiles: [],
             ),
@@ -5149,6 +5155,8 @@
               tile_size: 8,
               width: 30,
               height: 52,
+              spacing: 0,
+              padding: 0,
               uid: (65),
               tiles: [
                 (
@@ -103198,6 +103206,8 @@
               tile_size: 8,
               width: 30,
               height: 52,
+              spacing: 0,
+              padding: 0,
               uid: (65),
               tiles: [],
             ),
@@ -103206,6 +103216,8 @@
               tile_size: 8,
               width: 30,
               height: 52,
+              spacing: 0,
+              padding: 0,
               uid: (65),
               tiles: [],
             ),
@@ -103214,6 +103226,8 @@
               tile_size: 8,
               width: 62,
               height: 34,
+              spacing: 0,
+              padding: 0,
               uid: (137),
               tiles: [
                 (

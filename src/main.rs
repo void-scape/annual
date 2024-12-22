@@ -33,6 +33,8 @@ mod cutscene;
 mod interactions;
 mod textbox;
 
+const TILE_SIZE: f32 = 8.;
+
 fn main() {
     App::default()
         .add_plugins((
@@ -90,7 +92,7 @@ fn startup(mut commands: Commands) {
     run_after(
         Duration::from_secs(1),
         |mut commands: Commands| {
-            one().spawn_box(&mut commands);
+            //one().spawn_box(&mut commands);
 
             commands.spawn((
                 Transform::from_xyz(700., -700., 0.),
@@ -147,7 +149,7 @@ fn one() -> impl IntoBox<Opening> {
         "Well, are you?".flower(),
         s!(
             "<1.2>But you're a [0.25]<2> {`FLOWER|green`[wave]}!",
-            |frag| frag.sound("snd_bell.wav")
+            |frag| frag.sound("sounds/sfx/snd_bell.wav")
         )
         .izzy(),
         s!("<1>Oh, I guess so...").flower(),
@@ -156,7 +158,7 @@ fn one() -> impl IntoBox<Opening> {
         .always()
         .once()
         .sound_with(
-            "night.mp3",
+            "sounds/ambient/night.mp3",
             PlaybackSettings::LOOP.with_volume(Volume::new(0.5)),
         )
         .delay(Duration::from_millis(2000), |mut commands: Commands| {
@@ -167,10 +169,14 @@ fn one() -> impl IntoBox<Opening> {
 fn two() -> impl IntoBox<Opening> {
     use characters::*;
     (
-        "Do you want to go on a walk?".izzy(),
+        "Do you want to go on a walk?"
+            .izzy()
+            .portrait_transform(Transform::from_xyz(0., 0., -10.).with_scale(Vec3::splat(1. / 6.))),
         "I'd love to!".flower(),
         s!("But [0.5] I can't move.").flower(),
     )
+        .once()
+        .always()
         .delay(Duration::from_millis(4000), |mut commands: Commands| {
             three().spawn_box(&mut commands);
         })
@@ -179,9 +185,13 @@ fn two() -> impl IntoBox<Opening> {
 fn three() -> impl IntoBox<Opening> {
     use characters::*;
     (
-        s!("I know! [0.25] I'll come by tomorrow.").izzy(),
+        s!("I know! [0.25] I'll come by tomorrow.")
+            .izzy()
+            .portrait_transform(Transform::from_xyz(0., 0., -10.).with_scale(Vec3::splat(1. / 6.))),
         "Okay!".flower(),
         "I'll bring all my friends.".izzy(),
         "I'll be right here!".flower(),
     )
+        .once()
+        .always()
 }

@@ -4,6 +4,7 @@ use crate::{
     characters::Izzy,
     collision::{trigger::TriggerLayer, Collider, DynamicBody},
     cutscene::{CutsceneMovement, CutsceneVelocity},
+    TILE_SIZE,
 };
 use bevy::prelude::*;
 use leafwing_input_manager::{
@@ -12,11 +13,6 @@ use leafwing_input_manager::{
     Actionlike,
 };
 use std::hash::Hash;
-
-/// Returns true if and only if the player is interacting
-pub fn on_player_interact(query: Option<Single<&ActionState<Action>, With<Player>>>) -> bool {
-    query.is_some_and(|a| a.into_inner().just_pressed(&Action::Interact))
-}
 
 pub struct PlayerPlugin;
 
@@ -47,25 +43,6 @@ fn init_camera(
     }
 }
 
-// #[derive(Bundle, Default, LdtkEntity)]
-// pub struct NpcBundle {
-//     massive: crate::collision::Massive,
-//     #[with(init_dyn_body)]
-//     dynamic_body: DynamicBodyBundle,
-//     // #[with(init_static_body)]
-//     // dynamic_body: crate::collision::StaticBodyBundle,
-//     #[sprite_sheet_bundle]
-//     sprite_sheet: LdtkSpriteSheetBundle,
-// }
-
-// fn init_static_body(_: &EntityInstance) -> crate::collision::StaticBodyBundle {
-//     crate::collision::StaticBodyBundle {
-//         collider: Collider::from_circle(Vec2::ZERO, 10.),
-//         // collider: Collider::from_rect(Vec2::ZERO, Vec2::splat(10.)),
-//         ..Default::default()
-//     }
-// }
-
 #[derive(Default, Component)]
 #[require(Izzy, AnimationController<PlayerAnimation>(|| AnimationController::new(
         5.0,
@@ -84,7 +61,7 @@ fn init_camera(
         (Action::Walk(Direction::Right), KeyCode::KeyD),
     ])
     .with_one_to_many(Action::Interact, [KeyCode::KeyE, KeyCode::Space])))]
-#[require(TriggerLayer(|| TriggerLayer(0)), DynamicBody, Collider(|| Collider::from_circle(Vec2::ZERO, 10.)))]
+#[require(TriggerLayer(|| TriggerLayer(0)), DynamicBody, Collider(|| Collider::from_circle(Vec2::new(TILE_SIZE, -TILE_SIZE), TILE_SIZE / 2.)))]
 pub struct Player;
 
 #[derive(Clone, Copy, Hash, PartialEq, Eq)]

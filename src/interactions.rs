@@ -3,7 +3,7 @@ use crate::collision::trigger::TriggerEvent;
 use crate::collision::{trigger::Trigger, Collider};
 use crate::frags::insert_box;
 use crate::player::{Action, Player};
-use crate::{CutsceneMovement, IntoBox, TextBoxContext};
+use crate::{CutsceneMovement, IntoBox, TextBoxContext, TILE_SIZE};
 use bevy::prelude::*;
 use bevy_sequence::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
@@ -21,11 +21,7 @@ impl Plugin for InteractionPlugin {
 }
 
 pub trait SpawnInteraction: IntoBox + Sized {
-    fn spawn_interaction(
-        self,
-        interaction: Interactions,
-        commands: &mut Commands,
-    ) {
+    fn spawn_interaction(self, interaction: Interactions, commands: &mut Commands) {
         let entity = commands.spawn_empty().id();
         let interaction = self
             .eval_id(
@@ -55,7 +51,7 @@ impl<T> SpawnInteraction for T where T: IntoBox {}
 
 /// The source of the interaction.
 #[derive(Component)]
-#[require(Transform, Trigger(|| Trigger(Collider::from_circle(Vec2::ZERO, 20.))))]
+#[require(Transform)]
 struct InteractionTriggerSource(Interactions);
 
 #[derive(Debug, Event)]
@@ -66,9 +62,13 @@ fn insert_interaction_source(
     entities: Query<(Entity, &crate::annual::Interaction), Added<crate::annual::Interaction>>,
 ) {
     for (entity, interaction) in entities.iter() {
-        commands
-            .entity(entity)
-            .insert(InteractionTriggerSource(interaction.interactions));
+        commands.entity(entity).insert((
+            InteractionTriggerSource(interaction.interactions),
+            Trigger(Collider::from_circle(
+                Vec2::new(TILE_SIZE, -TILE_SIZE),
+                TILE_SIZE,
+            )),
+        ));
     }
 }
 

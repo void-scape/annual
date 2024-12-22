@@ -15,26 +15,26 @@ impl Collider {
         meshes: &mut Assets<Mesh>,
         materials: &mut Assets<ColorMaterial>,
     ) -> impl Bundle {
-        ( match self {
-            Self::Rect(rect) => (
-                Mesh2d(meshes.add(Rectangle::new(rect.size.x, rect.size.y)).into()),
-                MeshMaterial2d(materials.add(Color::NONE)),
-                Transform::from_xyz(
-                    // 0., 0.,
-                    rect.tl.x + rect.size.x / 2.,
-                    rect.tl.y + rect.size.y / 2.,
-                    // rect.tl.x,
-                    // rect.tl.y,
-                    100.,
+        (
+            match self {
+                Self::Rect(rect) => (
+                    Mesh2d(meshes.add(Rectangle::new(rect.size.x, rect.size.y)).into()),
+                    MeshMaterial2d(materials.add(Color::NONE)),
+                    Transform::from_xyz(
+                        // 0., 0.,
+                        rect.tl.x + rect.size.x / 2.,
+                        rect.tl.y + rect.size.y / 2.,
+                        // rect.tl.x,
+                        // rect.tl.y,
+                        100.,
+                    ),
                 ),
-            ),
-            Self::Circle(circle) => (
-                Mesh2d(meshes.add(Circle::new(circle.radius)).into()),
-                MeshMaterial2d(materials.add(Color::NONE)),
-                Transform::from_xyz(circle.position.x, circle.position.y, 100.),
-            ),
-        },
-
+                Self::Circle(circle) => (
+                    Mesh2d(meshes.add(Circle::new(circle.radius)).into()),
+                    MeshMaterial2d(materials.add(Color::NONE)),
+                    Transform::from_xyz(circle.position.x, circle.position.y, 100.),
+                ),
+            },
             Wireframe2d,
             Wireframe2dColor {
                 color: Srgba::WHITE.into(),
@@ -88,7 +88,10 @@ pub fn debug_display_collider_wireframe(
                     collider.debug_wireframe_bundle(&mut meshes, &mut materials),
                 ))
                 .id();
-            commands.entity(entity).insert(Marked).add_child(wireframe);
+            commands
+                .entity(entity)
+                .insert((Visibility::Visible, Marked))
+                .add_child(wireframe);
         }
     } else {
         for entity in frames.iter() {

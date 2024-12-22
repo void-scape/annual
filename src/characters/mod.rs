@@ -23,8 +23,8 @@ pub trait CharacterAssets {
 pub struct Flower;
 
 impl CharacterAssets for Flower {
-    const POR: &str = "flower.png";
-    const SFX: &str = "flowey.mp3";
+    const POR: &str = "characters/flower/flower.png";
+    const SFX: &str = "characters/flower/flowey.mp3";
 }
 
 #[derive(Default, Component, macros::Character)]
@@ -32,6 +32,6 @@ impl CharacterAssets for Flower {
 pub struct Izzy;
 
 impl CharacterAssets for Izzy {
-    const POR: &str = "girl.png";
-    const SFX: &str = "girl.mp3";
+    const POR: &str = "characters/izzy/girl.png";
+    const SFX: &str = "characters/izzy/girl.mp3";
 }

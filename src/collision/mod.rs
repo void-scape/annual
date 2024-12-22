@@ -445,11 +445,8 @@ pub fn handle_dynamic_body_collsions(
 fn build_tile_set_colliders(
     mut commands: Commands,
     tiles: Query<&Transform, Added<annual::TileSolid>>,
-    //levels: Query<(&LevelIid, &Children), Added<Children>>,
-    //layers: Query<(&LayerMetadata, &TilemapTileSize, &Children)>,
-    //tiles: Query<(&Transform, &TileEnumTags)>,
 ) {
-    let mut num_colliders = 0;
+    //let mut num_colliders = 0;
 
     // ~14k without combining
     // ~600 with horizontal combining
@@ -463,40 +460,7 @@ fn build_tile_set_colliders(
             transform.translation.x + offset,
             transform.translation.y + offset,
         ));
-
-        // let collider =
-        //     Collider::new(transform.translation, tile_size.x, tile_size.y);
-        // commands.spawn(collider);
     }
-
-    //for (id, children) in levels.iter() {
-    //    println!("{id}");
-    //    for child in children.iter() {
-    //        if let Ok((layer_meta, layer_tile_size, children)) = layers.get(*child) {
-    //            println!("processing layer: {}", &layer_meta.identifier);
-    //            let offset = tile_size / 2.;
-    //            for tile in children.iter() {
-    //                if let Ok((transform, tile_tags)) = tiles.get(*tile) {
-    //                    if tile_tags.tags.iter().any(|t| t == "Solid")
-    //                        && layer_tile_size.x == tile_size
-    //                        && layer_tile_size.y == tile_size
-    //                    {
-    //                        cached_collider_positions.push(Vec2::new(
-    //                            transform.translation.x + offset,
-    //                            transform.translation.y + offset,
-    //                        ));
-    //
-    //                        // let collider =
-    //                        //     Collider::new(transform.translation, tile_size.x, tile_size.y);
-    //                        // commands.spawn(collider);
-    //                    } else {
-    //                        warn!("unknown tagged ldtk tile: {tile_tags:?}");
-    //                    }
-    //                }
-    //            }
-    //        }
-    //    }
-    //}
 
     if cached_collider_positions.is_empty() {
         return;
@@ -506,15 +470,14 @@ fn build_tile_set_colliders(
         build_colliders_from_vec2(cached_collider_positions, tile_size).into_iter()
     {
         commands.spawn((
-            Transform::from_translation(pos.extend(0.)),
-            Visibility::Visible,
+            Transform::from_translation((pos - Vec2::splat(tile_size / 2.)).extend(0.)),
             StaticBody,
             collider,
         ));
-        num_colliders += 1;
+        //num_colliders += 1;
     }
 
-    println!("num_colliders: {num_colliders}");
+    //println!("num_colliders: {num_colliders}");
 }
 
 fn build_colliders_from_vec2(mut positions: Vec<Vec2>, tile_size: f32) -> Vec<(Vec2, Collider)> {
@@ -610,7 +573,7 @@ fn build_colliders_from_vec2(mut positions: Vec<Vec2>, tile_size: f32) -> Vec<(V
     for plates in row_plates.into_iter() {
         for plate in plates.into_iter() {
             output.push((
-                Vec2::new(plate.x_start, plate.y),
+                Vec2::new(plate.x_start, plate.y - tile_size),
                 Collider::from_rect(
                     Vec2::ZERO,
                     Vec2::new(plate.x_end - plate.x_start, tile_size),

@@ -4,7 +4,7 @@ use super::{Continue, TextBox};
 use bevy::prelude::*;
 use bevy::sprite::Anchor;
 use bevy::text::TextBounds;
-use bevy_pretty_text::prelude::TypeWriterSection;
+use bevy_pretty_text::prelude::{SfxChar, TypeWriterSection};
 use bevy_sequence::{fragment::DataLeaf, prelude::*};
 use std::marker::PhantomData;
 
@@ -25,6 +25,7 @@ where
         spawn_root_with(
             self.on_start(
                 move |mut commands: Commands, asset_server: Res<AssetServer>| {
+                    println!("insert box");
                     insert_box(entity, &asset_server, &mut commands)
                 },
             )
@@ -46,11 +47,11 @@ pub fn insert_box(entity: Entity, asset_server: &AssetServer, commands: &mut Com
                 text_offset: offset,
                 text_bounds: TextBounds::from(size - offset * 2.),
                 font_size: 16.,
-                font: None,
+                font: Some(asset_server.load("textbox/joystix.otf")),
             },
             Sprite {
                 // 48 x 45
-                image: asset_server.load("Scalable txt screen x1.png"),
+                image: asset_server.load("textbox/textbox.png"),
                 anchor: Anchor::TopLeft,
                 custom_size: Some(size),
                 image_mode: SpriteImageMode::Sliced(TextureSlicer {
@@ -62,10 +63,11 @@ pub fn insert_box(entity: Entity, asset_server: &AssetServer, commands: &mut Com
                 ..Default::default()
             },
             Transform::from_xyz(-400., -150., 0.).with_scale(Vec3::splat(2.)),
+            SfxChar(asset_server.load("characters/izzy/girl.mp3")),
         ))
         .with_child((
             Sprite {
-                image: asset_server.load("collision_mask.png"),
+                image: asset_server.load("textbox/collision_mask.png"),
                 anchor: Anchor::TopLeft,
                 ..Default::default()
             },
