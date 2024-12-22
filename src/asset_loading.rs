@@ -1,6 +1,5 @@
 use bevy::prelude::*;
 use bevy_asset_loader::loading_state::*;
-use config::ConfigureLoadingState;
 
 /// The main game state will be run during the [`AssetState::Loaded`] state.
 ///
@@ -16,10 +15,7 @@ pub struct AssetLoadingPlugin;
 impl Plugin for AssetLoadingPlugin {
     fn build(&self, app: &mut App) {
         app.init_state::<AssetState>().add_loading_state(
-            LoadingState::new(AssetState::Loading)
-                .continue_to_state(AssetState::Loaded)
-                // .load_collection::<LdtkAssets>(),
-            // .load_collection::<AudioAssets>(),
+            LoadingState::new(AssetState::Loading).continue_to_state(AssetState::Loaded),
         );
     }
 }

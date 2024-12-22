@@ -2,7 +2,7 @@ use super::{trigger::TriggerLayer, AbsoluteCollider, Collider, StaticBody};
 use bevy::{prelude::*, utils::hashbrown::HashMap};
 
 #[derive(Debug, Clone, Copy)]
-pub(super) struct SpatialData<D> {
+pub struct SpatialData<D> {
     pub entity: Entity,
     pub collider: AbsoluteCollider,
     pub data: D,
@@ -24,7 +24,7 @@ impl<D> SpatialData<D> {
 }
 
 #[derive(Debug, Component)]
-pub(super) struct SpatialHash<D> {
+pub struct SpatialHash<D> {
     cell_size: f32,
     objects: HashMap<(i32, i32), Vec<SpatialData<D>>>,
 }
@@ -115,26 +115,25 @@ impl<D: Clone> SpatialHash<D> {
 }
 
 #[derive(Component)]
-pub(super) struct StaticBodyStorage;
+pub struct StaticBodyStorage;
 
-pub(super) type StaticBodyData = Option<TriggerLayer>;
+pub type StaticBodyData = Option<TriggerLayer>;
 
 // TODO: should there be a spatial hash for each level?
-pub(super) fn init_static_body_storage(mut commands: Commands) {
+pub fn init_static_body_storage(mut commands: Commands) {
     commands.spawn((SpatialHash::<StaticBodyData>::new(32.), StaticBodyStorage));
 }
 
-pub(super) fn store_static_body_in_spatial_map(
-    mut map: Query<&mut SpatialHash<StaticBodyData>, With<StaticBodyStorage>>,
+pub fn store_static_body_in_spatial_map(
+    map: Single<&mut SpatialHash<StaticBodyData>, With<StaticBodyStorage>>,
     static_body: Query<(Entity, &Transform, &Collider, Option<&TriggerLayer>), Added<StaticBody>>,
 ) {
-    if let Ok(mut map) = map.get_single_mut() {
-        for (entity, transform, collider, trigger_layer) in static_body.iter() {
-            map.insert(SpatialData {
-                collider: collider.absolute(transform),
-                data: trigger_layer.cloned(),
-                entity,
-            })
-        }
+    let mut map = map.into_inner();
+    for (entity, transform, collider, trigger_layer) in static_body.iter() {
+        map.insert(SpatialData {
+            collider: collider.absolute(transform),
+            data: trigger_layer.cloned(),
+            entity,
+        })
     }
 }

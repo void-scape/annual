@@ -3,7 +3,7 @@ use super::{Collider, CollidesWith, DynamicBody, StaticBody};
 use bevy::input::keyboard::KeyboardInput;
 use bevy::input::ButtonState;
 use bevy::prelude::*;
-use bevy::sprite::{MaterialMesh2dBundle, Wireframe2d, Wireframe2dColor};
+use bevy::sprite::{Wireframe2d, Wireframe2dColor};
 
 /// Control the visibility of collision wireframes.
 #[derive(Resource)]

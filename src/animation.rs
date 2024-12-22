@@ -23,7 +23,7 @@ pub trait Animation: Clone + Hash + PartialEq + Eq + Send + Sync + 'static {}
 
 impl<T> Animation for T where T: Clone + Hash + PartialEq + Eq + Send + Sync + 'static {}
 
-#[derive(Component)]
+#[derive(Debug, Component)]
 pub struct AnimationController<A> {
     index_map: HashMap<A, (usize, usize)>,
     active_index: Option<(A, (usize, usize), usize)>,

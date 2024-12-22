@@ -1,5 +1,5 @@
-use crate::{IntoFragment, OnEnd, OnStart, Threaded};
 use bevy::prelude::*;
+use bevy_sequence::prelude::*;
 use std::time::Duration;
 
 pub struct CameraPlugin;
@@ -31,7 +31,7 @@ where
         D: Threaded;
 
     /// Bind the camera to an entity's position.
-    fn bind_camera<M: Component>(self, marker: M) -> OnStart<Self, impl System<In = (), Out = ()>>;
+    fn bind_camera<M: Component>(self, marker: M) -> impl IntoFragment<C, D>;
 
     /// Unbinds the camera and moves to the `marked` entity's position, with an offset, linearly
     /// over duration.
@@ -42,7 +42,7 @@ where
         marker: M,
         position: Vec3,
         duration: Duration,
-    ) -> OnStart<OnEnd<Self, impl System<In = (), Out = ()>>, impl System<In = (), Out = ()>>;
+    ) -> impl IntoFragment<C, D>;
 }
 
 impl<C, D, T> CameraFragment<C, D> for T
@@ -60,29 +60,23 @@ where
     where
         D: Threaded,
     {
-        let system = move |camera: Query<(Entity, &Transform), With<MainCamera>>,
-                           entities: Query<&Transform, With<M>>,
+        let system = move |camera: Single<(Entity, &Transform), With<MainCamera>>,
+                           entity_t: Single<&Transform, With<M>>,
                            mut commands: Commands| {
-            if let Ok((camera, camera_t)) = camera.get_single() {
-                if let Ok(entity_t) = entities.get_single() {
-                    commands.entity(camera).insert(MoveTo::new(
-                        camera_t.translation,
-                        entity_t.translation + offset,
-                        duration,
-                    ));
-                    commands.entity(camera).remove::<Binded>();
-                }
-            }
+            let (camera, camera_t) = camera.into_inner();
+            commands.entity(camera).insert(MoveTo::new(
+                camera_t.translation,
+                entity_t.translation + offset,
+                duration,
+            ));
+            commands.entity(camera).remove::<Binded>();
         };
 
-        OnStart::new(self, IntoSystem::into_system(system))
+        self.on_start(system)
     }
 
-    fn bind_camera<M: Component>(
-        self,
-        _marker: M,
-    ) -> OnStart<Self, impl System<In = (), Out = ()>> {
-        OnStart::new(self, IntoSystem::into_system(bind_camera::<M>))
+    fn bind_camera<M: Component>(self, _marker: M) -> impl IntoFragment<C, D> {
+        self.on_start(bind_camera::<M>)
     }
 
     fn move_then_bind_camera<M: Component>(
@@ -90,37 +84,33 @@ where
         _marker: M,
         offset: Vec3,
         duration: Duration,
-    ) -> OnStart<OnEnd<Self, impl System<In = (), Out = ()>>, impl System<In = (), Out = ()>> {
-        let mov = move |camera: Query<(Entity, &Transform), With<MainCamera>>,
-                        entities: Query<&Transform, With<M>>,
+    ) -> impl IntoFragment<C, D> {
+        let mov = move |camera: Single<(Entity, &Transform), With<MainCamera>>,
+                        entity_t: Single<&Transform, With<M>>,
                         mut commands: Commands| {
-            if let Ok((camera, camera_t)) = camera.get_single() {
-                if let Ok(entity_t) = entities.get_single() {
-                    commands.entity(camera).insert(MoveTo::new(
-                        camera_t.translation,
-                        entity_t.translation + offset,
-                        duration,
-                    ));
-                    commands.entity(camera).remove::<Binded>();
-                }
-            }
+            let (camera, camera_t) = camera.into_inner();
+            commands.entity(camera).insert(MoveTo::new(
+                camera_t.translation,
+                entity_t.translation + offset,
+                duration,
+            ));
+            commands.entity(camera).remove::<Binded>();
         };
 
-        OnStart::new(
-            OnEnd::new(self, IntoSystem::into_system(bind_camera::<M>)),
-            IntoSystem::into_system(mov),
-        )
+        self.on_start(mov).on_end(bind_camera::<M>)
     }
 }
 
 pub fn bind_camera<M: Component>(
-    entity: Query<Entity, (With<M>, With<Transform>)>,
-    camera: Query<Entity, With<MainCamera>>,
+    entity: Option<Single<Entity, (With<M>, With<Transform>)>>,
+    camera: Option<Single<Entity, With<MainCamera>>>,
     mut commands: Commands,
 ) {
-    if let Ok(camera) = camera.get_single() {
-        if let Ok(entity) = entity.get_single() {
-            commands.entity(camera).insert(Binded(entity));
+    if let Some(camera) = camera {
+        if let Some(entity) = entity {
+            commands
+                .entity(camera.into_inner())
+                .insert(Binded(entity.into_inner()));
         } else {
             error!("Could not bind camera to entity: Entity not found");
         }
@@ -152,7 +142,6 @@ impl MoveTo {
         self.start.lerp(self.end, self.timer.fraction())
     }
 
-    /// Advance the clip by the given time.
     pub fn tick(&mut self, duration: Duration) {
         self.timer.tick(duration);
     }
@@ -166,17 +155,17 @@ impl MoveTo {
 pub struct Binded(pub Entity);
 
 fn init_camera(mut commands: Commands) {
-    let mut camera = Camera2dBundle::default();
-    camera.projection.scale = 0.25;
-    commands.spawn((MainCamera, camera));
+    let mut proj = OrthographicProjection::default_2d();
+    proj.scale = 0.25;
+    commands.spawn((MainCamera, Camera2d, proj));
 }
 
 fn camera_move_to(
-    mut camera: Query<(Entity, &mut Transform, &mut MoveTo), With<MainCamera>>,
+    camera: Option<Single<(Entity, &mut Transform, &mut MoveTo), With<MainCamera>>>,
     mut commands: Commands,
     time: Res<Time>,
 ) {
-    if let Ok((entity, mut transform, mut move_to)) = camera.get_single_mut() {
+    if let Some((entity, mut transform, mut move_to)) = camera.map(|c| c.into_inner()) {
         move_to.tick(time.delta());
         if move_to.complete() {
             commands.entity(entity).remove::<MoveTo>();
@@ -187,10 +176,10 @@ fn camera_move_to(
 }
 
 fn camera_binded(
-    mut camera: Query<(&mut Transform, &Binded), With<MainCamera>>,
+    camera: Option<Single<(&mut Transform, &Binded), With<MainCamera>>>,
     transforms: Query<&Transform, Without<MainCamera>>,
 ) {
-    if let Ok((mut transform, binded)) = camera.get_single_mut() {
+    if let Some((mut transform, binded)) = camera.map(|c| c.into_inner()) {
         if let Ok(t) = transforms.get(binded.0) {
             transform.translation = t.translation;
         } else {

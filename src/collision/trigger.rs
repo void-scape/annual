@@ -2,24 +2,19 @@ use super::{
     spatial::{SpatialData, SpatialHash},
     Collider, CollidesWith,
 };
-use bevy::prelude::*;
+use bevy::{prelude::*, utils::hashbrown::HashMap};
 
 /// Marks an entity as a [`TriggerEvent`] source.
 ///
 /// Can exist in combination with a [`StaticBody`] or [`DynamicBody`].
 #[derive(Debug, Default, Clone, Copy, Component)]
+#[require(TriggerLayer)]
 pub struct Trigger(pub Collider);
 
 /// Both the [`Trigger`] and the `flipper` need to have the same [`TriggerLayer`] for a
 /// [`TriggerEvent`] to be emitted.
 #[derive(Debug, Default, Clone, Copy, Component)]
 pub struct TriggerLayer(pub usize);
-
-#[derive(Default, Bundle)]
-pub struct TriggerBundle {
-    pub trigger: Trigger,
-    pub layer: TriggerLayer,
-}
 
 /// In the case of trigger triggers trigger, two triggers will each trigger, both triggering the
 /// other trigger.
@@ -30,9 +25,9 @@ pub struct TriggerEvent {
 }
 
 #[derive(Default, Resource)]
-pub(super) struct TriggerLayerRegistry(Vec<usize>);
+pub struct TriggerLayerRegistry(Vec<usize>);
 
-pub(super) fn register_trigger_layers(
+pub fn register_trigger_layers(
     layers: Query<&TriggerLayer, Added<TriggerLayer>>,
     mut registry: ResMut<TriggerLayerRegistry>,
 ) {
@@ -43,12 +38,15 @@ pub(super) fn register_trigger_layers(
     }
 }
 
-pub(super) fn handle_triggers(
+pub fn handle_triggers(
     triggers: Query<(Entity, &Transform, &Trigger, &TriggerLayer)>,
     dynamic_bodies: Query<(Entity, &Transform, &Collider, &TriggerLayer)>,
     layer_registry: Res<TriggerLayerRegistry>,
     mut writer: EventWriter<TriggerEvent>,
 ) {
+    // TODO: write better code
+    let mut event_hash: HashMap<(Entity, Entity), ()> = HashMap::default();
+
     for layer in layer_registry.0.iter() {
         let layer_triggers = triggers
             .iter()
@@ -72,10 +70,11 @@ pub(super) fn handle_triggers(
             } in trigger_map.nearby_objects(&collider.position())
             {
                 if *e != *entity && collider.collides_with(c) {
-                    writer.send(TriggerEvent {
-                        trigger: *entity,
-                        target: *e,
-                    });
+                    event_hash.insert((*entity, *e), ());
+                    //writer.send(TriggerEvent {
+                    //    trigger: *entity,
+                    //    target: *e,
+                    //});
                 }
             }
         }
@@ -98,12 +97,17 @@ pub(super) fn handle_triggers(
             } in dynamic_body_map.nearby_objects(&collider.position())
             {
                 if collider.collides_with(c) {
-                    writer.send(TriggerEvent {
-                        trigger: *entity,
-                        target: *e,
-                    });
+                    event_hash.insert((*entity, *e), ());
+                    //writer.send(TriggerEvent {
+                    //    trigger: *entity,
+                    //    target: *e,
+                    //});
                 }
             }
         }
+    }
+
+    for (trigger, target) in event_hash.into_keys() {
+        writer.send(TriggerEvent { trigger, target });
     }
 }

@@ -1,38 +1,37 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::type_complexity)]
 
-use asset_loading::AssetState;
+use self::{
+    camera::CameraFragment,
+    collision::{trigger::TriggerLayer, Collider},
+    frags::portrait::TextBoxPortrait,
+};
 use bevy::{
     audio::Volume,
     diagnostic::FrameTimeDiagnosticsPlugin,
+    input::{keyboard::KeyboardInput, ButtonState},
     prelude::*,
     render::{
         settings::{RenderCreation, WgpuSettings},
         RenderPlugin,
     },
 };
-use bevy_bits::text::TypeWriterSection;
+use bevy_pretty_text::prelude::*;
 use bevy_sequence::prelude::*;
-// use camera::CameraFragment;
-// use characters::Izzy;
-// use dialogue::fragment::*;
-// use dialogue::{fragment::*, FragmentEndEvent, FragmentEvent, FragmentId};
-// use dialogue_box::{BoxToken, DialogueBoxDescriptor, IntoBox, SpawnBox, DIALOGUE_BOX_SPRITE_Z};
-// use macros::t;
+use characters::*;
+use cutscene::*;
 use std::time::Duration;
+use textbox::*;
 
 mod animation;
+mod annual;
 mod asset_loading;
-// mod camera;
-// mod characters;
+mod camera;
+mod characters;
 mod collision;
-// mod cutscene;
-// mod dialogue;
-mod dialogue_box;
-mod flower;
-// mod interactions;
-mod ldtk;
-// mod player;
+mod cutscene;
+mod interactions;
+mod textbox;
 
 fn main() {
     App::default()
@@ -41,7 +40,6 @@ fn main() {
                 .set(ImagePlugin::default_nearest())
                 .set(RenderPlugin {
                     render_creation: RenderCreation::Automatic(WgpuSettings {
-                        // WARN this is a native only feature. It will not work with webgl or webgpu
                         features: bevy::render::render_resource::WgpuFeatures::POLYGON_MODE_LINE,
                         ..default()
                     }),
@@ -52,165 +50,138 @@ fn main() {
         .add_plugins((
             asset_loading::AssetLoadingPlugin,
             bevy_sequence::SequencePlugin,
-            ldtk::LdtkPlugin,
-            // player::PlayerPlugin,
-            flower::FlowerPlugin,
-            dialogue_box::DialogueBoxPlugin,
-            // dialogue::DialoguePlugin,
-            // cutscene::CutscenePlugin,
-            // camera::CameraPlugin,
+            bevy_ldtk_scene::LdtkScenePlugin,
+            textbox::TextBoxPlugin,
+            characters::CharacterPlugin,
+            cutscene::CutscenePlugin,
+            camera::CameraPlugin,
             collision::CollisionPlugin,
-            // interactions::InteractionPlugin,
+            interactions::InteractionPlugin,
         ))
-        .add_systems(Update, bevy_bits::close_on_escape)
-        .add_systems(Startup, (load_level, scene_startup))
-        // .add_systems(Update, ping_pong)
-        // .add_systems(OnEnter(AssetState::Loaded), scene)
+        .add_systems(Update, close_on_escape)
+        .add_systems(Startup, (annual::park::spawn, spawn_interaction_dialogue))
+        .add_systems(Update, startup)
         .run();
 }
 
-fn load_level(mut commands: Commands, asset_server: Res<AssetServer>) {
-    // let mut proj = OrthographicProjection::default_2d();
-    // proj.scale = 0.5;
-    // commands.spawn((Camera2d, Transform::from_xyz(500., -750., 0.), proj));
-    // commands.spawn(DynamicSceneRoot(
-    //     asset_server.load("ldtk/annual_scene/annual.scn.ron"),
-    // ));
+fn close_on_escape(mut reader: EventReader<KeyboardInput>, mut writer: EventWriter<AppExit>) {
+    for input in reader.read() {
+        if input.state == ButtonState::Pressed && input.key_code == KeyCode::Escape {
+            writer.send(AppExit::Success);
+        }
+    }
 }
 
-fn scene_startup(mut commands: Commands) {
-    // info!("Starting up");
-    // spawn_root(scene(), &mut commands);
+fn spawn_interaction_dialogue(mut commands: Commands) {
+    use annual::Interactions;
+    use interactions::SpawnInteraction;
+
+    "Wow! What a big tree.".spawn_interaction(Interactions::LargeTree, &mut commands);
+
+    s!("This one's a little [0.5] smaller...")
+        .spawn_interaction(Interactions::SmallTree, &mut commands);
+
+    "You really like trees, huh?".spawn_interaction(Interactions::TwistyTree, &mut commands);
 }
 
-// fn scene() -> impl IntoFragment<TypeWriterToken> {
-//     (
-//         ("Hello, Alice!", "hey"),
-//         "Hey Bob...",
-//         ("Hello, Alice!", "hey"),
-//         "Hey Bob...",
-//         "Crazy weather we're having, huh?",
-//     )
-//         .always()
-//         .once()
-// }
-//
-// fn ping_pong(
-//     mut reader: EventReader<FragmentEvent<TypeWriterToken>>,
-//     mut writer: EventWriter<FragmentEndEvent>,
-// ) {
-//     for event in reader.read() {
-//         println!("{:?}", &event.data);
-//         writer.send(event.end());
-//     }
-// }
+fn startup(
+    mut commands: Commands,
+    time: Res<Time>,
+    mut is_init: Local<bool>,
+) {
+    if !*is_init && time.elapsed_secs() > 1. {
+        *is_init = true;
 
-// #[derive(Component)]
-// pub struct Opening;
+        one().spawn_box(&mut commands);
+
+        commands.spawn((
+            Transform::from_xyz(700., -700., 0.),
+            Visibility::Visible,
+            collision::trigger::Trigger(Collider::from_rect(Vec2::ZERO, Vec2::splat(40.))),
+            TriggerLayer(0),
+        ));
+
+        commands.spawn((
+            Opening,
+            Transform::default().with_translation(Vec3::new(800., -800., 0.)),
+        ));
+    }
+}
+
+#[derive(Component)]
+pub struct Opening;
+
+fn one() -> impl IntoBox<Opening> {
+    use characters::*;
+    use cutscene::CutsceneFragment;
+    use textbox::TextBoxExt;
+
+    (
+        "Hello!"
+            .portrait_transform(Transform::from_xyz(0., 0., -10.).with_scale(Vec3::splat(1. / 6.)))
+            .flower()
+            .move_to(Izzy, Vec3::new(20., 15., 0.), Duration::from_secs(1)),
+        s!("<1.2>...[0.5]!").izzy().move_to(
+            Izzy,
+            Vec3::new(40., 20., 0.),
+            Duration::from_millis(500),
+        ),
+        "Are you looking for something?".flower().move_camera_to(
+            Flower,
+            Vec3::ZERO,
+            Duration::from_secs(1),
+        ),
+        s!("D-did you... [1] I mean, [0.5] are you a...")
+            .izzy()
+            .move_then_bind_camera(Izzy, Vec3::ZERO, Duration::from_secs_f32(0.5)),
+        "Is something wrong?".flower().move_to(
+            Izzy,
+            Vec3::new(60., 30., 0.),
+            Duration::from_millis(1500),
+        ),
+        s!("Are you... [0.5] talking?").izzy().move_to(
+            Izzy,
+            Vec3::new(70., 50., 0.),
+            Duration::from_millis(800),
+        ),
+        "Well, are you?".flower(),
+        s!(
+            "<1.2>But you're a [0.25]<2> {`FLOWER|green`[wave]}!",
+            |frag| frag.sound("snd_bell.wav")
+        )
+        .izzy(),
+        s!("<1>Oh, I guess so...").flower(),
+    )
+        .lock(Izzy)
+        .always()
+        .once()
+        .sound_with(
+            "night.mp3",
+            PlaybackSettings::LOOP.with_volume(Volume::new(0.5)),
+        )
+    //.delay(Duration::from_millis(2000), |mut commands: Commands| {
+    //    two().spawn_box(&mut commands, &DESC);
+    //})
+}
+
+//fn two() -> impl IntoBox<Opening> {
+//    use characters::*;
+//    (
+//        "Do you want to go on a walk?".izzy(),
+//        "I'd love to!".flower(),
+//        s!("But [0.5] I can't move.").flower(),
+//    )
+//        .delay(Duration::from_millis(4000), |mut commands: Commands| {
+//            three().spawn_box(&mut commands, &DESC);
+//        })
+//}
 //
-// fn one() -> impl IntoBox<Opening> {
-//     use characters::*;
-//     use cutscene::CutsceneFragment;
-//     (
-//         "Hello!"
-//             .flower()
-//             .move_to(Izzy, Vec3::new(20., 15., 0.), Duration::from_secs(1)),
-//         t!("<7>...[0.5]!").izzy().move_to(
-//             Izzy,
-//             Vec3::new(40., 20., 0.),
-//             Duration::from_millis(500),
-//         ),
-//         "Are you looking for something?".flower().move_camera_to(
-//             flower::Flower,
-//             Vec3::ZERO,
-//             Duration::from_secs(1),
-//         ),
-//         t!("D-did you... [1] I mean, [0.5] are you a...")
-//             .izzy()
-//             .move_then_bind_camera(Izzy, Vec3::ZERO, Duration::from_secs_f32(0.5)),
-//         "Is something wrong?".flower().move_to(
-//             Izzy,
-//             Vec3::new(60., 30., 0.),
-//             Duration::from_millis(1500),
-//         ),
-//         t!("Are you... [0.5] talking?").izzy().move_to(
-//             Izzy,
-//             Vec3::new(70., 50., 0.),
-//             Duration::from_millis(800),
-//         ),
-//         "Well, are you?".flower(),
-//         t!("<12>But you're a [0.25]<20> {`FLOWER`[wave]}!", |frag| frag
-//             .sound("snd_bell.wav"))
-//         .izzy(),
-//         "Oh, I guess so...".flower(),
-//     )
-//         .lock(Izzy)
-//         .sound_with(
-//             "night.mp3",
-//             PlaybackSettings::LOOP.with_volume(Volume::new(0.5)),
-//         )
-//         .delay(Duration::from_millis(2000), |mut commands: Commands| {
-//             two().spawn_box(&mut commands, &DESC);
-//         })
-// }
-//
-// fn two() -> impl IntoBox<Opening> {
-//     use characters::*;
-//     (
-//         "Do you want to go on a walk?".izzy(),
-//         "I'd love to!".flower(),
-//         t!("But [0.5] I can't move.").flower(),
-//     )
-//         .delay(Duration::from_millis(4000), |mut commands: Commands| {
-//             three().spawn_box(&mut commands, &DESC);
-//         })
-// }
-//
-// fn three() -> impl IntoBox<Opening> {
-//     use characters::*;
-//     (
-//         t!("I know! [0.25] I'll come by tomorrow.").izzy(),
-//         "Okay!".flower(),
-//         "I'll bring all my friends.".izzy(),
-//         "I'll be right here!".flower(),
-//     )
-// }
-//
-// fn scene(mut commands: Commands) {
-//     use collision::trigger::*;
-//     use collision::*;
-//
-//     commands.spawn((
-//         SpatialBundle::from_transform(Transform::from_xyz(700., 700., 0.)),
-//         Trigger(Collider::from_rect(Vec2::ZERO, Vec2::splat(40.))),
-//         TriggerLayer(0),
-//     ));
-//
-//     // commands.spawn((
-//     //     Opening,
-//     //     Transform::default().with_translation(Vec3::new(800., 800., 0.)),
-//     // ));
-//     //
-//     // crate::dialogue::fragment::run_after(
-//     //     Duration::from_secs(1),
-//     //     |mut commands: Commands| one().bind_camera(Izzy).spawn_box(&mut commands, &DESC),
-//     //     &mut commands,
-//     // );
-// }
-//
-// const DESC: DialogueBoxDescriptor = DialogueBoxDescriptor {
-//     transform: Transform::from_xyz(-250., -50., 0.),
-//     dimensions: dialogue_box::DialogueBoxDimensions::new_with_scale(15, 4, Vec3::new(3., 3., 1.)),
-//     atlas: dialogue_box::DialogueBoxAtlasDescriptor {
-//         texture: "Scalable txt screen x1.png",
-//         tile_size: UVec2::new(16, 16),
-//     },
-//     font: dialogue_box::DialogueBoxFontDescriptor {
-//         font_size: 42.,
-//         default_color: Color::WHITE,
-//         font: "joystix monospace.otf",
-//     },
-//     portrait: Transform::IDENTITY
-//         .with_translation(Vec3::new(-230., -100., DIALOGUE_BOX_SPRITE_Z - 1.))
-//         .with_scale(Vec3::splat(1. / 2.0)),
-// };
+//fn three() -> impl IntoBox<Opening> {
+//    use characters::*;
+//    (
+//        s!("I know! [0.25] I'll come by tomorrow.").izzy(),
+//        "Okay!".flower(),
+//        "I'll bring all my friends.".izzy(),
+//        "I'll be right here!".flower(),
+//    )
+//}

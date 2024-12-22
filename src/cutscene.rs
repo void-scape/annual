@@ -1,6 +1,8 @@
-use crate::{dialogue_box::IntoBox, OnEnd, OnStart};
 use bevy::prelude::*;
+use bevy_sequence::prelude::*;
 use std::time::Duration;
+
+use crate::IntoBox;
 
 pub struct CutscenePlugin;
 
@@ -43,62 +45,52 @@ impl MovementClip {
     }
 }
 
-pub trait CutsceneFragment: Sized {
-    fn move_to<M: Component, C: Component>(
+pub trait CutsceneFragment<C>: Sized
+where
+    Self: IntoBox<C>,
+{
+    fn move_to<M: Component>(
         self,
         marker: M,
         position: Vec3,
         duration: Duration,
-    ) -> impl IntoBox<C>
-    where
-        Self: IntoBox<C>;
+    ) -> impl IntoBox<C>;
 
     /// Lock entity movement during a cutscene.
-    fn lock<M: Component>(
-        self,
-        marker: M,
-    ) -> OnStart<OnEnd<Self, impl System<In = (), Out = ()>>, impl System<In = (), Out = ()>>;
+    fn lock<M: Component>(self, marker: M) -> impl IntoBox<C>;
 }
 
-impl<T> CutsceneFragment for T {
-    fn move_to<M: Component, C: Component>(
+impl<T, C: Component> CutsceneFragment<C> for T
+where
+    T: IntoBox<C>,
+{
+    fn move_to<M: Component>(
         self,
         _marker: M,
         position: Vec3,
         duration: Duration,
-    ) -> impl IntoBox<C>
-    where
-        Self: IntoBox<C>,
-    {
+    ) -> impl IntoBox<C> {
         let system = move |q: Query<(Entity, &Transform), With<M>>,
-                           root: Query<&Transform, With<C>>,
+                           root: Single<&Transform, With<C>>,
                            mut commands: Commands| {
-            let root = root
-                .get_single()
-                .ok()
-                .map(|t| t.translation)
-                .unwrap_or_default();
-
+            let root = root.into_inner();
             for (entity, transform) in q.iter() {
                 commands.entity(entity).insert((
                     CutsceneMovement,
                     CutsceneVelocity(Vec3::ZERO),
                     MovementClip {
                         start: transform.translation,
-                        end: root - position,
+                        end: root.translation - position,
                         timer: Timer::new(duration, TimerMode::Once),
                     },
                 ));
             }
         };
 
-        OnStart::new(self, IntoSystem::into_system(system))
+        self.on_start(system)
     }
 
-    fn lock<M: Component>(
-        self,
-        _marker: M,
-    ) -> OnStart<OnEnd<Self, impl System<In = (), Out = ()>>, impl System<In = (), Out = ()>> {
+    fn lock<M: Component>(self, _marker: M) -> impl IntoBox<C> {
         let start = |q: Query<Entity, With<M>>, mut commands: Commands| {
             for entity in q.iter() {
                 commands
@@ -115,10 +107,7 @@ impl<T> CutsceneFragment for T {
             }
         };
 
-        OnStart::new(
-            OnEnd::new(self, IntoSystem::into_system(end)),
-            IntoSystem::into_system(start),
-        )
+        self.on_start(start).on_end(end)
     }
 }
 

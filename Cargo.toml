@@ -5,15 +5,15 @@ edition = "2021"
 
 [dependencies]
 macros = { path = "macros" }
-bevy_bits = { path = "bevy_bits" }
 paste = "1.0.15"
 rand = "0.8.5"
 winnow = "0.6.20"
-# leafwing-input-manager = "0.15.1"
+bytemuck = "1.20.0"
+leafwing-input-manager = "0.16"
 bevy_asset_loader = "0.22.0"
 bevy_ldtk_scene = { path = "bevy_ldtk_scene" }
 bevy_sequence = { path = "bevy_sequence" }
-bytemuck = "1.20.0"
+bevy_pretty_text = { path = "bevy_pretty_text" }
 
 [dependencies.bevy]
 version = "0.15"
@@ -21,7 +21,6 @@ features = ["dynamic_linking", "wav", "mp3", "jpeg"]
 
 [build-dependencies]
 bevy_ldtk_scene = { path = "bevy_ldtk_scene" }
-
 
 # Enable a small amount of optimization in the dev profile.
 [profile.dev]
@@ -31,5 +30,11 @@ opt-level = 0
 [profile.dev.package."*"]
 opt-level = 3
 
-[profile.dev.package."bevy_bits"]
+[profile.dev.package."bevy_sequence"]
+opt-level = 0
+
+[profile.dev.package."bevy_ldtk_scene"]
+opt-level = 0
+
+[profile.dev.package."bevy_pretty_text"]
 opt-level = 0
