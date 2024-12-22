@@ -17,7 +17,7 @@ use bevy::{
     },
 };
 use bevy_pretty_text::prelude::*;
-use bevy_sequence::prelude::*;
+use bevy_sequence::{combinators::delay::run_after, prelude::*};
 use characters::*;
 use cutscene::*;
 use std::time::Duration;
@@ -59,8 +59,10 @@ fn main() {
             interactions::InteractionPlugin,
         ))
         .add_systems(Update, close_on_escape)
-        .add_systems(Startup, (annual::park::spawn, spawn_interaction_dialogue))
-        .add_systems(Update, startup)
+        .add_systems(
+            Startup,
+            (annual::park::spawn, spawn_interaction_dialogue, startup),
+        )
         .run();
 }
 
@@ -84,28 +86,26 @@ fn spawn_interaction_dialogue(mut commands: Commands) {
     "You really like trees, huh?".spawn_interaction(Interactions::TwistyTree, &mut commands);
 }
 
-fn startup(
-    mut commands: Commands,
-    time: Res<Time>,
-    mut is_init: Local<bool>,
-) {
-    if !*is_init && time.elapsed_secs() > 1. {
-        *is_init = true;
+fn startup(mut commands: Commands) {
+    run_after(
+        Duration::from_secs(1),
+        |mut commands: Commands| {
+            one().spawn_box(&mut commands);
 
-        one().spawn_box(&mut commands);
+            commands.spawn((
+                Transform::from_xyz(700., -700., 0.),
+                Visibility::Visible,
+                collision::trigger::Trigger(Collider::from_rect(Vec2::ZERO, Vec2::splat(40.))),
+                TriggerLayer(0),
+            ));
 
-        commands.spawn((
-            Transform::from_xyz(700., -700., 0.),
-            Visibility::Visible,
-            collision::trigger::Trigger(Collider::from_rect(Vec2::ZERO, Vec2::splat(40.))),
-            TriggerLayer(0),
-        ));
-
-        commands.spawn((
-            Opening,
-            Transform::default().with_translation(Vec3::new(800., -800., 0.)),
-        ));
-    }
+            commands.spawn((
+                Opening,
+                Transform::default().with_translation(Vec3::new(800., -800., 0.)),
+            ));
+        },
+        &mut commands,
+    );
 }
 
 #[derive(Component)]
@@ -159,29 +159,29 @@ fn one() -> impl IntoBox<Opening> {
             "night.mp3",
             PlaybackSettings::LOOP.with_volume(Volume::new(0.5)),
         )
-    //.delay(Duration::from_millis(2000), |mut commands: Commands| {
-    //    two().spawn_box(&mut commands, &DESC);
-    //})
+        .delay(Duration::from_millis(2000), |mut commands: Commands| {
+            two().spawn_box(&mut commands);
+        })
 }
 
-//fn two() -> impl IntoBox<Opening> {
-//    use characters::*;
-//    (
-//        "Do you want to go on a walk?".izzy(),
-//        "I'd love to!".flower(),
-//        s!("But [0.5] I can't move.").flower(),
-//    )
-//        .delay(Duration::from_millis(4000), |mut commands: Commands| {
-//            three().spawn_box(&mut commands, &DESC);
-//        })
-//}
-//
-//fn three() -> impl IntoBox<Opening> {
-//    use characters::*;
-//    (
-//        s!("I know! [0.25] I'll come by tomorrow.").izzy(),
-//        "Okay!".flower(),
-//        "I'll bring all my friends.".izzy(),
-//        "I'll be right here!".flower(),
-//    )
-//}
+fn two() -> impl IntoBox<Opening> {
+    use characters::*;
+    (
+        "Do you want to go on a walk?".izzy(),
+        "I'd love to!".flower(),
+        s!("But [0.5] I can't move.").flower(),
+    )
+        .delay(Duration::from_millis(4000), |mut commands: Commands| {
+            three().spawn_box(&mut commands);
+        })
+}
+
+fn three() -> impl IntoBox<Opening> {
+    use characters::*;
+    (
+        s!("I know! [0.25] I'll come by tomorrow.").izzy(),
+        "Okay!".flower(),
+        "I'll bring all my friends.".izzy(),
+        "I'll be right here!".flower(),
+    )
+}
