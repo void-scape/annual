@@ -1,11 +1,7 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::type_complexity)]
 
-use self::{
-    camera::CameraFragment,
-    collision::{trigger::TriggerLayer, Collider},
-    frags::portrait::TextBoxPortrait,
-};
+use self::frags::portrait::TextBoxPortrait;
 use bevy::{
     audio::Volume,
     diagnostic::FrameTimeDiagnosticsPlugin,
@@ -32,6 +28,7 @@ mod collision;
 mod cutscene;
 mod interactions;
 mod textbox;
+mod curves;
 
 const TILE_SIZE: f32 = 8.;
 
@@ -107,6 +104,7 @@ const OPENING_TRANSFORM: Transform =
 pub struct Opening;
 
 fn one() -> impl IntoBox<Opening> {
+    use camera::CameraCurveFragment;
     use characters::*;
     use cutscene::CutsceneFragment;
     use textbox::TextBoxExt;
@@ -120,14 +118,20 @@ fn one() -> impl IntoBox<Opening> {
             Vec3::new(40., 20., 0.),
             Duration::from_millis(500),
         ),
-        "Are you looking for something?".flower().move_camera_to(
+        "Are you looking for something?".flower().move_camera_curve(
             Flower,
             Vec3::ZERO,
             Duration::from_secs(1),
+            EaseFunction::ElasticIn,
         ),
         s!("D-did you... [1] I mean, [0.5] are you a...")
             .izzy()
-            .move_then_bind_camera(Izzy, Vec3::ZERO, Duration::from_secs_f32(0.5)),
+            .move_curve_then_bind_camera(
+                Izzy,
+                Vec3::ZERO,
+                Duration::from_secs_f32(0.5),
+                EaseFunction::BackInOut,
+            ),
         "Is something wrong?".flower().move_to(
             Izzy,
             Vec3::new(60., 30., 0.),
