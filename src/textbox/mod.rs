@@ -21,7 +21,12 @@ impl Plugin for TextBoxPlugin {
             .add_systems(Startup, init_camera)
             .add_systems(
                 Update,
-                (update_continue_visibility, spawn_section_frags)
+                (
+                    frags::portrait::spawn_portrait,
+                    frags::portrait::update_portrait,
+                    update_continue_visibility,
+                    spawn_section_frags,
+                )
                     .chain()
                     .after(TypeWriterSets::Update),
             );

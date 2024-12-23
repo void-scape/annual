@@ -17,7 +17,7 @@ use bevy::{
     },
 };
 use bevy_pretty_text::prelude::*;
-use bevy_sequence::{combinators::delay::run_after, prelude::*};
+use bevy_sequence::prelude::*;
 use characters::*;
 use cutscene::*;
 use std::time::Duration;
@@ -61,10 +61,8 @@ fn main() {
             interactions::InteractionPlugin,
         ))
         .add_systems(Update, close_on_escape)
-        .add_systems(
-            Startup,
-            (annual::park::spawn, spawn_interaction_dialogue, startup),
-        )
+        .add_systems(Startup, (annual::park::spawn, spawn_interaction_dialogue))
+        .add_systems(Update, scene)
         .run();
 }
 
@@ -88,27 +86,22 @@ fn spawn_interaction_dialogue(mut commands: Commands) {
     "You really like trees, huh?".spawn_interaction(Interactions::TwistyTree, &mut commands);
 }
 
-fn startup(mut commands: Commands) {
-    run_after(
-        Duration::from_secs(1),
-        |mut commands: Commands| {
-            //one().spawn_box(&mut commands);
+fn scene(mut commands: Commands, mut input: EventReader<KeyboardInput>) {
+    if input
+        .read()
+        .any(|i| i.state == ButtonState::Pressed && i.key_code == KeyCode::KeyO)
+    {
+        one().spawn_box(&mut commands);
 
-            commands.spawn((
-                Transform::from_xyz(700., -700., 0.),
-                Visibility::Visible,
-                collision::trigger::Trigger(Collider::from_rect(Vec2::ZERO, Vec2::splat(40.))),
-                TriggerLayer(0),
-            ));
-
-            commands.spawn((
-                Opening,
-                Transform::default().with_translation(Vec3::new(800., -800., 0.)),
-            ));
-        },
-        &mut commands,
-    );
+        commands.spawn((
+            Opening,
+            Transform::default().with_translation(Vec3::new(700., -750., 0.)),
+        ));
+    }
 }
+
+const OPENING_TRANSFORM: Transform =
+    Transform::from_xyz(0., 0., -10.).with_scale(Vec3::splat(1. / 6.));
 
 #[derive(Component)]
 pub struct Opening;
@@ -120,7 +113,6 @@ fn one() -> impl IntoBox<Opening> {
 
     (
         "Hello!"
-            .portrait_transform(Transform::from_xyz(0., 0., -10.).with_scale(Vec3::splat(1. / 6.)))
             .flower()
             .move_to(Izzy, Vec3::new(20., 15., 0.), Duration::from_secs(1)),
         s!("<1.2>...[0.5]!").izzy().move_to(
@@ -154,6 +146,7 @@ fn one() -> impl IntoBox<Opening> {
         .izzy(),
         s!("<1>Oh, I guess so...").flower(),
     )
+        .portrait_transform(OPENING_TRANSFORM)
         .lock(Izzy)
         .always()
         .once()
@@ -169,14 +162,13 @@ fn one() -> impl IntoBox<Opening> {
 fn two() -> impl IntoBox<Opening> {
     use characters::*;
     (
-        "Do you want to go on a walk?"
-            .izzy()
-            .portrait_transform(Transform::from_xyz(0., 0., -10.).with_scale(Vec3::splat(1. / 6.))),
+        "Do you want to go on a walk?".izzy(),
         "I'd love to!".flower(),
         s!("But [0.5] I can't move.").flower(),
     )
         .once()
         .always()
+        .portrait_transform(OPENING_TRANSFORM)
         .delay(Duration::from_millis(4000), |mut commands: Commands| {
             three().spawn_box(&mut commands);
         })
@@ -185,13 +177,12 @@ fn two() -> impl IntoBox<Opening> {
 fn three() -> impl IntoBox<Opening> {
     use characters::*;
     (
-        s!("I know! [0.25] I'll come by tomorrow.")
-            .izzy()
-            .portrait_transform(Transform::from_xyz(0., 0., -10.).with_scale(Vec3::splat(1. / 6.))),
+        s!("I know! [0.25] I'll come by tomorrow.").izzy(),
         "Okay!".flower(),
         "I'll bring all my friends.".izzy(),
         "I'll be right here!".flower(),
     )
         .once()
         .always()
+        .portrait_transform(OPENING_TRANSFORM)
 }

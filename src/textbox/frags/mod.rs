@@ -1,4 +1,4 @@
-use self::portrait::PortraitEntity;
+use self::portrait::{Portrait, PortraitEntity};
 
 use super::{Continue, TextBox};
 use bevy::prelude::*;
@@ -21,11 +21,10 @@ where
     C: 'static,
 {
     fn spawn_box(self, commands: &mut Commands) {
-        let entity = commands.spawn_empty().id();
+        let entity = commands.spawn(Portrait::default()).id();
         spawn_root_with(
             self.on_start(
                 move |mut commands: Commands, asset_server: Res<AssetServer>| {
-                    println!("insert box");
                     insert_box(entity, &asset_server, &mut commands)
                 },
             )
