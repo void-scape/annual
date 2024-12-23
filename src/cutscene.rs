@@ -1,14 +1,18 @@
 use bevy::prelude::*;
+use bevy::utils::hashbrown::HashSet;
 use bevy_sequence::prelude::*;
+use std::any::TypeId;
+use std::marker::PhantomData;
 use std::time::Duration;
 
+use crate::curves::IntoCurve;
 use crate::IntoBox;
 
 pub struct CutscenePlugin;
 
 impl Plugin for CutscenePlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(PreUpdate, apply_movements);
+        app.insert_resource(MovementSystemCache::default());
     }
 }
 
@@ -18,21 +22,21 @@ impl Plugin for CutscenePlugin {
 pub struct CutsceneMovement;
 
 #[derive(Debug, Clone, Component)]
-struct MovementClip {
-    start: Vec3,
-    end: Vec3,
+struct MovementClip<C> {
     timer: Timer,
-    // TODO: in 0.15, use the curves API
-    // curve:
+    curve: C,
 }
 
 /// The instantaneous velocity resulting from cutscene movements.
 #[derive(Debug, Component)]
 pub struct CutsceneVelocity(pub Vec3);
 
-impl MovementClip {
-    pub fn position(&self) -> Vec3 {
-        self.start.lerp(self.end, self.timer.fraction())
+impl<C> MovementClip<C>
+where
+    C: Curve<Vec3>,
+{
+    pub fn position(&self) -> Option<Vec3> {
+        self.curve.sample(self.timer.fraction())
     }
 
     /// Advance the clip by the given time.
@@ -55,6 +59,16 @@ where
         position: Vec3,
         duration: Duration,
     ) -> impl IntoBox<C>;
+
+    fn move_curve<M: Component, I>(
+        self,
+        marker: M,
+        position: Vec3,
+        duration: Duration,
+        curve: impl IntoCurve<I> + Threaded,
+    ) -> CutsceneFrag<impl IntoBox<C>, I>
+    where
+        I: Curve<Vec3> + Threaded;
 
     /// Lock entity movement during a cutscene.
     fn lock<M: Component>(self, marker: M) -> impl IntoBox<C>;
@@ -79,8 +93,8 @@ where
                     CutsceneMovement,
                     CutsceneVelocity(Vec3::ZERO),
                     MovementClip {
-                        start: transform.translation,
-                        end: root.translation - position,
+                        curve: EaseFunction::Linear
+                            .into_curve(transform.translation, root.translation - position),
                         timer: Timer::new(duration, TimerMode::Once),
                     },
                 ));
@@ -88,6 +102,38 @@ where
         };
 
         self.on_start(system)
+    }
+
+    fn move_curve<M: Component, I>(
+        self,
+        _marker: M,
+        position: Vec3,
+        duration: Duration,
+        curve: impl IntoCurve<I> + Threaded,
+    ) -> CutsceneFrag<impl IntoBox<C>, I>
+    where
+        I: Curve<Vec3> + Threaded,
+    {
+        let system = move |q: Query<(Entity, &Transform), With<M>>,
+                           root: Single<&Transform, With<C>>,
+                           mut commands: Commands| {
+            let root = root.into_inner();
+            for (entity, transform) in q.iter() {
+                commands.entity(entity).insert((
+                    CutsceneMovement,
+                    CutsceneVelocity(Vec3::ZERO),
+                    MovementClip {
+                        curve: curve.into_curve(transform.translation, root.translation - position),
+                        timer: Timer::new(duration, TimerMode::Once),
+                    },
+                ));
+            }
+        };
+
+        CutsceneFrag {
+            fragment: self.on_start(system),
+            _marker: PhantomData,
+        }
     }
 
     fn lock<M: Component>(self, _marker: M) -> impl IntoBox<C> {
@@ -111,12 +157,44 @@ where
     }
 }
 
-fn apply_movements(
+#[derive(Default, Resource)]
+struct MovementSystemCache(HashSet<TypeId>);
+
+pub struct CutsceneFrag<F, M> {
+    fragment: F,
+    _marker: PhantomData<fn() -> M>,
+}
+
+impl<D, C, F, M> IntoFragment<D, C> for CutsceneFrag<F, M>
+where
+    D: Threaded,
+    F: IntoFragment<D, C>,
+    M: Curve<Vec3> + Threaded,
+{
+    fn into_fragment(self, context: &Context<C>, commands: &mut Commands) -> FragmentId {
+        let id = self.fragment.into_fragment(context, commands);
+
+        commands.queue(|world: &mut World| {
+            world.schedule_scope(PostUpdate, |world: &mut World, schedule: &mut Schedule| {
+                let mut cache = world.resource_mut::<MovementSystemCache>();
+                if cache.0.insert(std::any::TypeId::of::<M>()) {
+                    schedule.add_systems(
+                        apply_movements::<M>.before(TransformSystem::TransformPropagate),
+                    );
+                }
+            })
+        });
+
+        id
+    }
+}
+
+fn apply_movements<C: Curve<Vec3> + Threaded>(
     mut q: Query<
         (
             Entity,
             &mut Transform,
-            &mut MovementClip,
+            &mut MovementClip<C>,
             &mut CutsceneVelocity,
         ),
         With<CutsceneMovement>,
@@ -127,15 +205,16 @@ fn apply_movements(
     for (entity, mut transform, mut clip, mut velocity) in q.iter_mut() {
         clip.tick(time.delta());
 
-        let new_position = clip.position();
-        let difference = new_position - transform.translation;
-        transform.translation = new_position;
-        velocity.0 = difference;
+        if let Some(new_position) = clip.position() {
+            let difference = new_position - transform.translation;
+            transform.translation = new_position;
+            velocity.0 = difference;
+        }
 
         if clip.complete() {
             // Not sure if this is totally ideal
             velocity.0 = Vec3::ZERO;
-            commands.entity(entity).remove::<MovementClip>();
+            commands.entity(entity).remove::<MovementClip<C>>();
         }
     }
 }

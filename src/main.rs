@@ -25,10 +25,10 @@ mod asset_loading;
 mod camera;
 mod characters;
 mod collision;
+mod curves;
 mod cutscene;
 mod interactions;
 mod textbox;
-mod curves;
 
 const TILE_SIZE: f32 = 8.;
 
@@ -110,9 +110,12 @@ fn one() -> impl IntoBox<Opening> {
     use textbox::TextBoxExt;
 
     (
-        "Hello!"
-            .flower()
-            .move_to(Izzy, Vec3::new(20., 15., 0.), Duration::from_secs(1)),
+        "Hello!".flower().move_curve(
+            Izzy,
+            Vec3::new(20., 15., 0.),
+            Duration::from_secs(1),
+            EaseFunction::ElasticInOut,
+        ),
         s!("<1.2>...[0.5]!").izzy().move_to(
             Izzy,
             Vec3::new(40., 20., 0.),
