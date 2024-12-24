@@ -6,12 +6,16 @@ use bevy_pretty_text::text::TypeWriterCommand;
 use bevy_pretty_text::type_writer::TypeWriterSets;
 use bevy_pretty_text::{prelude::*, type_writer::scroll::OnScrollEnd};
 use bevy_sequence::prelude::*;
+use frags::IntoBox;
 use render_layer::PropagateRenderLayers;
 
 pub mod frags;
 pub mod render_layer;
 
-pub use frags::{IntoBox, TextBoxContext};
+pub mod prelude {
+    pub use super::frags::{portrait::TextBoxPortrait, sfx::TextBoxSfx, IntoBox, TextBoxContext};
+    pub use super::{TextBox, TextBoxExt, TextBoxPlugin};
+}
 
 pub struct TextBoxPlugin;
 

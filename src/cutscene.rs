@@ -7,7 +7,7 @@ use std::time::Duration;
 
 use crate::curves::IntoCurve;
 use crate::gfx::camera::CameraSystem;
-use crate::IntoBox;
+use crate::textbox::prelude::*;
 
 pub struct CutscenePlugin;
 

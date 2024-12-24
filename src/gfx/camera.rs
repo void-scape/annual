@@ -283,10 +283,10 @@ pub fn bind_camera<M: Component>(
                 .entity(camera.into_inner())
                 .insert(Binded(entity.into_inner()));
         } else {
-            error!("Could not bind camera to entity: Entity not found");
+            error_once!("Could not bind camera to entity: Entity not found");
         }
     } else {
-        error!("Could not bind camera to entity: Camera not found");
+        error_once!("Could not bind camera to entity: Camera not found");
     }
 }
 
@@ -316,7 +316,7 @@ fn camera_binded(
             transform.translation =
                 t.translation + offset.map(|o| o.0).unwrap_or_default().extend(0.);
         } else {
-            warn!("Camera binded to entity with no transform");
+             warn_once!("Camera binded to entity with no transform");
         }
     }
 }

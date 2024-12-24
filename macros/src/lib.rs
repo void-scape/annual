@@ -35,7 +35,7 @@ fn character(input: TokenStream) -> syn::Result<proc_macro2::TokenStream> {
     let ident = &input.ident;
     let fn_name = proc_macro2::Ident::new(&ident.to_string().to_lowercase(), Span::call_site());
     let trait_name = proc_macro2::Ident::new(&format!("Into{}", ident), Span::call_site());
-    let into_frag = quote! { crate::textbox::IntoBox<C> };
+    let into_frag = quote! { crate::textbox::prelude::IntoBox<C> };
 
     Ok(quote! {
         pub trait #trait_name <C>
@@ -53,7 +53,7 @@ fn character(input: TokenStream) -> syn::Result<proc_macro2::TokenStream> {
                 where Self: #into_frag
             {
                 use crate::characters::CharacterAssets;
-                use crate::textbox::frags::{sfx::TextBoxSfx, portrait::TextBoxPortrait};
+                use crate::textbox::prelude::*;
                 self.sfx_char(#ident::SFX).portrait(#ident::POR)
             }
         }
