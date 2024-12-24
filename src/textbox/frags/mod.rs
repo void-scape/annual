@@ -62,7 +62,7 @@ pub fn insert_box(entity: Entity, asset_server: &AssetServer, commands: &mut Com
                 ..Default::default()
             },
             Transform::from_xyz(-400., -150., 0.).with_scale(Vec3::splat(2.)),
-            SfxChar(asset_server.load("characters/izzy/girl.mp3")),
+            SfxChar::from_source(asset_server.load("characters/izzy/girl.mp3")),
         ))
         .with_child((
             Sprite {

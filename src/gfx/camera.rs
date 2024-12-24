@@ -1,3 +1,5 @@
+use crate::curves::IntoCurve;
+use bevy::core_pipeline::tonemapping::Tonemapping;
 use bevy::prelude::*;
 use bevy::utils::hashbrown::HashSet;
 use bevy_sequence::prelude::*;
@@ -5,7 +7,13 @@ use std::any::TypeId;
 use std::marker::PhantomData;
 use std::time::Duration;
 
-use crate::curves::IntoCurve;
+#[derive(Debug, Clone, Copy, Component)]
+pub struct MainCamera;
+
+#[derive(Debug, Hash, PartialEq, Eq, Clone, SystemSet)]
+pub enum CameraSystem {
+    UpdateCamera,
+}
 
 pub struct CameraPlugin;
 
@@ -15,15 +23,28 @@ impl Plugin for CameraPlugin {
             .add_systems(Startup, init_camera)
             .add_systems(
                 PostUpdate,
-                camera_binded.before(TransformSystem::TransformPropagate),
+                camera_binded
+                    .before(TransformSystem::TransformPropagate)
+                    .in_set(CameraSystem::UpdateCamera),
             );
     }
 }
 
 fn init_camera(mut commands: Commands) {
-    let mut proj = OrthographicProjection::default_2d();
-    proj.scale = 0.25;
-    commands.spawn((MainCamera, Camera2d, proj));
+    commands.spawn((
+        OrthographicProjection {
+            scale: crate::CAMERA_SCALE,
+            near: -1000.0,
+            ..OrthographicProjection::default_3d()
+        },
+        Camera2d,
+        Camera {
+            hdr: true,
+            ..Default::default()
+        },
+        Tonemapping::TonyMcMapface,
+        MainCamera,
+    ));
 }
 
 #[allow(unused)]
@@ -182,9 +203,6 @@ where
 }
 
 #[derive(Component)]
-pub struct MainCamera;
-
-#[derive(Component)]
 struct MoveTo<C> {
     timer: Timer,
     curve: C,
@@ -220,7 +238,7 @@ pub struct CameraCurveFrag<F, M> {
 }
 
 #[derive(Default, Resource)]
-pub struct CameraSystemCache(HashSet<TypeId>);
+struct CameraSystemCache(HashSet<TypeId>);
 
 impl<D, C, F, M> IntoFragment<D, C> for CameraCurveFrag<F, M>
 where
@@ -236,7 +254,9 @@ where
                 let mut cache = world.resource_mut::<CameraSystemCache>();
                 if cache.0.insert(std::any::TypeId::of::<M>()) {
                     schedule.add_systems(
-                        camera_move_to::<M>.before(TransformSystem::TransformPropagate),
+                        camera_move_to::<M>
+                            .before(TransformSystem::TransformPropagate)
+                            .in_set(CameraSystem::UpdateCamera),
                     );
                 }
             })
@@ -246,8 +266,11 @@ where
     }
 }
 
-#[derive(Component)]
+#[derive(Debug, Clone, Copy, Component)]
 pub struct Binded(pub Entity);
+
+#[derive(Debug, Default, Clone, Copy, Component)]
+pub struct CameraOffset(pub Vec2);
 
 pub fn bind_camera<M: Component>(
     entity: Option<Single<Entity, (With<M>, With<Transform>)>>,
@@ -286,11 +309,12 @@ fn camera_move_to<C: Curve<Vec3> + Threaded>(
 
 fn camera_binded(
     camera: Option<Single<(&mut Transform, &Binded), With<MainCamera>>>,
-    transforms: Query<&Transform, Without<MainCamera>>,
+    transforms: Query<(&Transform, Option<&CameraOffset>), Without<MainCamera>>,
 ) {
     if let Some((mut transform, binded)) = camera.map(|c| c.into_inner()) {
-        if let Ok(t) = transforms.get(binded.0) {
-            transform.translation = t.translation;
+        if let Ok((t, offset)) = transforms.get(binded.0) {
+            transform.translation =
+                t.translation + offset.map(|o| o.0).unwrap_or_default().extend(0.);
         } else {
             warn!("Camera binded to entity with no transform");
         }

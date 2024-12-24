@@ -15,6 +15,8 @@ bevy_ldtk_scene = { path = "bevy_ldtk_scene" }
 bevy_sequence = { path = "bevy_sequence" }
 bevy_pretty_text = { path = "bevy_pretty_text" }
 
+bevy_light_2d = "0.5"
+
 [dependencies.bevy]
 version = "0.15"
 features = ["dynamic_linking", "wav", "mp3", "jpeg"]

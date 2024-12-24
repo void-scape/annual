@@ -1,9 +1,13 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::type_complexity)]
 
-use self::frags::portrait::TextBoxPortrait;
+use self::{
+    frags::portrait::TextBoxPortrait,
+    gfx::{camera::MainCamera, post_processing::PostProcessCommand},
+};
 use bevy::{
     audio::Volume,
+    core_pipeline::bloom::Bloom,
     diagnostic::FrameTimeDiagnosticsPlugin,
     input::{keyboard::KeyboardInput, ButtonState},
     prelude::*,
@@ -13,7 +17,7 @@ use bevy::{
     },
 };
 use bevy_pretty_text::prelude::*;
-use bevy_sequence::prelude::*;
+use bevy_sequence::{combinators::delay::run_after, prelude::*};
 use characters::*;
 use cutscene::*;
 use std::time::Duration;
@@ -22,15 +26,16 @@ use textbox::*;
 mod animation;
 mod annual;
 mod asset_loading;
-mod camera;
 mod characters;
 mod collision;
 mod curves;
 mod cutscene;
+mod gfx;
 mod interactions;
 mod textbox;
 
 const TILE_SIZE: f32 = 8.;
+const CAMERA_SCALE: f32 = 0.15;
 
 fn main() {
     App::default()
@@ -50,16 +55,19 @@ fn main() {
             asset_loading::AssetLoadingPlugin,
             bevy_sequence::SequencePlugin,
             bevy_ldtk_scene::LdtkScenePlugin,
+            gfx::GfxPlugin,
             textbox::TextBoxPlugin,
             characters::CharacterPlugin,
             cutscene::CutscenePlugin,
-            camera::CameraPlugin,
             collision::CollisionPlugin,
             interactions::InteractionPlugin,
         ))
         .add_systems(Update, close_on_escape)
-        .add_systems(Startup, (annual::park::spawn, spawn_interaction_dialogue))
-        .add_systems(Update, scene)
+        .add_systems(
+            Startup,
+            (startup, annual::park::spawn, spawn_interaction_dialogue),
+        )
+        .add_systems(Update, (scene, add_post_processing))
         .run();
 }
 
@@ -68,6 +76,29 @@ fn close_on_escape(mut reader: EventReader<KeyboardInput>, mut writer: EventWrit
         if input.state == ButtonState::Pressed && input.key_code == KeyCode::Escape {
             writer.send(AppExit::Success);
         }
+    }
+}
+
+fn startup(mut commands: Commands, asset_server: Res<AssetServer>) {
+    commands.spawn((
+        AudioPlayer::new(asset_server.load("sounds/ambient/night2.mp3")),
+        PlaybackSettings::LOOP.with_volume(Volume::new(0.25)),
+    ));
+}
+
+fn add_post_processing(
+    //mut commands: Commands,
+    camera: Option<Single<&MainCamera, Added<MainCamera>>>,
+) {
+    if camera.is_some() {
+        //let entity = commands.spawn_empty().id();
+        //commands.bind_post_process(Bloom::SCREEN_BLUR, entity);
+
+        //run_after(
+        //    Duration::from_secs(1),
+        //    move |mut commands: Commands| commands.entity(entity).despawn_recursive(),
+        //    &mut commands,
+        //);
     }
 }
 
@@ -104,9 +135,9 @@ const OPENING_TRANSFORM: Transform =
 pub struct Opening;
 
 fn one() -> impl IntoBox<Opening> {
-    use camera::CameraCurveFragment;
     use characters::*;
     use cutscene::CutsceneFragment;
+    use gfx::camera::CameraCurveFragment;
     use textbox::TextBoxExt;
 
     (
@@ -157,10 +188,6 @@ fn one() -> impl IntoBox<Opening> {
         .lock(Izzy)
         .always()
         .once()
-        .sound_with(
-            "sounds/ambient/night.mp3",
-            PlaybackSettings::LOOP.with_volume(Volume::new(0.5)),
-        )
         .delay(Duration::from_millis(2000), |mut commands: Commands| {
             two().spawn_box(&mut commands);
         })

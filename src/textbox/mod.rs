@@ -40,6 +40,8 @@ fn init_camera(mut commands: Commands) {
             // Render after the main camera
             order: 1,
             clear_color: Color::NONE.into(),
+            // All cameras must be hdr
+            hdr: true,
             ..default()
         },
         TextBox::RENDER_LAYER,

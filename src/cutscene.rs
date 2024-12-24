@@ -6,6 +6,7 @@ use std::marker::PhantomData;
 use std::time::Duration;
 
 use crate::curves::IntoCurve;
+use crate::gfx::camera::CameraSystem;
 use crate::IntoBox;
 
 pub struct CutscenePlugin;
@@ -179,7 +180,9 @@ where
                 let mut cache = world.resource_mut::<MovementSystemCache>();
                 if cache.0.insert(std::any::TypeId::of::<M>()) {
                     schedule.add_systems(
-                        apply_movements::<M>.before(TransformSystem::TransformPropagate),
+                        apply_movements::<M>
+                            .before(TransformSystem::TransformPropagate)
+                            .before(CameraSystem::UpdateCamera),
                     );
                 }
             })
