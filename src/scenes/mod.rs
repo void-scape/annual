@@ -2,12 +2,15 @@ use bevy::ecs::component::StorageType;
 use bevy::ecs::schedule::ScheduleLabel;
 use bevy::prelude::*;
 use bevy::utils::HashSet;
+use bevy_sequence::fragment::DataLeaf;
+use bevy_sequence::prelude::*;
 use std::any::TypeId;
 //use bevy::ecs::world::DeferredWorld;
 //use bevy::tasks::IoTaskPool;
 //use std::fs::File;
 //use std::io::Write;
 
+pub mod home;
 pub mod park;
 mod point_light;
 
@@ -16,17 +19,74 @@ pub struct ScenePlugin;
 impl Plugin for ScenePlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(bevy_ldtk_scene::LdtkScenePlugin)
-            .insert_resource(SceneSystemCache::default()).add_systems(Update, point_light::init_point_light_tiles);
+            .insert_resource(SceneSystemCache::default())
+            .add_systems(Update, point_light::init_point_light_tiles);
     }
 }
 
-pub trait Scene: 'static + Send + Sync {
+pub trait Scene: 'static + Send + Sync + Clone {
     //const SAVE_PATH: &'static str;
 
     fn spawn(root: &mut EntityCommands);
     //fn save(_world: &mut DeferredWorld, _root: Entity) -> Option<Vec<u8>> {
     //    None
     //}
+}
+
+pub struct SceneTransition<F, T> {
+    from: F,
+    to: T,
+}
+
+impl<F, T> Default for SceneTransition<F, T>
+where
+    F: Default,
+    T: Default,
+{
+    fn default() -> Self {
+        Self {
+            from: F::default(),
+            to: T::default(),
+        }
+    }
+}
+
+impl<F, T> Clone for SceneTransition<F, T>
+where
+    F: Scene,
+    T: Scene,
+{
+    fn clone(&self) -> Self {
+        Self {
+            from: self.from.clone(),
+            to: self.to.clone(),
+        }
+    }
+}
+
+pub fn scene_transition<F: Scene, S: Scene>(
+    mut commands: Commands,
+    mut reader: EventReader<FragmentEvent<SceneTransition<F, S>>>,
+    from: Option<Single<Entity, With<SceneRoot<F>>>>,
+) {
+    for event in reader.read() {
+        if let Some(ref from) = from {
+            commands.entity(**from).despawn_recursive();
+            commands.spawn(SceneRoot::new(event.data.to.clone()));
+        }
+    }
+}
+
+impl<F: Scene + Clone, S: Scene + Clone> IntoFragment<SceneTransition<F, S>, ()>
+    for SceneTransition<F, S>
+{
+    fn into_fragment(self, context: &Context<()>, commands: &mut Commands) -> FragmentId {
+        <_ as IntoFragment<SceneTransition<F, S>, ()>>::into_fragment(
+            DataLeaf::new(self),
+            context,
+            commands,
+        )
+    }
 }
 
 pub struct SceneRoot<S: Scene>(S);

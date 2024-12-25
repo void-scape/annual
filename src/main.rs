@@ -15,6 +15,8 @@ use characters::*;
 use cutscene::*;
 use scenes::{park::ParkScene, SceneRoot};
 
+use self::scenes::home::HomeScene;
+
 mod animation;
 mod annual;
 mod asset_loading;
@@ -85,7 +87,8 @@ fn close_on_escape(mut reader: EventReader<KeyboardInput>, mut writer: EventWrit
 }
 
 fn startup(mut commands: Commands) {
-    commands.spawn(SceneRoot::new(ParkScene));
+    //commands.spawn(SceneRoot::new(ParkScene));
+    commands.spawn(SceneRoot::new(HomeScene));
 
     //let entity = commands.spawn(SceneRoot::new(ParkScene)).id();
     //run_after(

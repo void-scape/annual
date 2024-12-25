@@ -1,7 +1,6 @@
 use crate::annual::Interactions;
 use crate::physics::prelude::*;
 use crate::player::{Action, Player};
-use crate::textbox::prelude::*;
 use crate::{CutsceneMovement, TILE_SIZE};
 use bevy::prelude::*;
 use bevy_sequence::prelude::*;
@@ -19,8 +18,8 @@ impl Plugin for InteractionPlugin {
     }
 }
 
-pub trait SpawnInteraction: IntoBox + Sized {
-    fn spawn_interaction(self, interaction: Interactions, commands: &mut Commands) {
+pub trait BindInteraction<D: Threaded, C>: IntoFragment<D, C> + Sized {
+    fn interaction(self, interaction: Interactions) -> impl IntoFragment<D, C> {
         self.eval_id(
             move |In(id): In<FragmentId>,
                   mut reader: EventReader<InteractionTrigger>,
@@ -32,11 +31,10 @@ pub trait SpawnInteraction: IntoBox + Sized {
                         .is_none_or(|state| state.active_events.is_empty())
             },
         )
-        .spawn_box(commands);
     }
 }
 
-impl<T> SpawnInteraction for T where T: IntoBox {}
+impl<D: Threaded, C, T> BindInteraction<D, C> for T where T: IntoFragment<D, C> {}
 
 /// The source of the interaction.
 #[derive(Component)]

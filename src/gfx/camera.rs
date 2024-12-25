@@ -1,3 +1,4 @@
+use crate::annual;
 use crate::curves::IntoCurve;
 use bevy::core_pipeline::tonemapping::Tonemapping;
 use bevy::prelude::*;
@@ -28,6 +29,7 @@ impl Plugin for CameraPlugin {
             Camera2d,
             Camera {
                 hdr: true,
+                clear_color: ClearColorConfig::Custom(Color::BLACK),
                 ..Default::default()
             },
             Tonemapping::TonyMcMapface,
@@ -39,7 +41,8 @@ impl Plugin for CameraPlugin {
 
         app.insert_resource(cache).add_systems(
             PostUpdate,
-            (camera_binded, camera_move_to::<EasingCurve<Vec3>>)
+            ((camera_binded, camera_move_to::<EasingCurve<Vec3>>), anchor)
+                .chain()
                 .before(TransformSystem::TransformPropagate)
                 .in_set(CameraSystem::UpdateCamera),
         );
@@ -266,6 +269,7 @@ where
                 if cache.0.insert(std::any::TypeId::of::<M>()) {
                     schedule.add_systems(
                         camera_move_to::<M>
+                            .before(anchor)
                             .before(TransformSystem::TransformPropagate)
                             .in_set(CameraSystem::UpdateCamera),
                     );
@@ -328,6 +332,17 @@ fn camera_binded(
                 t.translation + offset.map(|o| o.0).unwrap_or_default().extend(0.);
         } else {
             warn_once!("Camera binded to entity with no transform");
+        }
+    }
+}
+
+fn anchor(
+    camera: Option<Single<&mut Transform, With<MainCamera>>>,
+    anchor: Query<&Transform, (With<annual::CameraAnchor>, Without<MainCamera>)>,
+) {
+    if let Ok(t) = anchor.get_single() {
+        if let Some(mut camera) = camera {
+            camera.translation = t.translation;
         }
     }
 }

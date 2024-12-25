@@ -14,6 +14,7 @@ pub mod sfx;
 
 pub trait IntoBox<C = EmptyCutscene>: IntoFragment<SectionFrag, TextBoxContext<C>> {
     fn spawn_box(self, commands: &mut Commands);
+    fn spawn_box_with(self, commands: &mut Commands, _root: C);
     fn textbox(self) -> impl IntoBox<C>;
     fn textbox_with(
         self,
@@ -29,6 +30,10 @@ where
     fn spawn_box(self, commands: &mut Commands) {
         let entity = commands.spawn(Portrait::default()).id();
         spawn_root_with(self.textbox(), commands, TextBoxContext::new(entity));
+    }
+
+    fn spawn_box_with(self, commands: &mut Commands, _root: C) {
+        self.spawn_box(commands);
     }
 
     fn textbox(self) -> impl IntoBox<C> {

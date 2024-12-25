@@ -7,7 +7,7 @@ use crate::color::srgb_from_hex;
 use crate::cutscene::CutsceneFragment;
 use crate::gfx::camera::CameraCurveFragment;
 use crate::gfx::post_processing::PostProcessCommand;
-use crate::interactions::SpawnInteraction;
+use crate::interactions::BindInteraction;
 use crate::textbox::prelude::*;
 use bevy::audio::Volume;
 use bevy::input::keyboard::KeyboardInput;
@@ -20,6 +20,7 @@ use std::time::Duration;
 
 mod fireflies;
 
+#[derive(Default, Clone)]
 pub struct ParkScene;
 
 impl Scene for ParkScene {
@@ -71,11 +72,8 @@ pub fn init(entity: Entity) -> impl FnOnce(&mut World) {
             "Do you have any pretty birds?".textbox(),
         )
             .once()
-            .spawn_interaction(Interactions::LargeTree, &mut world.commands());
-        //s!("This one's a little [0.5] smaller...")
-        //    .spawn_interaction(Interactions::SmallTree, &mut world.commands());
-        //"You really like trees, huh?"
-        //    .spawn_interaction(Interactions::TwistyTree, &mut world.commands());
+            .interaction(Interactions::LargeTree)
+            .spawn_box_with(&mut world.commands(), ());
     }
 }
 
