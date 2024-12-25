@@ -19,32 +19,31 @@ pub struct CameraPlugin;
 
 impl Plugin for CameraPlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(CameraSystemCache::default())
-            .add_systems(Startup, init_camera)
-            .add_systems(
-                PostUpdate,
-                camera_binded
-                    .before(TransformSystem::TransformPropagate)
-                    .in_set(CameraSystem::UpdateCamera),
-            );
-    }
-}
+        app.world_mut().spawn((
+            OrthographicProjection {
+                scale: crate::CAMERA_SCALE,
+                near: -1000.0,
+                ..OrthographicProjection::default_3d()
+            },
+            Camera2d,
+            Camera {
+                hdr: true,
+                ..Default::default()
+            },
+            Tonemapping::TonyMcMapface,
+            MainCamera,
+        ));
 
-fn init_camera(mut commands: Commands) {
-    commands.spawn((
-        OrthographicProjection {
-            scale: crate::CAMERA_SCALE,
-            near: -1000.0,
-            ..OrthographicProjection::default_3d()
-        },
-        Camera2d,
-        Camera {
-            hdr: true,
-            ..Default::default()
-        },
-        Tonemapping::TonyMcMapface,
-        MainCamera,
-    ));
+        let mut cache = CameraSystemCache::default();
+        cache.0.insert(TypeId::of::<EasingCurve<Vec3>>());
+
+        app.insert_resource(cache).add_systems(
+            PostUpdate,
+            (camera_binded, camera_move_to::<EasingCurve<Vec3>>)
+                .before(TransformSystem::TransformPropagate)
+                .in_set(CameraSystem::UpdateCamera),
+        );
+    }
 }
 
 #[allow(unused)]
@@ -57,7 +56,7 @@ where
     fn move_camera_to<M: Component>(
         self,
         marker: M,
-        offset: Vec3,
+        offset: Vec2,
         duration: Duration,
     ) -> impl IntoFragment<D, C>
     where
@@ -67,7 +66,7 @@ where
     fn move_camera_curve<M: Component, I: Curve<Vec3>>(
         self,
         _marker: M,
-        offset: Vec3,
+        offset: Vec2,
         duration: Duration,
         curve: impl IntoCurve<I> + Send + Sync + 'static,
     ) -> CameraCurveFrag<impl IntoFragment<D, C>, I>;
@@ -82,14 +81,14 @@ where
     fn move_then_bind_camera<M: Component>(
         self,
         marker: M,
-        offset: Vec3,
+        offset: Vec2,
         duration: Duration,
     ) -> impl IntoFragment<D, C>;
 
     fn move_curve_then_bind_camera<M: Component, I: Curve<Vec3>>(
         self,
         _marker: M,
-        offset: Vec3,
+        offset: Vec2,
         duration: Duration,
         curve: impl IntoCurve<I> + Send + Sync + 'static,
     ) -> CameraCurveFrag<impl IntoFragment<D, C>, I>;
@@ -104,7 +103,7 @@ where
     fn move_camera_to<M: Component>(
         self,
         _marker: M,
-        offset: Vec3,
+        offset: Vec2,
         duration: Duration,
     ) -> impl IntoFragment<D, C> {
         let system = move |camera: Single<(Entity, &Transform), With<MainCamera>>,
@@ -115,7 +114,7 @@ where
                 duration,
                 EasingCurve::new(
                     camera_t.translation,
-                    entity_t.translation + offset,
+                    entity_t.translation + offset.extend(0.),
                     EaseFunction::Linear,
                 ),
             ));
@@ -128,17 +127,23 @@ where
     fn move_camera_curve<M: Component, I: Curve<Vec3>>(
         self,
         _marker: M,
-        offset: Vec3,
+        offset: Vec2,
         duration: Duration,
         curve: impl IntoCurve<I> + Send + Sync + 'static,
     ) -> CameraCurveFrag<impl IntoFragment<D, C>, I> {
         let system = move |camera: Single<(Entity, &Transform), With<MainCamera>>,
-                           entity_t: Single<&Transform, With<M>>,
+                           entity_t: Single<(&Transform, Option<&CameraOffset>), With<M>>,
                            mut commands: Commands| {
+            let (entity_t, entity_offset) = entity_t.into_inner();
             let (camera, camera_t) = camera.into_inner();
             commands.entity(camera).insert(MoveTo::new(
                 duration,
-                curve.into_curve(camera_t.translation, entity_t.translation + offset),
+                curve.into_curve(
+                    camera_t.translation,
+                    entity_t.translation
+                        + offset.extend(0.)
+                        + entity_offset.map(|o| o.0).unwrap_or_default().extend(0.),
+                ),
             ));
             commands.entity(camera).remove::<Binded>();
         };
@@ -156,7 +161,7 @@ where
     fn move_then_bind_camera<M: Component>(
         self,
         _marker: M,
-        offset: Vec3,
+        offset: Vec2,
         duration: Duration,
     ) -> impl IntoFragment<D, C> {
         let mov = move |camera: Single<(Entity, &Transform), With<MainCamera>>,
@@ -167,7 +172,7 @@ where
                 duration,
                 EasingCurve::new(
                     camera_t.translation,
-                    entity_t.translation + offset,
+                    entity_t.translation + offset.extend(0.),
                     EaseFunction::Linear,
                 ),
             ));
@@ -180,17 +185,23 @@ where
     fn move_curve_then_bind_camera<M: Component, I: Curve<Vec3>>(
         self,
         _marker: M,
-        offset: Vec3,
+        offset: Vec2,
         duration: Duration,
         curve: impl IntoCurve<I> + Send + Sync + 'static,
     ) -> CameraCurveFrag<impl IntoFragment<D, C>, I> {
         let system = move |camera: Single<(Entity, &Transform), With<MainCamera>>,
-                           entity_t: Single<&Transform, With<M>>,
+                           entity_t: Single<(&Transform, Option<&CameraOffset>), With<M>>,
                            mut commands: Commands| {
+            let (entity_t, entity_offset) = entity_t.into_inner();
             let (camera, camera_t) = camera.into_inner();
             commands.entity(camera).insert(MoveTo::new(
                 duration,
-                curve.into_curve(camera_t.translation, entity_t.translation + offset),
+                curve.into_curve(
+                    camera_t.translation,
+                    entity_t.translation
+                        + offset.extend(0.)
+                        + entity_offset.map(|o| o.0).unwrap_or_default().extend(0.),
+                ),
             ));
             commands.entity(camera).remove::<Binded>();
         };
@@ -316,7 +327,7 @@ fn camera_binded(
             transform.translation =
                 t.translation + offset.map(|o| o.0).unwrap_or_default().extend(0.);
         } else {
-             warn_once!("Camera binded to entity with no transform");
+            warn_once!("Camera binded to entity with no transform");
         }
     }
 }

@@ -13,7 +13,15 @@ pub struct CutscenePlugin;
 
 impl Plugin for CutscenePlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(MovementSystemCache::default());
+        let mut cache = MovementSystemCache::default();
+        cache.0.insert(TypeId::of::<EasingCurve<Vec3>>());
+
+        app.insert_resource(cache).add_systems(
+            PostUpdate,
+            apply_movements::<EasingCurve<Vec3>>
+                .before(TransformSystem::TransformPropagate)
+                .before(CameraSystem::UpdateCamera),
+        );
     }
 }
 

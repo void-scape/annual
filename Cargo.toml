@@ -17,6 +17,8 @@ bevy_pretty_text = { path = "bevy_pretty_text" }
 
 bevy_light_2d = "0.5"
 
+bevy_enoki = "0.3.3"
+
 [dependencies.bevy]
 version = "0.15"
 features = ["dynamic_linking", "wav", "mp3", "jpeg"]

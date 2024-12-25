@@ -107,7 +107,7 @@ pub fn update_portrait(
     mut portraits: Query<(&mut Sprite, &mut Transform)>,
 ) {
     for (portrait, child) in portrait_parents.iter() {
-        if let Ok((mut sprite, mut transform)) = portraits.get_mut(child.0) {
+        if let Ok((mut sprite, mut transform)) = portraits.get_mut(child.entity()) {
             *sprite = portrait.sprite.clone();
             *transform = portrait.transform;
         }

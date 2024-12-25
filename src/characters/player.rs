@@ -1,16 +1,12 @@
 use crate::{
     animation::{AnimationController, AnimationPlugin},
     characters::Izzy,
-    collision::{trigger::TriggerLayer, Collider, DynamicBody},
     cutscene::{CutsceneMovement, CutsceneVelocity},
-    gfx::{
-        camera::{bind_camera, CameraOffset, MainCamera},
-        post_processing::PostProcessCommand,
-    },
+    gfx::camera::{bind_camera, CameraOffset, MainCamera},
+    physics::prelude::*,
     TILE_SIZE,
 };
-use bevy::{core_pipeline::bloom::Bloom, prelude::*};
-use bevy_light_2d::prelude::*;
+use bevy::prelude::*;
 use leafwing_input_manager::{
     plugin::InputManagerPlugin,
     prelude::{ActionState, InputMap},
@@ -26,7 +22,7 @@ impl Plugin for PlayerPlugin {
             InputManagerPlugin::<Action>::default(),
             AnimationPlugin::<PlayerAnimation>::default(),
         ))
-        .add_systems(PreUpdate, (init_camera, init_player))
+        .add_systems(PreUpdate, init_camera)
         .add_systems(FixedUpdate, (walk, animate_cutscene));
     }
 }
@@ -51,35 +47,6 @@ fn init_camera(
 #[require(TriggerLayer(|| TriggerLayer(0)), DynamicBody, Collider(collider))]
 #[require(CameraOffset(|| CameraOffset(Vec2::new(TILE_SIZE, -TILE_SIZE))))]
 pub struct Player;
-
-fn from_hex(color: u32) -> Color {
-    Color::srgb_u8(
-        ((color >> 16) & 0xff) as u8,
-        ((color >> 8) & 0xff) as u8,
-        (color & 0xff) as u8,
-    )
-}
-
-fn init_player(mut commands: Commands, player: Query<Entity, Added<Player>>) {
-    for player in player.iter() {
-        commands.entity(player).with_child((
-            PointLight2d {
-                color: from_hex(0xffeb57),
-                intensity: 2.0,
-                radius: 60.0,
-                falloff: 100.,
-                ..default()
-            },
-            Transform::from_xyz(TILE_SIZE, -TILE_SIZE, 0.),
-        ));
-        commands.post_process(AmbientLight2d {
-            brightness: 0.4,
-            color: from_hex(0x03193f),
-            ..Default::default()
-        });
-        //commands.post_process(Bloom::NATURAL);
-    }
-}
 
 fn animation_controller() -> AnimationController<PlayerAnimation> {
     AnimationController::new(

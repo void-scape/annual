@@ -1,7 +1,5 @@
 use crate::annual::Interactions;
-use crate::collision::trigger::TriggerEvent;
-use crate::collision::{trigger::Trigger, Collider};
-use crate::frags::insert_box;
+use crate::physics::prelude::*;
 use crate::player::{Action, Player};
 use crate::textbox::prelude::*;
 use crate::{CutsceneMovement, TILE_SIZE};
@@ -23,28 +21,18 @@ impl Plugin for InteractionPlugin {
 
 pub trait SpawnInteraction: IntoBox + Sized {
     fn spawn_interaction(self, interaction: Interactions, commands: &mut Commands) {
-        let entity = commands.spawn_empty().id();
-        let interaction = self
-            .eval_id(
-                move |In(id): In<FragmentId>,
-                      mut reader: EventReader<InteractionTrigger>,
-                      fragments: Query<&FragmentState>| {
-                    reader.read().any(|e| e.0 == interaction)
-                        && fragments
-                            .get(id.entity())
-                            .ok()
-                            .is_none_or(|state| !state.active)
-                },
-            )
-            .on_start(
-                move |mut commands: Commands, asset_server: Res<AssetServer>| {
-                    insert_box(entity, &asset_server, &mut commands)
-                },
-            )
-            .on_end(move |mut commands: Commands| {
-                commands.entity(entity).clear().clear_children();
-            });
-        spawn_root_with(interaction, commands, TextBoxContext::new(entity));
+        self.eval_id(
+            move |In(id): In<FragmentId>,
+                  mut reader: EventReader<InteractionTrigger>,
+                  fragments: Query<&FragmentState>| {
+                reader.read().any(|e| e.0 == interaction)
+                    && fragments
+                        .get(id.entity())
+                        .ok()
+                        .is_none_or(|state| state.active_events.is_empty())
+            },
+        )
+        .spawn_box(commands);
     }
 }
 

@@ -172,6 +172,7 @@ version = "0.1.0"
 dependencies = [
  "bevy",
  "bevy_asset_loader",
+ "bevy_enoki",
  "bevy_ldtk_scene",
  "bevy_light_2d",
  "bevy_pretty_text",
@@ -671,6 +672,18 @@ checksum = "bfe562b883fb652acde84cb6bb01cbc9f23c377e411f1484467ecfdd3a3d234e"
 dependencies = [
  "bevy_macro_utils",
  "encase_derive_impl",
+]
+
+[[package]]
+name = "bevy_enoki"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2cb9e8602abb486a4265c227f00c9627d58c465568425511e545e2d69fb3ae52"
+dependencies = [
+ "bevy",
+ "rand",
+ "ron",
+ "serde",
 ]
 
 [[package]]

@@ -4,6 +4,7 @@
 use bevy::{
     diagnostic::FrameTimeDiagnosticsPlugin,
     input::{keyboard::KeyboardInput, ButtonState},
+    log::LogPlugin,
     prelude::*,
     render::{
         settings::{RenderCreation, WgpuSettings},
@@ -12,28 +13,41 @@ use bevy::{
 };
 use characters::*;
 use cutscene::*;
-use textbox::*;
 use scenes::{park::ParkScene, SceneRoot};
 
 mod animation;
 mod annual;
 mod asset_loading;
 mod characters;
-mod collision;
+mod color;
 mod curves;
 mod cutscene;
 mod gfx;
 mod interactions;
+mod physics;
 mod scenes;
 mod textbox;
 
 const TILE_SIZE: f32 = 8.;
 const CAMERA_SCALE: f32 = 0.15;
+const WIDTH: f32 = 1280.;
+const HEIGHT: f32 = 720.;
 
 fn main() {
     App::default()
         .add_plugins((
             DefaultPlugins
+                .set(WindowPlugin {
+                    primary_window: Some(Window {
+                        resolution: [WIDTH, HEIGHT].into(),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                })
+                .set(LogPlugin {
+                    filter: String::from("symphonia=warn"),
+                    ..Default::default()
+                })
                 .set(ImagePlugin::default_nearest())
                 .set(RenderPlugin {
                     render_creation: RenderCreation::Automatic(WgpuSettings {
@@ -44,6 +58,7 @@ fn main() {
                 }),
             FrameTimeDiagnosticsPlugin,
         ))
+        .insert_resource(GlobalVolume::new(0.5))
         .add_plugins((
             asset_loading::AssetLoadingPlugin,
             bevy_sequence::SequencePlugin,
@@ -51,9 +66,10 @@ fn main() {
             textbox::TextBoxPlugin,
             characters::CharacterPlugin,
             cutscene::CutscenePlugin,
-            collision::CollisionPlugin,
+            physics::PhysicsPlugin,
             interactions::InteractionPlugin,
             scenes::ScenePlugin,
+            bevy_enoki::EnokiPlugin,
         ))
         .add_systems(Update, close_on_escape)
         .add_systems(Startup, startup)
@@ -70,6 +86,7 @@ fn close_on_escape(mut reader: EventReader<KeyboardInput>, mut writer: EventWrit
 
 fn startup(mut commands: Commands) {
     commands.spawn(SceneRoot::new(ParkScene));
+
     //let entity = commands.spawn(SceneRoot::new(ParkScene)).id();
     //run_after(
     //    Duration::from_secs(1),

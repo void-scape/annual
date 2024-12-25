@@ -72,13 +72,15 @@ impl<T: Component> ApplyPostProcess for T {
 }
 
 pub fn apply(post_process: impl ApplyPostProcess) -> impl FnOnce(&mut World) {
-    move |world: &mut World| {
-        if let Some(camera) = world
-            .query_filtered::<Entity, With<MainCamera>>()
-            .iter(&world)
-            .next()
-        {
+    move |world: &mut World| match world
+        .query_filtered::<Entity, With<MainCamera>>()
+        .get_single(world)
+    {
+        Ok(camera) => {
             post_process.insert(&mut world.entity_mut(camera));
+        }
+        Err(e) => {
+            error!("failed to apply post process to main camera: {e}");
         }
     }
 }
@@ -95,28 +97,37 @@ impl<T: ApplyPostProcess + Sync> Component for PostProcessBinding<T> {
     }
 }
 
-pub fn bind<T: ApplyPostProcess + Sync>(post_process: T, entity: Entity) -> impl FnOnce(&mut World) {
-    move |world: &mut World| {
-        if let Some(camera) = world
-            .query_filtered::<Entity, With<MainCamera>>()
-            .iter(&world)
-            .next()
-        {
+pub fn bind<T: ApplyPostProcess + Sync>(
+    post_process: T,
+    entity: Entity,
+) -> impl FnOnce(&mut World) {
+    move |world: &mut World| match world
+        .query_filtered::<Entity, With<MainCamera>>()
+        .get_single(world)
+    {
+        Ok(camera) => {
             post_process.insert(&mut world.entity_mut(camera));
             world
                 .entity_mut(entity)
                 .with_child(PostProcessBinding::<T>(PhantomData));
         }
+        Err(e) => {
+            error!("failed to bind post process to main camera: {e}");
+        }
     }
 }
 
 pub fn remove<T: ApplyPostProcess>(world: &mut World) {
-    if let Some(camera) = world
+    match world
         .query_filtered::<Entity, With<MainCamera>>()
-        .iter(&world)
-        .next()
+        .get_single(world)
     {
-        T::remove(&mut world.entity_mut(camera));
+        Ok(camera) => {
+            T::remove(&mut world.entity_mut(camera));
+        }
+        Err(e) => {
+            error!("failed to remove post process from main camera: {e}");
+        }
     }
 }
 

@@ -9,13 +9,14 @@ use std::any::TypeId;
 //use std::io::Write;
 
 pub mod park;
+mod point_light;
 
 pub struct ScenePlugin;
 
 impl Plugin for ScenePlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(bevy_ldtk_scene::LdtkScenePlugin)
-            .insert_resource(SceneSystemCache::default());
+            .insert_resource(SceneSystemCache::default()).add_systems(Update, point_light::init_point_light_tiles);
     }
 }
 
