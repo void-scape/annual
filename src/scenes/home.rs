@@ -1,59 +1,63 @@
 use super::park::ParkScene;
-use super::{Scene, SceneCommands, SceneTransition};
-use crate::annual::Interactions;
-use crate::characters::*;
+use super::{Scene, SceneTransition};
+use crate::annual::{self, Interactions};
+use crate::color::srgb_from_hex;
 use crate::cutscene::CutsceneFragment;
+use crate::frag_util::FragExt;
+use crate::gfx::post_processing::PostProcessCommand;
 use crate::interactions::BindInteraction;
+use crate::textbox::frags::{textbox_once, EmptyCutscene};
 use crate::textbox::prelude::*;
+use crate::{characters::*, HEIGHT, WIDTH};
+use bevy::audio::Volume;
 use bevy::prelude::*;
+use bevy_light_2d::light::AmbientLight2d;
 use bevy_pretty_text::prelude::*;
+use bevy_sequence::combinators::delay::run_after;
 use bevy_sequence::prelude::*;
+use std::time::Duration;
 
-#[derive(Default, Clone)]
-pub struct HomeScene;
+pub struct HomePlugin;
 
-impl Scene for HomeScene {
-    fn spawn(root: &mut EntityCommands) {
-        let id = root.id();
-        root.commands().queue(init(id));
-        root.commands().add_scoped_systems(
-            HomeScene,
+//#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, SystemSet)]
+//pub enum HomeSystems {
+//    Transition,
+//}
+
+impl Plugin for HomePlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(
             PreUpdate,
-            super::scene_transition::<HomeScene, ParkScene>,
+            super::scene_transition::<BedroomScene, LivingRoomScene>, //.run_if(super::scene_type_exists::<BedroomScene>),
         );
     }
 }
 
-pub fn init(entity: Entity) -> impl FnOnce(&mut World) {
-    move |world: &mut World| {
-        if let Err(e) = world.run_system_cached_with(crate::annual::home::spawn, entity) {
-            error!("failed to load home: {e}");
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub enum BedroomScene {
+    Test,
+    PotBreak,
+}
+
+impl Scene for BedroomScene {
+    fn spawn(&self, root: &mut EntityCommands) {
+        let id = root.id();
+        match self {
+            Self::Test => root.commands().queue(init_test(id)),
+            Self::PotBreak => root.commands().queue(init_pot_break(id)),
         }
+    }
+}
 
-        //let handle = world.load_asset("sounds/ambient/night2.mp3");
-        //world.entity_mut(entity).with_child((
-        //    AudioPlayer::new(handle),
-        //    PlaybackSettings::LOOP.with_volume(Volume::new(0.5)),
-        //));
-
-        //world.commands().post_process(AmbientLight2d {
-        //    brightness: 5.,
-        //    color: srgb_from_hex(0x03193f),
-        //    ..Default::default()
-        //});
-
-        //let player = world
-        //    .query_filtered::<Entity, With<Player>>()
-        //    .single(&world);
-        //world.entity_mut(player).insert(FireflySpawner {
-        //    max: 20,
-        //    rate: 0.5,
-        //    lifetime: 0.5,
-        //});
+pub fn init_test(entity: Entity) -> impl FnOnce(&mut World) {
+    move |world: &mut World| {
+        if let Err(e) = world.run_system_cached_with(annual::bedroom::spawn, entity) {
+            error!("failed to load level: {e}");
+        }
 
         cabinet().spawn_box(&mut world.commands());
         spawn_root(
-            SceneTransition::<HomeScene, ParkScene>::default()
+            SceneTransition::new(BedroomScene::Test, ParkScene)
                 .always()
                 .interaction(Interactions::BedroomDoor),
             &mut world.commands(),
@@ -77,104 +81,119 @@ fn cabinet() -> impl IntoBox {
         .always()
 }
 
-fn door() -> impl IntoBox {
-    "This is a door"
-        .portrait_transform(TRANSFORM)
-        .lock(Izzy)
-        .once()
-        .always()
+pub fn init_pot_break(entity: Entity) -> impl FnOnce(&mut World) {
+    move |world: &mut World| {
+        if let Err(e) = world.run_system_cached_with(annual::bedroom::spawn, entity) {
+            error!("failed to load level: {e}");
+        }
+
+        let handle = world.load_asset("sounds/sfx/wind.mp3");
+        world.spawn((
+            AudioPlayer::new(handle),
+            PlaybackSettings::LOOP.with_volume(Volume::new(0.1)),
+        ));
+
+        world.commands().post_process(AmbientLight2d {
+            brightness: 3.,
+            color: srgb_from_hex(0x03193f),
+            ..Default::default()
+        });
+
+        let transform = world
+            .query_filtered::<&Transform, With<annual::Player>>()
+            .single(world)
+            .clone();
+        let black = world
+            .commands()
+            .spawn((
+                Sprite {
+                    color: Color::BLACK,
+                    custom_size: Some(Vec2::new(WIDTH, HEIGHT)),
+                    ..Default::default()
+                },
+                transform.with_translation(transform.translation.xy().extend(999.)),
+            ))
+            .id();
+
+        run_after(
+            Duration::from_secs_f32(0.5),
+            move |mut commands: Commands, asset_server: Res<AssetServer>| {
+                commands.spawn((
+                    AudioPlayer::new(asset_server.load("sounds/sfx/pot_break.mp3")),
+                    PlaybackSettings::DESPAWN.with_volume(Volume::new(0.1)),
+                ));
+                run_after(
+                    Duration::from_secs_f32(2.5),
+                    move |mut commands: Commands| {
+                        textbox_once::<()>(
+                            s!("<0.2>...<1>[0.5]!").on_end(move |mut commands: Commands| {
+                                commands.entity(black).despawn()
+                            }),
+                            &mut commands,
+                        );
+                    },
+                    &mut commands,
+                );
+            },
+            &mut world.commands(),
+        );
+
+        spawn_root(
+            SceneTransition::new(BedroomScene::PotBreak, LivingRoomScene::PotBreak)
+                .sound_with("sounds/music/home.wav", PlaybackSettings::LOOP)
+                .always()
+                .interaction(Interactions::BedroomDoor),
+            &mut world.commands(),
+        );
+    }
 }
 
-//pub fn scene(
-//    mut commands: Commands,
-//    server: Res<AssetServer>,
-//    mut input: EventReader<KeyboardInput>,
-//) {
-//    if input
-//        .read()
-//        .any(|i| i.state == ButtonState::Pressed && i.key_code == KeyCode::KeyO)
-//    {
-//        one().spawn_box(&mut commands);
-//
-//        commands.spawn((
-//            AudioPlayer::new(server.load("sounds/music/quiet-night.wav")),
-//            PlaybackSettings::LOOP,
-//        ));
-//    }
-//}
-//
-//const OPENING_TRANSFORM: Transform =
-//    Transform::from_xyz(175., 175., -10.).with_scale(Vec3::splat(1. / 3.));
-//
-//fn one() -> impl IntoBox<annual::ParkSceneFlower> {
-//    (
-//        "Hello!"
-//            .flower()
-//            .move_to(Izzy, Vec3::ZERO, Duration::from_secs(1)),
-//        s!("<1.2>...[0.5]!").izzy().move_to(
-//            Izzy,
-//            Vec3::new(-20., -20., 0.),
-//            Duration::from_millis(500),
-//        ),
-//        "Are you looking for something?".flower().move_camera_curve(
-//            Flower,
-//            Vec2::new(16., -16.),
-//            Duration::from_secs(1),
-//            EaseFunction::QuadraticInOut,
-//        ),
-//        s!("D-did you... [1] I mean, [0.5] are you a...")
-//            .izzy()
-//            .move_curve_then_bind_camera(
-//                Izzy,
-//                Vec2::ZERO,
-//                Duration::from_secs_f32(0.5),
-//                EaseFunction::QuadraticInOut,
-//            ),
-//        "Is something wrong?".flower(),
-//        s!("Are you... [0.5] talking?").izzy().move_to(
-//            Izzy,
-//            Vec3::ZERO,
-//            Duration::from_millis(800),
-//        ),
-//        "Well, are you?".flower(),
-//        s!(
-//            "<1.2>But you're a [0.25]<2> {`FLOWER|green`[wave]}!",
-//            |frag| frag.sound("sounds/sfx/snd_bell.wav")
-//        )
-//        .izzy(),
-//        s!("<1>Oh, I guess so...").flower(),
-//    )
-//        .portrait_transform(OPENING_TRANSFORM)
-//        .lock(Izzy)
-//        .always()
-//        .once()
-//        .delay(Duration::from_millis(2000), |mut commands: Commands| {
-//            two().spawn_box(&mut commands);
-//        })
-//}
-//
-//fn two() -> impl IntoBox<annual::ParkSceneFlower> {
-//    (
-//        "Do you want to go on a walk?".izzy(),
-//        "I'd love to!".flower(),
-//        s!("But [0.5] I can't move.").flower(),
-//    )
-//        .once()
-//        .always()
-//        .portrait_transform(OPENING_TRANSFORM)
-//        .delay(Duration::from_millis(4000), |mut commands: Commands| {
-//            three().spawn_box(&mut commands);
-//        })
-//}
-//
-//fn three() -> impl IntoBox<annual::ParkSceneFlower> {
-//    (
-//        s!("I know! [0.25] I'll come by tomorrow.").izzy(),
-//        "Okay!".flower(),
-//        "I'll bring all my friends.".izzy(),
-//        "I'll be right here!".flower(),
-//    )
-//        .once()
-//        .always()
-//        .portrait_transform(OPENING_TRANSFORM)
-//}
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub enum LivingRoomScene {
+    PotBreak,
+}
+
+impl Scene for LivingRoomScene {
+    fn spawn(&self, root: &mut EntityCommands) {
+        let id = root.id();
+        match self {
+            Self::PotBreak => root.commands().queue(init_living_room_pot_break(id)),
+        }
+    }
+}
+
+pub fn init_living_room_pot_break(entity: Entity) -> impl FnOnce(&mut World) {
+    move |world: &mut World| {
+        if let Err(e) = world.run_system_cached_with(annual::living_room::spawn, entity) {
+            error!("failed to load level: {e}");
+        }
+
+        world.commands().post_process(AmbientLight2d {
+            brightness: 3.,
+            color: srgb_from_hex(0x03193f),
+            ..Default::default()
+        });
+
+        let entity = world
+            .query_filtered::<Entity, With<annual::BrokenPot>>()
+            .single(world);
+        let particle = world.load_asset("particles/dust.ron");
+        world.entity_mut(entity).with_child((
+            bevy_enoki::ParticleSpawner::default(),
+            bevy_enoki::ParticleEffectHandle(particle),
+            Transform::from_xyz(10., -10., 0.)
+        ));
+
+        (
+            s!("Mr. `Flower|blue`?")
+                .interaction(Interactions::BrokenPot)
+                .izzy(),
+            s!("I'm sorry, `Izzy|green`... [1.5] Your pot is broken.").flower(),
+        )
+            .portrait_transform(TRANSFORM)
+            .lock(Izzy)
+            .once()
+            .always()
+            .spawn_box_with(&mut world.commands(), EmptyCutscene);
+    }
+}

@@ -5,6 +5,7 @@ use crate::annual::{self, Interactions};
 use crate::characters::*;
 use crate::color::srgb_from_hex;
 use crate::cutscene::CutsceneFragment;
+use crate::frag_util::FragExt;
 use crate::gfx::camera::CameraCurveFragment;
 use crate::gfx::post_processing::PostProcessCommand;
 use crate::interactions::BindInteraction;
@@ -20,16 +21,11 @@ use std::time::Duration;
 
 mod fireflies;
 
-#[derive(Default, Clone)]
-pub struct ParkScene;
+pub struct ParkPlugin;
 
-impl Scene for ParkScene {
-    fn spawn(root: &mut EntityCommands) {
-        let id = root.id();
-        let mut commands = root.commands();
-        commands.queue(init(id));
-        commands.add_scoped_systems(
-            ParkScene,
+impl Plugin for ParkPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(
             Update,
             (
                 scene,
@@ -37,6 +33,17 @@ impl Scene for ParkScene {
                 fireflies::update_lifetime,
             ),
         );
+    }
+}
+
+#[derive(Default, Clone, PartialEq)]
+pub struct ParkScene;
+
+impl Scene for ParkScene {
+    fn spawn(&self, root: &mut EntityCommands) {
+        let id = root.id();
+        let mut commands = root.commands();
+        commands.queue(init(id));
     }
 }
 

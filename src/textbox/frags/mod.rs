@@ -12,6 +12,31 @@ use std::marker::PhantomData;
 pub mod portrait;
 pub mod sfx;
 
+pub fn textbox_once<C: 'static>(section: impl IntoBox<C>, commands: &mut Commands) {
+    section
+        .once()
+        .eval_id(
+            |In(fragment): In<FragmentId>,
+             //mut commands: Commands,
+             frag_query: Query<&FragmentState>| {
+                if let Ok(state) = frag_query.get(fragment.entity()) {
+                    if state.completed > 0 {
+                        // TODO: despawn crashes
+                        //commands.entity(fragment.entity()).despawn();
+                        false
+                    } else if state.active {
+                        false
+                    } else {
+                        true
+                    }
+                } else {
+                    false
+                }
+            },
+        )
+        .spawn_box(commands);
+}
+
 pub trait IntoBox<C = EmptyCutscene>: IntoFragment<SectionFrag, TextBoxContext<C>> {
     fn spawn_box(self, commands: &mut Commands);
     fn spawn_box_with(self, commands: &mut Commands, _root: C);

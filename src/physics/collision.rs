@@ -1,6 +1,8 @@
-use crate::annual;
 use super::spatial;
+use crate::annual;
+use bevy::ecs::observer::TriggerTargets;
 use bevy::prelude::*;
+use bevy_ldtk_scene::Level;
 use spatial::{SpatialHash, StaticBodyData, StaticBodyStorage};
 use std::cmp::Ordering;
 
@@ -398,18 +400,31 @@ pub fn handle_dynamic_body_collsions(
 // TODO: collider collapsing vertically
 pub fn build_tile_set_colliders(
     mut commands: Commands,
-    tiles: Query<&Transform, Added<annual::TileSolid>>,
+    tiles: Query<(&Transform, &Parent), Added<annual::TileSolid>>,
+    levels: Query<Entity>,
+    manual_collision: Query<&Transform, Added<annual::Collision>>,
 ) {
     //let mut num_colliders = 0;
 
     // ~14k without combining
     // ~600 with horizontal combining
 
+    if tiles.is_empty() {
+        return;
+    }
+
+    // WARN: assumes that one level is loaded at a time!!
+    let level = tiles
+        .iter()
+        .next()
+        .map(|(_, p)| levels.get(p.get()).unwrap())
+        .unwrap();
+
     let mut cached_collider_positions = Vec::with_capacity(1024);
     let tile_size = 8.;
 
     let offset = tile_size / 2.;
-    for transform in tiles.iter() {
+    for transform in tiles.iter().map(|(t, _)| t).chain(manual_collision.iter()) {
         cached_collider_positions.push(Vec2::new(
             transform.translation.x + offset,
             transform.translation.y + offset,
@@ -420,16 +435,18 @@ pub fn build_tile_set_colliders(
         return;
     }
 
-    for (pos, collider) in
-        build_colliders_from_vec2(cached_collider_positions, tile_size).into_iter()
-    {
-        commands.spawn((
-            Transform::from_translation((pos - Vec2::splat(tile_size / 2.)).extend(0.)),
-            StaticBody,
-            collider,
-        ));
-        //num_colliders += 1;
-    }
+    commands.entity(level).with_children(|level| {
+        for (pos, collider) in
+            build_colliders_from_vec2(cached_collider_positions, tile_size).into_iter()
+        {
+            level.spawn((
+                Transform::from_translation((pos - Vec2::splat(tile_size / 2.)).extend(0.)),
+                StaticBody,
+                collider,
+            ));
+            //num_colliders += 1;
+        }
+    });
 
     //println!("num_colliders: {num_colliders}");
 }

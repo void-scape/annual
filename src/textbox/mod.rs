@@ -6,8 +6,6 @@ use bevy_pretty_text::text::TypeWriterCommand;
 use bevy_pretty_text::type_writer::TypeWriterSets;
 use bevy_pretty_text::{prelude::*, type_writer::scroll::OnScrollEnd};
 use bevy_sequence::prelude::*;
-use frags::IntoBox;
-use rand::Rng;
 use render_layer::PropagateRenderLayers;
 
 pub mod frags;
@@ -16,7 +14,7 @@ pub mod render_layer;
 #[allow(unused)]
 pub mod prelude {
     pub use super::frags::{portrait::TextBoxPortrait, sfx::TextBoxSfx, IntoBox, TextBoxContext};
-    pub use super::{TextBox, TextBoxExt, TextBoxPlugin};
+    pub use super::{TextBox, TextBoxPlugin};
 }
 
 pub struct TextBoxPlugin;
@@ -186,38 +184,3 @@ fn spawn_section_frags(
         }
     }
 }
-
-pub trait TextBoxExt<C>
-where
-    Self: IntoBox<C> + Sized,
-    C: 'static,
-{
-    fn sound(self, path: &'static str) -> impl IntoBox<C> {
-        self.sound_with(path, PlaybackSettings::DESPAWN)
-    }
-
-    fn sound_with(self, path: &'static str, settings: PlaybackSettings) -> impl IntoBox<C> {
-        let hash = TransientSound(rand::thread_rng().gen());
-
-        self.on_start(
-            move |mut commands: Commands, asset_server: Res<AssetServer>| {
-                commands.spawn((AudioPlayer::new(asset_server.load(path)), settings, hash));
-            },
-        )
-        .on_end(
-            move |mut _commands: Commands, sound_query: Query<(Entity, &TransientSound)>| {
-                for (_entity, sound) in sound_query.iter() {
-                    if *sound == hash {
-                        // TODO: you don't really ever want to stop a sound abruptly
-                        //commands.entity(entity).despawn();
-                    }
-                }
-            },
-        )
-    }
-}
-
-impl<T, C: 'static> TextBoxExt<C> for T where T: IntoBox<C> {}
-
-#[derive(Clone, Copy, PartialEq, Eq, Component)]
-struct TransientSound(usize);

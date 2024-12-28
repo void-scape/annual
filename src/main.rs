@@ -13,9 +13,7 @@ use bevy::{
 };
 use characters::*;
 use cutscene::*;
-use scenes::{park::ParkScene, SceneRoot};
-
-use self::scenes::home::HomeScene;
+use scenes::SceneRoot;
 
 mod animation;
 mod annual;
@@ -24,6 +22,7 @@ mod characters;
 mod color;
 mod curves;
 mod cutscene;
+mod frag_util;
 mod gfx;
 mod interactions;
 mod physics;
@@ -87,13 +86,6 @@ fn close_on_escape(mut reader: EventReader<KeyboardInput>, mut writer: EventWrit
 }
 
 fn startup(mut commands: Commands) {
-    //commands.spawn(SceneRoot::new(ParkScene));
-    commands.spawn(SceneRoot::new(HomeScene));
-
-    //let entity = commands.spawn(SceneRoot::new(ParkScene)).id();
-    //run_after(
-    //    Duration::from_secs(1),
-    //    move |mut commands: Commands| commands.entity(entity).despawn_recursive(),
-    //    &mut commands,
-    //);
+    //commands.spawn(SceneRoot::new(scenes::park::ParkScene));
+    commands.spawn(SceneRoot::new(scenes::home::BedroomScene::PotBreak));
 }

@@ -340,9 +340,12 @@ fn anchor(
     camera: Option<Single<&mut Transform, With<MainCamera>>>,
     anchor: Query<&Transform, (With<annual::CameraAnchor>, Without<MainCamera>)>,
 ) {
-    if let Ok(t) = anchor.get_single() {
-        if let Some(mut camera) = camera {
-            camera.translation = t.translation;
+    match anchor.get_single() {
+        Ok(t) => {
+            if let Some(mut camera) = camera {
+                camera.translation = t.translation;
+            }
         }
+        Err(e) => warn_once!("could not anchor camera: {e}"),
     }
 }
