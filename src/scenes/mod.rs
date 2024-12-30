@@ -13,6 +13,7 @@ use std::any::TypeId;
 pub mod home;
 pub mod park;
 mod point_light;
+pub mod sandbox;
 
 pub struct ScenePlugin;
 
@@ -22,6 +23,7 @@ impl Plugin for ScenePlugin {
             bevy_ldtk_scene::LdtkScenePlugin,
             park::ParkPlugin,
             home::HomePlugin,
+            sandbox::SandboxPlugin,
         ))
         .insert_resource(SceneSystemCache::default())
         .add_systems(

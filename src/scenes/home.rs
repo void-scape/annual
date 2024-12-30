@@ -28,7 +28,8 @@ impl Plugin for HomePlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             PreUpdate,
-            super::scene_transition::<BedroomScene, LivingRoomScene>, //.run_if(super::scene_type_exists::<BedroomScene>),
+            super::scene_transition::<BedroomScene, LivingRoomScene>
+                .run_if(super::scene_type_exists::<BedroomScene>),
         );
     }
 }
@@ -181,7 +182,7 @@ pub fn init_living_room_pot_break(entity: Entity) -> impl FnOnce(&mut World) {
         world.entity_mut(entity).with_child((
             bevy_enoki::ParticleSpawner::default(),
             bevy_enoki::ParticleEffectHandle(particle),
-            Transform::from_xyz(10., -10., 0.)
+            Transform::from_xyz(10., -10., 0.),
         ));
 
         (

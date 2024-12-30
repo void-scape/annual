@@ -118930,7 +118930,7 @@
               ],
             ),
           ],
-          background_asset_path: Some("ldtk/annual_background_composite.png"),
+          background_asset_path: Some(("ldtk/Park_background_composite.png", (0.0, 0.0))),
         ),
       },
     ),

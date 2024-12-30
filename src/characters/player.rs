@@ -50,13 +50,13 @@ pub struct Player;
 
 fn animation_controller() -> AnimationController<PlayerAnimation> {
     AnimationController::new(
-        5.0,
+        15.0,
         [
-            (PlayerAnimation::Idle, (0, 1)),
-            (PlayerAnimation::Walk(Direction::Up), (8, 12)),
-            (PlayerAnimation::Walk(Direction::Right), (0, 4)),
-            (PlayerAnimation::Walk(Direction::Left), (4, 8)),
-            (PlayerAnimation::Walk(Direction::Down), (4, 8)),
+            (PlayerAnimation::Idle, (50, 54)),
+            (PlayerAnimation::Walk(Direction::Up), (20, 40)),
+            (PlayerAnimation::Walk(Direction::Right), (45, 50)),
+            (PlayerAnimation::Walk(Direction::Left), (40, 45)),
+            (PlayerAnimation::Walk(Direction::Down), (0, 20)),
         ],
     )
 }
@@ -180,7 +180,7 @@ fn walk(
             animation.set_animation(PlayerAnimation::Idle);
         }
 
-        const PLAYER_SPEED: f32 = 40.0;
+        const PLAYER_SPEED: f32 = 80.0;
         vel = vel.clamp_length_max(1.0) * PLAYER_SPEED;
         transform.translation.x += vel.x * time.delta_secs();
         transform.translation.y += vel.y * time.delta_secs();

@@ -49,6 +49,7 @@ fn init_camera(mut commands: Commands) {
             ..default()
         },
         TextBox::RENDER_LAYER,
+        Msaa::Off,
     ));
 }
 

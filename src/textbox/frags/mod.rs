@@ -1,6 +1,5 @@
-use crate::{HEIGHT, WIDTH};
-
 use super::{Continue, TextBox};
+use crate::{WINDOW_HEIGHT, WINDOW_WIDTH};
 use bevy::prelude::*;
 use bevy::sprite::Anchor;
 use bevy::text::TextBounds;
@@ -142,7 +141,7 @@ pub fn fade_textbox(entity: Entity, asset_server: &AssetServer, commands: &mut C
                 font: Some(asset_server.load("textbox/joystix.otf")),
             },
             SfxChar::from_source(asset_server.load("characters/izzy/girl.mp3")),
-            Transform::from_xyz(-WIDTH / 2., -HEIGHT / 2., 0.),
+            Transform::from_xyz(-WINDOW_WIDTH / 2., -WINDOW_HEIGHT / 2., 0.),
         ))
         .with_child((
             Sprite {

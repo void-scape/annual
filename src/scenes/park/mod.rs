@@ -31,7 +31,8 @@ impl Plugin for ParkPlugin {
                 scene,
                 fireflies::spawn_fireflies::<ParkScene>,
                 fireflies::update_lifetime,
-            ),
+            )
+                .run_if(super::scene_type_exists::<ParkScene>),
         );
     }
 }

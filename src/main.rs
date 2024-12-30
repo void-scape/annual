@@ -30,9 +30,12 @@ mod scenes;
 mod textbox;
 
 const TILE_SIZE: f32 = 8.;
-const CAMERA_SCALE: f32 = 0.15;
-const WIDTH: f32 = 1280.;
-const HEIGHT: f32 = 720.;
+
+const WINDOW_WIDTH: f32 = 1280.;
+const WINDOW_HEIGHT: f32 = 720.;
+
+const WIDTH: f32 = 320.;
+const HEIGHT: f32 = 180.;
 
 fn main() {
     App::default()
@@ -40,7 +43,7 @@ fn main() {
             DefaultPlugins
                 .set(WindowPlugin {
                     primary_window: Some(Window {
-                        resolution: [WIDTH, HEIGHT].into(),
+                        resolution: [WINDOW_WIDTH, WINDOW_HEIGHT].into(),
                         ..Default::default()
                     }),
                     ..Default::default()
@@ -85,7 +88,8 @@ fn close_on_escape(mut reader: EventReader<KeyboardInput>, mut writer: EventWrit
     }
 }
 
-fn startup(mut commands: Commands) {
+fn startup(mut commands: Commands, _server: Res<AssetServer>) {
     //commands.spawn(SceneRoot::new(scenes::park::ParkScene));
-    commands.spawn(SceneRoot::new(scenes::home::BedroomScene::PotBreak));
+    //commands.spawn(SceneRoot::new(scenes::home::BedroomScene::PotBreak));
+    commands.spawn(SceneRoot::new(scenes::sandbox::SandboxScene));
 }

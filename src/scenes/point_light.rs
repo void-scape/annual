@@ -30,11 +30,10 @@ pub fn init_point_light_entities(
     for entity in light_query.iter() {
         commands.entity(entity).with_child((
             PointLight2d {
-                color: srgb_from_hex(0x00cdf9),
-                intensity: 1.,
-                radius: 100.,
-                falloff: 100.,
-                cast_shadows: true,
+                color: srgb_from_hex(0xf6cd26),
+                intensity: 5.,
+                radius: 150.,
+                falloff: 50.,
                 ..default()
             },
             Transform::from_xyz(TILE_SIZE / 2., -TILE_SIZE / 2., 0.),

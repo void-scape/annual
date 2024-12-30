@@ -1,6 +1,5 @@
 use crate::annual;
 use crate::curves::IntoCurve;
-use bevy::core_pipeline::tonemapping::Tonemapping;
 use bevy::prelude::*;
 use bevy::utils::hashbrown::HashSet;
 use bevy_sequence::prelude::*;
@@ -20,22 +19,6 @@ pub struct CameraPlugin;
 
 impl Plugin for CameraPlugin {
     fn build(&self, app: &mut App) {
-        app.world_mut().spawn((
-            OrthographicProjection {
-                scale: crate::CAMERA_SCALE,
-                near: -1000.0,
-                ..OrthographicProjection::default_3d()
-            },
-            Camera2d,
-            Camera {
-                hdr: true,
-                clear_color: ClearColorConfig::Custom(Color::BLACK),
-                ..Default::default()
-            },
-            Tonemapping::TonyMcMapface,
-            MainCamera,
-        ));
-
         let mut cache = CameraSystemCache::default();
         cache.0.insert(TypeId::of::<EasingCurve<Vec3>>());
 
