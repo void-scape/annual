@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy_seedling::sample::SamplePlayer;
 use bevy_sequence::prelude::*;
 use rand::Rng;
 
@@ -17,7 +18,7 @@ where
 
         self.on_start(
             move |mut commands: Commands, asset_server: Res<AssetServer>| {
-                commands.spawn((AudioPlayer::new(asset_server.load(path)), settings, hash));
+                commands.spawn((SamplePlayer::new(asset_server.load(path)), settings, hash));
             },
         )
         //.on_end(

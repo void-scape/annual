@@ -11,6 +11,7 @@ use bevy::{
         RenderPlugin,
     },
 };
+use bevy_seedling::{MainBus, VolumeNode};
 use characters::*;
 use cutscene::*;
 use scenes::SceneRoot;
@@ -62,7 +63,6 @@ fn main() {
                 }),
             FrameTimeDiagnosticsPlugin,
         ))
-        .insert_resource(GlobalVolume::new(0.5))
         .add_plugins((
             asset_loading::AssetLoadingPlugin,
             bevy_sequence::SequencePlugin,
@@ -74,6 +74,7 @@ fn main() {
             interactions::InteractionPlugin,
             scenes::ScenePlugin,
             bevy_enoki::EnokiPlugin,
+            bevy_seedling::SeedlingPlugin::default(),
         ))
         .add_systems(Update, close_on_escape)
         .add_systems(Startup, startup)
@@ -88,8 +89,14 @@ fn close_on_escape(mut reader: EventReader<KeyboardInput>, mut writer: EventWrit
     }
 }
 
-fn startup(mut commands: Commands, _server: Res<AssetServer>) {
-    //commands.spawn(SceneRoot::new(scenes::park::ParkScene));
+fn startup(
+    global: Single<&mut VolumeNode, With<MainBus>>,
+    mut commands: Commands,
+    _server: Res<AssetServer>,
+) {
+    let global = global.into_inner().0.set(0.25);
+
+    commands.spawn(SceneRoot::new(scenes::park::ParkScene));
     //commands.spawn(SceneRoot::new(scenes::home::BedroomScene::PotBreak));
     commands.spawn(SceneRoot::new(scenes::sandbox::SandboxScene));
 }

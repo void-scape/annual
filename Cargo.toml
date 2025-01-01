@@ -14,14 +14,13 @@ bevy_asset_loader = "0.22.0"
 bevy_ldtk_scene = { path = "bevy_ldtk_scene" }
 bevy_sequence = { path = "bevy_sequence" }
 bevy_pretty_text = { path = "bevy_pretty_text" }
-
 bevy_light_2d = "0.5"
-
 bevy_enoki = "0.3.3"
+bevy_seedling = { path = "bevy_seedling", features = ["mp3", "ogg"] }
 
 [dependencies.bevy]
 version = "0.15"
-features = ["dynamic_linking", "file_watcher", "wav", "mp3", "jpeg"]
+features = ["dynamic_linking", "file_watcher", "jpeg"]
 
 [build-dependencies]
 bevy_ldtk_scene = { path = "bevy_ldtk_scene" }
