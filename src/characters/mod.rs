@@ -23,7 +23,7 @@ pub trait CharacterAssets {
 pub struct Flower;
 
 impl CharacterAssets for Flower {
-    const POR: &str = "characters/flower/flower.png";
+    const POR: &str = "sprites/flower_portrait.png";
     const SFX: &str = "characters/flower/flowey.mp3";
 }
 
@@ -32,6 +32,6 @@ impl CharacterAssets for Flower {
 pub struct Izzy;
 
 impl CharacterAssets for Izzy {
-    const POR: &str = "characters/izzy/girl.png";
+    const POR: &str = "sprites/izzy_portrait.png";
     const SFX: &str = "characters/izzy/girl.mp3";
 }

@@ -42,7 +42,7 @@ fn init_camera(
 }
 
 #[derive(Default, Component)]
-#[require(Izzy, AnimationController<PlayerAnimation>(animation_controller))]
+#[require(Izzy, AnimationController<PlayerAnimation>(animation_controller), Direction)]
 #[require(ActionState<Action>, InputMap<Action>(input_map))]
 #[require(TriggerLayer(|| TriggerLayer(0)), DynamicBody, Collider(collider))]
 #[require(CameraOffset(|| CameraOffset(Vec2::new(TILE_SIZE, -TILE_SIZE))))]
@@ -50,13 +50,16 @@ pub struct Player;
 
 fn animation_controller() -> AnimationController<PlayerAnimation> {
     AnimationController::new(
-        15.0,
+        12.,
         [
-            (PlayerAnimation::Idle, (50, 54)),
-            (PlayerAnimation::Walk(Direction::Up), (20, 40)),
-            (PlayerAnimation::Walk(Direction::Right), (45, 50)),
-            (PlayerAnimation::Walk(Direction::Left), (40, 45)),
-            (PlayerAnimation::Walk(Direction::Down), (0, 20)),
+            (PlayerAnimation::Idle(Direction::Right), (0, 1)),
+            (PlayerAnimation::Walk(Direction::Right), (1, 11)),
+            (PlayerAnimation::Idle(Direction::Left), (11, 12)),
+            (PlayerAnimation::Walk(Direction::Left), (12, 22)),
+            (PlayerAnimation::Idle(Direction::Down), (22, 23)),
+            (PlayerAnimation::Walk(Direction::Down), (23, 33)),
+            (PlayerAnimation::Idle(Direction::Up), (33, 34)),
+            (PlayerAnimation::Walk(Direction::Up), (34, 44)),
         ],
     )
 }
@@ -78,7 +81,7 @@ fn collider() -> Collider {
 #[derive(Clone, Copy, Hash, PartialEq, Eq)]
 enum PlayerAnimation {
     Walk(Direction),
-    Idle,
+    Idle(Direction),
 }
 
 #[derive(Actionlike, PartialEq, Eq, Hash, Clone, Copy, Debug, Reflect)]
@@ -87,9 +90,10 @@ pub enum Action {
     Interact,
 }
 
-#[derive(PartialEq, Eq, Hash, Clone, Copy, Debug, Reflect)]
+#[derive(Default, PartialEq, Eq, Hash, Clone, Copy, Debug, Reflect, Component)]
 pub enum Direction {
     Up,
+    #[default]
     Down,
     Left,
     Right,
@@ -129,12 +133,14 @@ fn walk(
             &ActionState<Action>,
             &mut Transform,
             &mut AnimationController<PlayerAnimation>,
+            &mut Direction,
         ),
         (With<Player>, Without<CutsceneMovement>),
     >,
     time: Res<Time>,
 ) {
-    if let Ok((action_state, mut transform, mut animation)) = player.get_single_mut() {
+    if let Ok((action_state, mut transform, mut animation, mut last_dir)) = player.get_single_mut()
+    {
         let mut vel = Vec2::ZERO;
 
         for action in action_state.get_released() {
@@ -167,17 +173,17 @@ fn walk(
                 }
             })
         {
-            animation.set_animation(PlayerAnimation::Walk(
-                *actions
-                    .iter()
-                    .find_map(|a| match a {
-                        Action::Walk(dir) => Some(dir),
-                        _ => None,
-                    })
-                    .unwrap(),
-            ));
+            let dir = *actions
+                .iter()
+                .find_map(|a| match a {
+                    Action::Walk(dir) => Some(dir),
+                    _ => None,
+                })
+                .unwrap();
+            animation.set_animation(PlayerAnimation::Walk(dir));
+            *last_dir = dir;
         } else if actions.is_empty() || vel == Vec2::ZERO {
-            animation.set_animation(PlayerAnimation::Idle);
+            animation.set_animation(PlayerAnimation::Idle(*last_dir));
         }
 
         const PLAYER_SPEED: f32 = 80.0;
@@ -198,9 +204,9 @@ fn animate_cutscene(
         let vel = velocity.0.xy();
 
         if vel == Vec2::ZERO {
-            if last_direction.is_some() {
+            if let Some(dir) = *last_direction {
+                animation.set_animation(PlayerAnimation::Idle(dir));
                 *last_direction = None;
-                animation.set_animation(PlayerAnimation::Idle);
             }
         } else {
             let direction = Direction::from_velocity(vel);

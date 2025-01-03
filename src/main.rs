@@ -90,6 +90,6 @@ fn close_on_escape(mut reader: EventReader<KeyboardInput>, mut writer: EventWrit
 
 fn startup(mut commands: Commands, _server: Res<AssetServer>) {
     //commands.spawn(SceneRoot::new(scenes::park::ParkScene));
-    //commands.spawn(SceneRoot::new(scenes::home::BedroomScene::PotBreak));
+    // commands.spawn(SceneRoot::new(scenes::home::BedroomScene::PotBreak));
     commands.spawn(SceneRoot::new(scenes::sandbox::SandboxScene));
 }

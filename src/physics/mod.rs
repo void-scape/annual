@@ -3,7 +3,7 @@ use bevy::sprite::Wireframe2dPlugin;
 use bevy::{ecs::schedule::ScheduleLabel, prelude::*};
 
 pub mod collision;
-mod debug;
+pub mod debug;
 mod spatial;
 pub mod trigger;
 pub mod velocity;

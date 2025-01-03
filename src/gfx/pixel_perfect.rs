@@ -1,13 +1,17 @@
-use super::camera::{Binded, CameraSystem, MainCamera};
-use crate::{color::srgb_from_hex, HEIGHT, WIDTH};
+use super::camera::{CameraSystem, MainCamera};
+use crate::{color::srgb_from_hex, physics::debug::ShowCollision, HEIGHT, WIDTH};
 use bevy::{
-    core_pipeline::tonemapping::Tonemapping, image::ImageSamplerDescriptor, prelude::*, render::{
+    core_pipeline::tonemapping::Tonemapping,
+    image::ImageSamplerDescriptor,
+    prelude::*,
+    render::{
         camera::RenderTarget,
         render_resource::{
             Extent3d, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages,
         },
         view::RenderLayers,
-    }, window::WindowResized
+    },
+    window::WindowResized,
 };
 
 pub const HIGH_RES_LAYER: RenderLayers = RenderLayers::layer(1);
@@ -19,13 +23,17 @@ impl Plugin for PixelPerfectPlugin {
         setup_camera(app.world_mut());
         app.add_systems(Update, fit_canvas).add_systems(
             PostUpdate,
-            (
-                correct_camera
-                    .after(CameraSystem::UpdateCamera)
-                    .before(TransformSystem::TransformPropagate),
-                remove_offset.after(TransformSystem::TransformPropagate),
-            ),
+            move_canvas_and_outer_camera
+                .before(TransformSystem::TransformPropagate)
+                .after(CameraSystem::UpdateCamera),
         );
+        // .add_systems(
+        //     PostUpdate,
+        //     (correct_camera
+        //         .after(CameraSystem::UpdateCamera)
+        //         .before(TransformSystem::TransformPropagate),),
+        // )
+        // .add_systems(PreUpdate, remove_offset);
     }
 }
 
@@ -92,41 +100,6 @@ fn setup_camera(world: &mut World) {
     ));
 }
 
-#[derive(Component)]
-struct TempOffset(Vec3);
-
-fn correct_camera(
-    mut commands: Commands,
-    main_camera_query: Option<Single<(&mut Transform, Option<&Binded>), With<MainCamera>>>,
-    outer_camera_query: Option<Single<&mut Transform, (With<OuterCamera>, Without<MainCamera>)>>,
-    mut binded_query: Query<&mut Transform, (Without<MainCamera>, Without<OuterCamera>)>,
-) {
-    if let Some((mut inner, binded)) = main_camera_query.map(|q| q.into_inner()) {
-        if let Some(mut outer) = outer_camera_query.map(|q| q.into_inner()) {
-            let rounded = inner.translation.round();
-            outer.translation = inner.translation - rounded;
-            inner.translation = rounded;
-
-            if let Some((entity, Ok(mut binded))) = binded.map(|b| (b.0, binded_query.get_mut(b.0)))
-            {
-                let offset = binded.translation - rounded;
-                binded.translation -= offset;
-                commands.entity(entity).insert(TempOffset(offset));
-            }
-        }
-    }
-}
-
-fn remove_offset(
-    mut commands: Commands,
-    mut offset_query: Query<(Entity, &mut Transform, &TempOffset)>,
-) {
-    for (entity, mut transform, offset) in offset_query.iter_mut() {
-        transform.translation += offset.0;
-        commands.entity(entity).remove::<TempOffset>();
-    }
-}
-
 fn fit_canvas(
     mut resize_events: EventReader<WindowResized>,
     mut projection: Single<&mut OrthographicProjection, With<OuterCamera>>,
@@ -137,3 +110,54 @@ fn fit_canvas(
         projection.scale = 1. / h_scale.min(v_scale);
     }
 }
+
+// this makes the physics overlay render to the high res camera, but doubles point lights
+fn move_canvas_and_outer_camera(
+    debug: Res<ShowCollision>,
+    camera: Single<&mut Transform, (With<OuterCamera>, Without<Canvas>)>,
+    canvas: Single<&mut Transform, (With<Canvas>, Without<OuterCamera>)>,
+    main_camera: Single<&Transform, (With<MainCamera>, Without<OuterCamera>, Without<Canvas>)>,
+) {
+    if debug.0 {
+        camera.into_inner().translation = main_camera.translation;
+        canvas.into_inner().translation = main_camera.translation;
+    } else {
+        camera.into_inner().translation = Vec3::ZERO;
+        canvas.into_inner().translation = Vec3::ZERO;
+    }
+}
+
+// #[derive(Component)]
+// struct TempOffset(Vec3);
+//
+// fn correct_camera(
+//     mut commands: Commands,
+//     main_camera_query: Option<Single<(&mut Transform, Option<&Binded>), With<MainCamera>>>,
+//     outer_camera_query: Option<Single<&mut Transform, (With<OuterCamera>, Without<MainCamera>)>>,
+//     mut binded_query: Query<&mut Transform, (Without<MainCamera>, Without<OuterCamera>)>,
+// ) {
+//     if let Some((mut inner, binded)) = main_camera_query.map(|q| q.into_inner()) {
+//         if let Some(mut outer) = outer_camera_query.map(|q| q.into_inner()) {
+//             let rounded = inner.translation.round();
+//             outer.translation = inner.translation - rounded;
+//             inner.translation = rounded;
+//
+//             if let Some((entity, Ok(mut binded))) = binded.map(|b| (b.0, binded_query.get_mut(b.0)))
+//             {
+//                 let offset = binded.translation - rounded;
+//                 binded.translation -= offset;
+//                 commands.entity(entity).insert(TempOffset(offset));
+//             }
+//         }
+//     }
+// }
+//
+// fn remove_offset(
+//     mut commands: Commands,
+//     mut offset_query: Query<(Entity, &mut Transform, &TempOffset)>,
+// ) {
+//     for (entity, mut transform, offset) in offset_query.iter_mut() {
+//         transform.translation += offset.0;
+//         commands.entity(entity).remove::<TempOffset>();
+//     }
+// }

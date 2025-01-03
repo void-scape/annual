@@ -1,11 +1,15 @@
 use super::Scene;
-use crate::annual;
 use crate::gfx::post_processing::PostProcessCommand;
 use crate::gfx::zorder::YOrigin;
 use crate::physics::prelude::{Collider, StaticBody};
+use crate::textbox::frags::IntoBox;
+use crate::textbox::prelude::TextBoxPortrait;
+use crate::{annual, IntoFlower, IntoIzzy};
 use bevy::core_pipeline::bloom::Bloom;
 use bevy::prelude::*;
 use bevy_light_2d::light::AmbientLight2d;
+use bevy_pretty_text::prelude::*;
+use bevy_sequence::prelude::FragmentExt;
 
 pub struct SandboxPlugin;
 
@@ -29,15 +33,21 @@ pub struct SandboxScene;
 impl Scene for SandboxScene {
     fn spawn(&self, root: &mut EntityCommands) {
         let entity = root.id();
-        root.commands().queue(init_sandbox(entity));
+        root.commands().queue(init(entity));
     }
 }
 
-fn init_sandbox(entity: Entity) -> impl Fn(&mut World) {
+fn init(entity: Entity) -> impl Fn(&mut World) {
     move |world: &mut World| {
         if let Err(e) = world.run_system_cached_with(annual::sandbox::spawn, entity) {
             error!("failed to load level: {e}");
         }
+
+        (s!("Lorem ipsum dolor sit amet, consectetur adipiscing elit. `Nullam|green` sed purus.").izzy(),
+            s!("Donec faucibus, velit in dictum malesuada, `eros purus|red` sit amet turpis.").flower())
+            .once()
+            .always()
+            .spawn_box_with(&mut world.commands(), ());
 
         world.commands().post_process(AmbientLight2d {
             brightness: 0.1,
