@@ -179,6 +179,7 @@ dependencies = [
  "bevy_seedling",
  "bevy_sequence",
  "bytemuck",
+ "fundsp",
  "leafwing-input-manager",
  "macros",
  "paste",
@@ -937,7 +938,7 @@ checksum = "9ae26f952598e293acac783d947b21af1809673cbeba25d76b969a56f287160b"
 dependencies = [
  "bevy_reflect",
  "derive_more 1.0.0",
- "glam",
+ "glam 0.29.2",
  "itertools 0.13.0",
  "rand",
  "rand_distr",
@@ -974,7 +975,7 @@ version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "da5ea3ad25d74ea36ea45418ad799f135d046db35c322b9704c4a8934eb65ce9"
 dependencies = [
- "glam",
+ "glam 0.29.2",
 ]
 
 [[package]]
@@ -1046,7 +1047,6 @@ version = "0.1.0"
 dependencies = [
  "bevy",
  "bevy_pretty_macro",
- "bevy_seedling",
  "bytemuck",
  "leafwing-input-manager",
  "text",
@@ -1072,7 +1072,7 @@ dependencies = [
  "disqualified",
  "downcast-rs",
  "erased-serde",
- "glam",
+ "glam 0.29.2",
  "petgraph",
  "serde",
  "smallvec",
@@ -2091,7 +2091,7 @@ checksum = "b0a05902cf601ed11d564128448097b98ebe3c6574bd7b6a653a3d56d54aa020"
 dependencies = [
  "const_panic",
  "encase_derive",
- "glam",
+ "glam 0.29.2",
  "thiserror 1.0.69",
 ]
 
@@ -2231,7 +2231,6 @@ dependencies = [
 [[package]]
 name = "firewheel"
 version = "0.1.0"
-source = "git+https://github.com/corvusprudens/firewheel?branch=params#6efba724d1bd7915621e7e330ffbae539d78b4ea"
 dependencies = [
  "firewheel-core",
  "firewheel-cpal",
@@ -2243,7 +2242,6 @@ dependencies = [
 [[package]]
 name = "firewheel-core"
 version = "0.1.0"
-source = "git+https://github.com/corvusprudens/firewheel?branch=params#6efba724d1bd7915621e7e330ffbae539d78b4ea"
 dependencies = [
  "arrayvec",
  "bevy_ecs",
@@ -2259,7 +2257,6 @@ dependencies = [
 [[package]]
 name = "firewheel-cpal"
 version = "0.1.0"
-source = "git+https://github.com/corvusprudens/firewheel?branch=params#6efba724d1bd7915621e7e330ffbae539d78b4ea"
 dependencies = [
  "cpal",
  "firewheel-core",
@@ -2272,7 +2269,6 @@ dependencies = [
 [[package]]
 name = "firewheel-graph"
 version = "0.1.0"
-source = "git+https://github.com/corvusprudens/firewheel?branch=params#6efba724d1bd7915621e7e330ffbae539d78b4ea"
 dependencies = [
  "ahash",
  "arraydeque",
@@ -2289,7 +2285,6 @@ dependencies = [
 [[package]]
 name = "firewheel-macros"
 version = "0.1.0"
-source = "git+https://github.com/corvusprudens/firewheel?branch=params#6efba724d1bd7915621e7e330ffbae539d78b4ea"
 dependencies = [
  "bevy_macro_utils",
  "proc-macro2",
@@ -2300,7 +2295,6 @@ dependencies = [
 [[package]]
 name = "firewheel-sampler"
 version = "0.1.0"
-source = "git+https://github.com/corvusprudens/firewheel?branch=params#6efba724d1bd7915621e7e330ffbae539d78b4ea"
 dependencies = [
  "firewheel-core",
  "log",
@@ -2410,6 +2404,38 @@ dependencies = [
 ]
 
 [[package]]
+name = "fundsp"
+version = "0.20.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7fec70d22aa69e70c0e1e461b8a4f3392fa85e1d7421c773c1537dff44a3f74b"
+dependencies = [
+ "dyn-clone",
+ "funutd",
+ "hashbrown 0.15.2",
+ "libm",
+ "microfft",
+ "num-complex",
+ "numeric-array",
+ "once_cell",
+ "symphonia",
+ "thingbuf",
+ "tinyvec",
+ "wide",
+]
+
+[[package]]
+name = "funutd"
+version = "0.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "30f658de1fbeca3b70faf090e33d1ecf32b0efd1805bede4a8fd6ef562b7ab83"
+dependencies = [
+ "dyn-clone",
+ "glam 0.28.0",
+ "hashbrown 0.14.5",
+ "libm",
+]
+
+[[package]]
 name = "futures-channel"
 version = "0.3.31"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2441,6 +2467,15 @@ dependencies = [
  "futures-io",
  "parking",
  "pin-project-lite",
+]
+
+[[package]]
+name = "generic-array"
+version = "1.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2cb8bc4c28d15ade99c7e90b219f30da4be5c88e586277e8cbe886beeb868ab2"
+dependencies = [
+ "typenum",
 ]
 
 [[package]]
@@ -2509,6 +2544,15 @@ dependencies = [
  "khronos_api",
  "log",
  "xml-rs",
+]
+
+[[package]]
+name = "glam"
+version = "0.28.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "779ae4bf7e8421cf91c0b3b64e7e8b40b862fba4d393f59150042de7c4965a94"
+dependencies = [
+ "libm",
 ]
 
 [[package]]
@@ -2669,6 +2713,8 @@ version = "0.15.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bf151400ff0baff5465007dd2f3e717f3fe502074ca563069ce3a6629d07b289"
 dependencies = [
+ "allocator-api2",
+ "equivalent",
  "foldhash",
 ]
 
@@ -2691,7 +2737,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "741ab88b8cc670443da777c3daab02cebf5a3caccfc04e3c052f55c94d1643fe"
 dependencies = [
  "constgebra",
- "glam",
+ "glam 0.29.2",
 ]
 
 [[package]]
@@ -3143,6 +3189,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "microfft"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f2b6673eb0cc536241d6734c2ca45abfdbf90e9e7791c66a36a7ba3c315b76cf"
+dependencies = [
+ "cfg-if",
+ "num-complex",
+ "static_assertions",
+]
+
+[[package]]
 name = "minimal-lexical"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3444,6 +3501,16 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "numeric-array"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "60a6096447d657bfba01c49d38338b6c8e68e0e34d595360345375b798a4a765"
+dependencies = [
+ "generic-array",
+ "num-traits",
 ]
 
 [[package]]
@@ -4293,6 +4360,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f3cb5ba0dc43242ce17de99c180e96db90b235b8a9fdc9543c96d2209116bd9f"
 
 [[package]]
+name = "safe_arch"
+version = "0.7.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "96b02de82ddbe1b636e6170c21be622223aea188ef2e139be0a5b219ec215323"
+dependencies = [
+ "bytemuck",
+]
+
+[[package]]
 name = "same-file"
 version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4509,10 +4585,14 @@ dependencies = [
  "lazy_static",
  "symphonia-bundle-flac",
  "symphonia-bundle-mp3",
+ "symphonia-codec-aac",
  "symphonia-codec-adpcm",
+ "symphonia-codec-alac",
  "symphonia-codec-pcm",
  "symphonia-codec-vorbis",
  "symphonia-core",
+ "symphonia-format-caf",
+ "symphonia-format-isomp4",
  "symphonia-format-mkv",
  "symphonia-format-ogg",
  "symphonia-format-riff",
@@ -4544,10 +4624,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "symphonia-codec-aac"
+version = "0.5.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cdbf25b545ad0d3ee3e891ea643ad115aff4ca92f6aec472086b957a58522f70"
+dependencies = [
+ "lazy_static",
+ "log",
+ "symphonia-core",
+]
+
+[[package]]
 name = "symphonia-codec-adpcm"
 version = "0.5.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c94e1feac3327cd616e973d5be69ad36b3945f16b06f19c6773fc3ac0b426a0f"
+dependencies = [
+ "log",
+ "symphonia-core",
+]
+
+[[package]]
+name = "symphonia-codec-alac"
+version = "0.5.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2d8a6666649a08412906476a8b0efd9b9733e241180189e9f92b09c08d0e38f3"
 dependencies = [
  "log",
  "symphonia-core",
@@ -4586,6 +4687,30 @@ dependencies = [
  "lazy_static",
  "log",
  "rustfft",
+]
+
+[[package]]
+name = "symphonia-format-caf"
+version = "0.5.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e43c99c696a388295a29fe71b133079f5d8b18041cf734c5459c35ad9097af50"
+dependencies = [
+ "log",
+ "symphonia-core",
+ "symphonia-metadata",
+]
+
+[[package]]
+name = "symphonia-format-isomp4"
+version = "0.5.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "abfdf178d697e50ce1e5d9b982ba1b94c47218e03ec35022d9f0e071a16dc844"
+dependencies = [
+ "encoding_rs",
+ "log",
+ "symphonia-core",
+ "symphonia-metadata",
+ "symphonia-utils-xiph",
 ]
 
 [[package]]
@@ -4742,6 +4867,15 @@ dependencies = [
  "rand",
  "syn",
  "winnow",
+]
+
+[[package]]
+name = "thingbuf"
+version = "0.1.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "662b54ef6f7b4e71f683dadc787bbb2d8e8ef2f91b682ebed3164a5a7abca905"
+dependencies = [
+ "pin-project",
 ]
 
 [[package]]
@@ -4982,6 +5116,12 @@ name = "typeid"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0e13db2e0ccd5e14a544e8a246ba2312cd25223f616442d7f2cb0e3db614236e"
+
+[[package]]
+name = "typenum"
+version = "1.17.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "42ff0bf0c66b8238c6f3b578df37d0b7848e55df8577b3f74f92a69acceeb825"
 
 [[package]]
 name = "unicode-bidi"
@@ -5295,6 +5435,16 @@ dependencies = [
  "bitflags 2.6.0",
  "js-sys",
  "web-sys",
+]
+
+[[package]]
+name = "wide"
+version = "0.7.30"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "58e6db2670d2be78525979e9a5f9c69d296fd7d670549fe9ebf70f8708cb5019"
+dependencies = [
+ "bytemuck",
+ "safe_arch",
 ]
 
 [[package]]

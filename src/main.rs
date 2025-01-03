@@ -11,7 +11,7 @@ use bevy::{
         RenderPlugin,
     },
 };
-use bevy_seedling::{MainBus, VolumeNode};
+use bevy_seedling::{ConnectNode, MainBus, VolumeNode};
 use characters::*;
 use cutscene::*;
 use scenes::SceneRoot;
@@ -19,6 +19,7 @@ use scenes::SceneRoot;
 mod animation;
 mod annual;
 mod asset_loading;
+mod audio;
 mod characters;
 mod color;
 mod curves;
@@ -75,6 +76,7 @@ fn main() {
             scenes::ScenePlugin,
             bevy_enoki::EnokiPlugin,
             bevy_seedling::SeedlingPlugin::default(),
+            audio::AnnualAudioPlugin,
         ))
         .add_systems(Update, close_on_escape)
         .add_systems(Startup, startup)
@@ -94,9 +96,13 @@ fn startup(
     mut commands: Commands,
     _server: Res<AssetServer>,
 ) {
-    let global = global.into_inner().0.set(0.25);
+    global.into_inner().0.set(0.25);
+
+    commands
+        .spawn(audio::VoiceNode::new())
+        .connect_with(MainBus, &[(0, 0), (0, 1)]);
 
     commands.spawn(SceneRoot::new(scenes::park::ParkScene));
     //commands.spawn(SceneRoot::new(scenes::home::BedroomScene::PotBreak));
-    commands.spawn(SceneRoot::new(scenes::sandbox::SandboxScene));
+    // commands.spawn(SceneRoot::new(scenes::sandbox::SandboxScene));
 }

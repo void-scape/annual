@@ -18,7 +18,7 @@ where
                   mut commands: Commands,
                   asset_server: Res<AssetServer>| {
                 commands.entity(ctx.entity()).insert(SfxChar {
-                    source: asset_server.load(path),
+                    // source: asset_server.load(path),
                     settings,
                 });
             },
