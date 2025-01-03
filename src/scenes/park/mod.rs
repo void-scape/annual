@@ -16,6 +16,8 @@ use bevy::input::ButtonState;
 use bevy::prelude::*;
 use bevy_light_2d::light::AmbientLight2d;
 use bevy_pretty_text::prelude::*;
+use bevy_seedling::sample::SamplePlayer;
+use bevy_seedling::{ConnectNode, VolumeNode};
 use bevy_sequence::prelude::*;
 use std::time::Duration;
 
@@ -55,10 +57,11 @@ pub fn init(entity: Entity) -> impl FnOnce(&mut World) {
         }
 
         let handle = world.load_asset("sounds/ambient/night2.mp3");
-        world.entity_mut(entity).with_child((
-            AudioPlayer::new(handle),
-            PlaybackSettings::LOOP.with_volume(Volume::new(0.5)),
-        ));
+
+        let mut commands = world.commands();
+        let vol = commands.spawn(VolumeNode::new(0.5)).id();
+        let music_player = commands.spawn(SamplePlayer::new(handle)).connect(vol).id();
+        commands.entity(entity).add_children(&[music_player, vol]);
 
         world.commands().post_process(AmbientLight2d {
             brightness: 5.,
@@ -96,10 +99,13 @@ pub fn scene(
     {
         one().spawn_box(&mut commands);
 
-        commands.spawn((
-            AudioPlayer::new(server.load("sounds/music/quiet-night.wav")),
-            PlaybackSettings::LOOP,
-        ));
+        let vol = commands.spawn(VolumeNode::new(0.5)).id();
+        let music_player = commands
+            .spawn(SamplePlayer::new(
+                server.load("sounds/music/quiet-night.wav"),
+            ))
+            .connect(vol)
+            .id();
     }
 }
 

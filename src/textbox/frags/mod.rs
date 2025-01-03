@@ -3,7 +3,7 @@ use crate::{WINDOW_HEIGHT, WINDOW_WIDTH};
 use bevy::prelude::*;
 use bevy::sprite::Anchor;
 use bevy::text::TextBounds;
-use bevy_pretty_text::prelude::{SfxChar, TypeWriterSection};
+use bevy_pretty_text::prelude::{SfxChar, SfxWord, TypeWriterSection};
 use bevy_sequence::{fragment::DataLeaf, prelude::*};
 use portrait::{Portrait, TextBoxPortrait};
 use std::marker::PhantomData;
@@ -104,7 +104,8 @@ pub fn traditional_textbox(entity: Entity, asset_server: &AssetServer, commands:
                 font_size: 16.,
                 font: Some(asset_server.load("textbox/joystix.otf")),
             },
-            SfxChar::from_source(asset_server.load("characters/izzy/girl.mp3")),
+            // SfxChar::from_source(asset_server.load("characters/izzy/girl.mp3")),
+            SfxWord::default(),
             Transform::from_xyz(-400., -150., 0.).with_scale(Vec3::splat(2.)),
         ))
         .with_child((Sprite {
@@ -142,6 +143,7 @@ pub fn fade_textbox(entity: Entity, asset_server: &AssetServer, commands: &mut C
                 font_size: 28.,
                 font: Some(asset_server.load("textbox/joystix.otf")),
             },
+            SfxWord::default(),
             Transform::from_xyz(-WINDOW_WIDTH / 2., -WINDOW_HEIGHT / 2., 0.),
         ))
         .with_child((
@@ -175,6 +177,7 @@ pub fn void_stranger_textbox(entity: Entity, asset_server: &AssetServer, command
                 font_size: 48.,
                 font: Some(asset_server.load("textbox/Pixellari.ttf")),
             },
+            SfxWord::default(),
             Transform::from_xyz(-WINDOW_WIDTH / 2., -WINDOW_HEIGHT / 2., 0.),
         ))
         .with_child((

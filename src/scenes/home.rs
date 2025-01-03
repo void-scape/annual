@@ -13,6 +13,8 @@ use bevy::audio::Volume;
 use bevy::prelude::*;
 use bevy_light_2d::light::AmbientLight2d;
 use bevy_pretty_text::prelude::*;
+use bevy_seedling::sample::SamplePlayer;
+use bevy_seedling::{ConnectNode, VolumeNode};
 use bevy_sequence::combinators::delay::run_after;
 use bevy_sequence::prelude::*;
 use std::time::Duration;
@@ -90,7 +92,7 @@ pub fn init_pot_break(entity: Entity) -> impl FnOnce(&mut World) {
 
         let handle = world.load_asset("sounds/sfx/wind.mp3");
         world.spawn((
-            AudioPlayer::new(handle),
+            SamplePlayer::new(handle),
             PlaybackSettings::LOOP.with_volume(Volume::new(0.1)),
         ));
 
@@ -119,10 +121,15 @@ pub fn init_pot_break(entity: Entity) -> impl FnOnce(&mut World) {
         run_after(
             Duration::from_secs_f32(0.5),
             move |mut commands: Commands, asset_server: Res<AssetServer>| {
-                commands.spawn((
-                    AudioPlayer::new(asset_server.load("sounds/sfx/pot_break.mp3")),
-                    PlaybackSettings::DESPAWN.with_volume(Volume::new(0.1)),
-                ));
+                let volume = commands.spawn(VolumeNode::new(0.1)).id();
+
+                commands
+                    .spawn((
+                        SamplePlayer::new(asset_server.load("sounds/sfx/pot_break.mp3")),
+                        PlaybackSettings::DESPAWN.with_volume(Volume::new(0.1)),
+                    ))
+                    .connect(volume);
+
                 run_after(
                     Duration::from_secs_f32(2.5),
                     move |mut commands: Commands| {

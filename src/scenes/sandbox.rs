@@ -9,6 +9,7 @@ use bevy::core_pipeline::bloom::Bloom;
 use bevy::prelude::*;
 use bevy_light_2d::light::AmbientLight2d;
 use bevy_pretty_text::prelude::*;
+use bevy_seedling::sample::SamplePlayer;
 use bevy_sequence::prelude::FragmentExt;
 
 pub struct SandboxPlugin;
@@ -55,7 +56,7 @@ fn init(entity: Entity) -> impl Fn(&mut World) {
         });
         world.commands().post_process(Bloom::NATURAL);
         let handle = world.load_asset("sounds/music/quiet-night.wav");
-        world.commands().spawn(AudioPlayer::new(handle));
+        world.commands().spawn(SamplePlayer::new(handle));
     }
 }
 
