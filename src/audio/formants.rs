@@ -1,5 +1,3 @@
-use std::sync::atomic::AtomicI32;
-
 use bevy::prelude::*;
 use bevy_seedling::firewheel::clock::ClockSeconds;
 use bevy_seedling::firewheel::node::{AudioNodeProcessor, EventData, ProcessStatus};
@@ -144,11 +142,17 @@ impl AudioNode for VoiceNode {
 
         let formants = busi::<U5, _, _>(|i| {
             let (freq, gain, q) = &formant_params[i as usize];
-            (pass() | var(freq) | var(q)) >> (bandpass::<f32>() * var(gain))
+
+            let smoothing = 0.05;
+            let freq = var(freq) >> follow(smoothing);
+            let q = var(q) >> follow(smoothing);
+            let gain = var(gain) >> follow(smoothing);
+
+            (pass() | freq | q) >> (bandpass::<f32>() * gain)
         });
 
         let voice = var(&frequency) >> saw();
-        let mut processor = Box::new(voice >> (formants * adsr) >> lowpass_hz(2000., 1.) * 0.75)
+        let mut processor = Box::new(voice >> (formants * adsr) >> lowpass_hz(3000., 1.) * 0.75)
             as Box<dyn AudioUnit>;
 
         processor.set_sample_rate(stream_info.sample_rate as f64);
@@ -199,6 +203,15 @@ impl AudioNodeProcessor for VoiceProcessor {
 
         let time = info.clock_seconds;
         let increment = info.sample_rate_recip;
+
+        // let end_time = time + ClockSeconds(outputs[0].len() as f64 * increment);
+        //
+        // if self.params.gate.value_at(time) == 0.0 && !self.params.gate.active_within(time, end_time)
+        // {
+        //     self.params.tick(end_time);
+        //     (self.updater)(&self.params);
+        //     return ProcessStatus::ClearAllOutputs;
+        // }
 
         for (frame, sample) in outputs[0].iter_mut().enumerate() {
             let time = time + ClockSeconds(increment * frame as f64);

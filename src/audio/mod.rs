@@ -5,7 +5,7 @@ use bevy_seedling::{
         clock::ClockSeconds,
         param::{DeferredEvent, TimelineEvent},
     },
-    AudioContext, RegisterParamsNode,
+    AudioContext, ConnectNode, MainBus, RegisterParamsNode,
 };
 
 mod formants;
@@ -18,8 +18,15 @@ pub struct AnnualAudioPlugin;
 impl Plugin for AnnualAudioPlugin {
     fn build(&self, app: &mut App) {
         app.register_params_node::<VoiceNode>()
+            .add_systems(Startup, add_voice)
             .add_systems(Update, play_voice);
     }
+}
+
+fn add_voice(mut commands: Commands) {
+    commands
+        .spawn(VoiceNode::new())
+        .connect_with(MainBus, &[(0, 0), (0, 1)]);
 }
 
 fn play_voice(
@@ -48,14 +55,31 @@ fn play_voice(
         let freq = 400.;
 
         let mut rng = rand::thread_rng();
-        let variation = rng.gen_range(-50f32..100f32);
 
-        let _ = voice.pitch.push_curve(
-            freq + variation,
-            now,
-            now + ClockSeconds(0.15),
-            EaseFunction::Linear,
-        );
+        let variation = rng.gen_range(0.70..1.30);
+
+        if voice
+            .pitch
+            .push_curve(
+                freq * variation,
+                now,
+                now + ClockSeconds(0.15),
+                EaseFunction::Linear,
+            )
+            .is_err()
+        {
+            let value = voice.pitch.value_at(now);
+            voice.pitch.set(value);
+            voice
+                .pitch
+                .push_curve(
+                    freq * variation,
+                    now,
+                    now + ClockSeconds(0.15),
+                    EaseFunction::Linear,
+                )
+                .unwrap();
+        }
 
         voice.formant.push(DeferredEvent::Deferred {
             value: rng.gen_range(0..5),
