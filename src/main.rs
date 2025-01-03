@@ -102,7 +102,7 @@ fn startup(
         .spawn(audio::VoiceNode::new())
         .connect_with(MainBus, &[(0, 0), (0, 1)]);
 
-    commands.spawn(SceneRoot::new(scenes::park::ParkScene));
+    // commands.spawn(SceneRoot::new(scenes::park::ParkScene));
     //commands.spawn(SceneRoot::new(scenes::home::BedroomScene::PotBreak));
-    // commands.spawn(SceneRoot::new(scenes::sandbox::SandboxScene));
+    commands.spawn(SceneRoot::new(scenes::sandbox::SandboxScene));
 }

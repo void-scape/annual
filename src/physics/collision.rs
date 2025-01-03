@@ -1,8 +1,6 @@
 use super::spatial;
 use crate::annual;
-use bevy::ecs::observer::TriggerTargets;
 use bevy::prelude::*;
-use bevy_ldtk_scene::Level;
 use spatial::{SpatialHash, StaticBodyData, StaticBodyStorage};
 use std::cmp::Ordering;
 

@@ -1,11 +1,11 @@
 use super::collision::{Collider, CollidesWith, DynamicBody, StaticBody};
 use super::trigger::{Trigger, TriggerEvent};
+use crate::gfx::pixel_perfect::HIGH_RES_LAYER;
 use bevy::input::keyboard::KeyboardInput;
 use bevy::input::ButtonState;
 use bevy::prelude::*;
 use bevy::sprite::{Wireframe2d, Wireframe2dColor};
 
-/// Control the visibility of collision wireframes.
 #[derive(Resource)]
 pub struct ShowCollision(pub bool);
 
@@ -18,7 +18,7 @@ impl Collider {
         (
             match self {
                 Self::Rect(rect) => (
-                    Mesh2d(meshes.add(Rectangle::new(rect.size.x, rect.size.y)).into()),
+                    Mesh2d(meshes.add(Rectangle::new(rect.size.x, rect.size.y))),
                     MeshMaterial2d(materials.add(Color::NONE)),
                     Transform::from_xyz(
                         // 0., 0.,
@@ -26,15 +26,16 @@ impl Collider {
                         rect.tl.y + rect.size.y / 2.,
                         // rect.tl.x,
                         // rect.tl.y,
-                        100.,
+                        999.,
                     ),
                 ),
                 Self::Circle(circle) => (
-                    Mesh2d(meshes.add(Circle::new(circle.radius)).into()),
+                    Mesh2d(meshes.add(Circle::new(circle.radius))),
                     MeshMaterial2d(materials.add(Color::NONE)),
-                    Transform::from_xyz(circle.position.x, circle.position.y, 100.),
+                    Transform::from_xyz(circle.position.x, circle.position.y, 999.),
                 ),
             },
+            HIGH_RES_LAYER,
             Wireframe2d,
             Wireframe2dColor {
                 color: Srgba::WHITE.into(),
@@ -44,7 +45,7 @@ impl Collider {
 }
 
 #[derive(Component)]
-pub struct DebugWireframe(Entity);
+pub struct DebugWireframe;
 
 #[derive(Component)]
 pub struct Marked;
@@ -59,6 +60,7 @@ pub fn update_show_collision(
             KeyboardInput {
                 key_code: KeyCode::KeyP,
                 state: ButtonState::Pressed,
+                repeat: false,
                 ..
             }
         ) {
@@ -84,7 +86,7 @@ pub fn debug_display_collider_wireframe(
         {
             let wireframe = commands
                 .spawn((
-                    DebugWireframe(entity),
+                    DebugWireframe,
                     collider.debug_wireframe_bundle(&mut meshes, &mut materials),
                 ))
                 .id();

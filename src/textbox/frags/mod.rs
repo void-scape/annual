@@ -5,7 +5,7 @@ use bevy::sprite::Anchor;
 use bevy::text::TextBounds;
 use bevy_pretty_text::prelude::{SfxChar, SfxWord, TypeWriterSection};
 use bevy_sequence::{fragment::DataLeaf, prelude::*};
-use portrait::Portrait;
+use portrait::{Portrait, TextBoxPortrait};
 use std::marker::PhantomData;
 
 pub mod portrait;
@@ -62,7 +62,9 @@ where
 
     fn textbox(self) -> impl IntoBox<C> {
         //self.textbox_with(traditional_textbox)
-        self.textbox_with(fade_textbox)
+        // self.textbox_with(fade_textbox)
+        self.textbox_with(void_stranger_textbox)
+            .portrait_transform(Transform::from_xyz(150., 130., 0.).with_scale(Vec3::splat(4.)))
     }
 
     fn textbox_with(
@@ -141,7 +143,6 @@ pub fn fade_textbox(entity: Entity, asset_server: &AssetServer, commands: &mut C
                 font_size: 28.,
                 font: Some(asset_server.load("textbox/joystix.otf")),
             },
-            // SfxChar::from_source(asset_server.load("characters/izzy/girl.mp3")),
             SfxWord::default(),
             Transform::from_xyz(-WINDOW_WIDTH / 2., -WINDOW_HEIGHT / 2., 0.),
         ))
@@ -160,6 +161,39 @@ pub fn fade_textbox(entity: Entity, asset_server: &AssetServer, commands: &mut C
                 ..Default::default()
             },
             Transform::from_xyz(0., 0., 100.),
+            Continue,
+            Visibility::Hidden,
+        ));
+}
+
+pub fn void_stranger_textbox(entity: Entity, asset_server: &AssetServer, commands: &mut Commands) {
+    commands
+        .entity(entity)
+        .insert((
+            TextBox {
+                text_offset: Vec2::new(325., 225.),
+                text_bounds: TextBounds::from(Vec2::new(800., 200.)),
+                text_anchor: Some(Anchor::TopLeft),
+                font_size: 48.,
+                font: Some(asset_server.load("textbox/Pixellari.ttf")),
+            },
+            Transform::from_xyz(-WINDOW_WIDTH / 2., -WINDOW_HEIGHT / 2., 0.),
+        ))
+        .with_child((
+            Sprite {
+                image: asset_server.load("sprites/textbox.png"),
+                anchor: Anchor::BottomLeft,
+                ..Default::default()
+            },
+            Transform::from_xyz(0., 0., -1.).with_scale(Vec3::splat(4.)),
+        ))
+        .with_child((
+            Sprite {
+                image: asset_server.load("sprites/textbox_continue.png"),
+                anchor: Anchor::BottomLeft,
+                ..Default::default()
+            },
+            Transform::from_xyz(0., 0., 100.).with_scale(Vec3::splat(4.)),
             Continue,
             Visibility::Hidden,
         ));

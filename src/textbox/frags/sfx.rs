@@ -24,6 +24,29 @@ where
             },
         )
     }
+
+    fn sfx_rate(self, path: &'static str, rate: f32) -> impl IntoBox<C> {
+        self.sfx_rate_with(path, rate, PlaybackSettings::DESPAWN)
+    }
+
+    fn sfx_rate_with(
+        self,
+        path: &'static str,
+        rate: f32,
+        settings: PlaybackSettings,
+    ) -> impl IntoBox<C> {
+        self.on_start(
+            move |InRef(ctx): InRef<TextBoxContext<C>>,
+                  mut commands: Commands,
+                  asset_server: Res<AssetServer>| {
+                commands.entity(ctx.entity()).insert(SfxRate {
+                    // source: asset_server.load(path),
+                    rate,
+                    settings,
+                });
+            },
+        )
+    }
 }
 
 impl<C, T> TextBoxSfx<C> for T
