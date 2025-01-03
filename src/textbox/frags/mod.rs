@@ -177,6 +177,7 @@ pub fn void_stranger_textbox(entity: Entity, asset_server: &AssetServer, command
                 font_size: 48.,
                 font: Some(asset_server.load("textbox/Pixellari.ttf")),
             },
+            SfxWord::default(),
             Transform::from_xyz(-WINDOW_WIDTH / 2., -WINDOW_HEIGHT / 2., 0.),
         ))
         .with_child((
