@@ -52,7 +52,7 @@ fn play_voice(
             })
             .unwrap();
 
-        let freq = 400.;
+        let freq = 320.;
 
         let mut rng = rand::thread_rng();
 

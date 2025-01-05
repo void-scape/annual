@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy_seedling::firewheel::clock::ClockSeconds;
-use bevy_seedling::firewheel::node::{AudioNodeProcessor, EventData, ProcessStatus};
-use bevy_seedling::firewheel::param::{AudioParam, Timeline};
+use bevy_seedling::firewheel::node::{AudioNodeProcessor, NodeEventType, ProcessStatus};
+use bevy_seedling::firewheel::param::{AudioParam, ParamEvent, Timeline};
 use bevy_seedling::firewheel::{ChannelConfig, ChannelCount};
 use bevy_seedling::{firewheel, firewheel::node::AudioNode};
 use fundsp::prelude::*;
@@ -152,10 +152,11 @@ impl AudioNode for VoiceNode {
         });
 
         let voice = var(&frequency) >> saw();
+
         let mut processor = Box::new(voice >> (formants * adsr) >> lowpass_hz(3000., 1.) * 0.75)
             as Box<dyn AudioUnit>;
 
-        processor.set_sample_rate(stream_info.sample_rate as f64);
+        processor.set_sample_rate(stream_info.sample_rate.get() as f64);
 
         let updater = move |params: &VoiceNode| {
             gate.set(params.gate.get());
@@ -196,8 +197,10 @@ impl AudioNodeProcessor for VoiceProcessor {
         info: firewheel::node::ProcInfo,
     ) -> ProcessStatus {
         for event in events {
-            if let EventData::Parameter(p) = event {
-                let _ = self.params.patch(&p.data, &p.path);
+            if let NodeEventType::Custom(custom) = event {
+                if let Some(params) = custom.downcast_ref::<ParamEvent>() {
+                    let _ = self.params.patch(&params.data, &params.path);
+                }
             }
         }
 

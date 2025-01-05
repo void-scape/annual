@@ -23,7 +23,10 @@ impl Plugin for PlayerPlugin {
             AnimationPlugin::<PlayerAnimation>::default(),
         ))
         .add_systems(PreUpdate, init_camera)
-        .add_systems(FixedUpdate, (walk, animate_cutscene));
+        .add_systems(
+            FixedUpdate,
+            ((walk, smooth_camera_offset).chain(), animate_cutscene),
+        );
     }
 }
 
@@ -41,11 +44,13 @@ fn init_camera(
     }
 }
 
+const PLAYER_CAM_OFFSET: Vec2 = Vec2::new(TILE_SIZE, -TILE_SIZE);
+
 #[derive(Default, Component)]
 #[require(Izzy, AnimationController<PlayerAnimation>(animation_controller), Direction)]
 #[require(ActionState<Action>, InputMap<Action>(input_map))]
 #[require(TriggerLayer(|| TriggerLayer(0)), DynamicBody, Collider(collider))]
-#[require(CameraOffset(|| CameraOffset(Vec2::new(TILE_SIZE, -TILE_SIZE))))]
+#[require(CameraOffset(|| CameraOffset(PLAYER_CAM_OFFSET)))]
 pub struct Player;
 
 fn animation_controller() -> AnimationController<PlayerAnimation> {
@@ -125,6 +130,16 @@ impl Direction {
             }
         }
     }
+}
+
+fn smooth_camera_offset(player: Single<(&Direction, &mut CameraOffset)>) {
+    let (direction, mut cam_offset) = player.into_inner();
+
+    let target = PLAYER_CAM_OFFSET + direction.into_unit_vec2() * TILE_SIZE * 2.0;
+
+    // gradually approach the target offset
+    let delta = (target - cam_offset.0) * 0.05;
+    cam_offset.0 += delta;
 }
 
 fn walk(
