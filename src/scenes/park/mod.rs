@@ -79,7 +79,7 @@ pub fn init(entity: Entity) -> impl FnOnce(&mut World) {
         });
 
         (
-            s!("Oh, `Mr. Tree|green`[0.25], you are so very big!").textbox(),
+            s!("Oh, `Mr. Tree|green`,[0.25] you are so very big!").textbox(),
             "Do you have any pretty birds?".textbox(),
         )
             .once()
@@ -144,7 +144,7 @@ fn one() -> impl IntoBox<annual::ParkSceneFlower> {
         ),
         "Well, are you?".flower(),
         s!(
-            "<1.2>But you're a [0.25]<2> {`FLOWER|green`[wave]}!",
+            "<1.2>But you're a [0.25]<2> {`FLOWER|green`[Wave]}!",
             |frag| frag.sound("sounds/sfx/snd_bell.wav")
         )
         .izzy(),

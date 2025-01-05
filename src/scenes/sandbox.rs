@@ -3,7 +3,6 @@ use crate::gfx::post_processing::PostProcessCommand;
 use crate::gfx::zorder::YOrigin;
 use crate::physics::prelude::{Collider, StaticBody};
 use crate::textbox::frags::IntoBox;
-use crate::textbox::prelude::TextBoxPortrait;
 use crate::{annual, IntoFlower, IntoIzzy};
 use bevy::core_pipeline::bloom::Bloom;
 use bevy::prelude::*;
@@ -44,8 +43,10 @@ fn init(entity: Entity) -> impl Fn(&mut World) {
             error!("failed to load level: {e}");
         }
 
-        (s!("Lorem ipsum dolor sit amet, consectetur adipiscing elit. `Nullam|green` sed purus.").izzy(),
-            s!("Donec faucibus, velit in dictum malesuada, `eros purus|red` sit amet turpis.").flower())
+        (
+            s!("Donec faucibus, velit in dictum malesuada, `eros purus`[Shake(1.)] sit amet turpis.").flower(),
+            s!("Lorem ipsum `dolor`[Wave(8.)] sit amet, consectetur `adipiscing|red`[Wave] elit. `Nullam|green` sed. `iuel|green`[Shake]").izzy(),
+        )
             .once()
             .always()
             .spawn_box_with(&mut world.commands(), ());
