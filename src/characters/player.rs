@@ -2,7 +2,10 @@ use crate::{
     animation::{AnimationController, AnimationPlugin},
     characters::Izzy,
     cutscene::{CutsceneMovement, CutsceneVelocity},
-    gfx::camera::{bind_camera, CameraOffset, MainCamera},
+    gfx::{
+        camera::{bind_camera, CameraOffset, MainCamera},
+        zorder::YOrigin,
+    },
     physics::prelude::*,
     TILE_SIZE,
 };
@@ -51,6 +54,7 @@ const PLAYER_CAM_OFFSET: Vec2 = Vec2::new(TILE_SIZE, -TILE_SIZE);
 #[require(ActionState<Action>, InputMap<Action>(input_map))]
 #[require(TriggerLayer(|| TriggerLayer(0)), DynamicBody, Collider(collider))]
 #[require(CameraOffset(|| CameraOffset(PLAYER_CAM_OFFSET)))]
+#[require(YOrigin(|| YOrigin(-TILE_SIZE * 1.9)))]
 pub struct Player;
 
 fn animation_controller() -> AnimationController<PlayerAnimation> {
@@ -80,7 +84,7 @@ fn input_map() -> InputMap<Action> {
 }
 
 fn collider() -> Collider {
-    Collider::from_circle(Vec2::new(TILE_SIZE, -TILE_SIZE), TILE_SIZE / 2.)
+    Collider::from_circle(Vec2::new(TILE_SIZE, -TILE_SIZE * 1.75), TILE_SIZE / 3.5)
 }
 
 #[derive(Clone, Copy, Hash, PartialEq, Eq)]
@@ -135,7 +139,7 @@ impl Direction {
 fn smooth_camera_offset(player: Single<(&Direction, &mut CameraOffset)>) {
     let (direction, mut cam_offset) = player.into_inner();
 
-    let target = PLAYER_CAM_OFFSET + direction.into_unit_vec2() * TILE_SIZE * 2.0;
+    let target = PLAYER_CAM_OFFSET + direction.into_unit_vec2() * TILE_SIZE;
 
     // gradually approach the target offset
     let delta = (target - cam_offset.0) * 0.05;
@@ -208,6 +212,7 @@ fn walk(
     }
 }
 
+// TODO: need some notion of look direction
 fn animate_cutscene(
     mut player: Query<
         (&mut AnimationController<PlayerAnimation>, &CutsceneVelocity),

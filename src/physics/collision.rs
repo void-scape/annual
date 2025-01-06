@@ -1,5 +1,5 @@
 use super::spatial;
-use crate::annual;
+use crate::{annual, TILE_SIZE};
 use bevy::prelude::*;
 use spatial::{SpatialHash, StaticBodyData, StaticBodyStorage};
 use std::cmp::Ordering;
@@ -419,7 +419,7 @@ pub fn build_tile_set_colliders(
         .unwrap();
 
     let mut cached_collider_positions = Vec::with_capacity(1024);
-    let tile_size = 8.;
+    let tile_size = TILE_SIZE;
 
     let offset = tile_size / 2.;
     for transform in tiles.iter().map(|(t, _)| t).chain(manual_collision.iter()) {

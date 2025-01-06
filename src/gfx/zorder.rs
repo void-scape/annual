@@ -46,7 +46,7 @@ fn order_z(
         commands
             .entity(entity)
             .insert(UnorderedZ(transform.translation.z));
-        transform.translation.z += order.0 as f32;
+        transform.translation.z += order.0;
     }
 
     for (order, unordered, mut transform) in changed_order_query.iter_mut() {

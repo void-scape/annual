@@ -297,10 +297,8 @@ fn camera_move_to<C: Curve<Vec3> + Threaded>(
         move_to.tick(time.delta());
         if move_to.complete() {
             commands.entity(entity).remove::<MoveTo<C>>();
-        } else {
-            if let Some(position) = move_to.position() {
-                transform.translation = position;
-            }
+        } else if let Some(position) = move_to.position() {
+            transform.translation = position;
         }
     }
 }

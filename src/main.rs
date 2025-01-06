@@ -11,7 +11,7 @@ use bevy::{
         RenderPlugin,
     },
 };
-use bevy_seedling::{ConnectNode, MainBus, VolumeNode};
+use bevy_seedling::{MainBus, VolumeNode};
 use characters::*;
 use cutscene::*;
 use scenes::SceneRoot;
@@ -31,13 +31,15 @@ mod physics;
 mod scenes;
 mod textbox;
 
-const TILE_SIZE: f32 = 8.;
+const TILE_SIZE: f32 = 16.;
 
 const WINDOW_WIDTH: f32 = 1280.;
 const WINDOW_HEIGHT: f32 = 720.;
 
 const WIDTH: f32 = 320.;
 const HEIGHT: f32 = 180.;
+
+const PIXEL_SIZE: f32 = 4.;
 
 fn main() {
     App::default()
@@ -98,7 +100,7 @@ fn startup(
 ) {
     global.into_inner().0.set(0.25);
 
-    // commands.spawn(SceneRoot::new(scenes::park::ParkScene));
+    commands.spawn(SceneRoot::new(scenes::park::ParkScene));
     //commands.spawn(SceneRoot::new(scenes::home::BedroomScene::PotBreak));
-    commands.spawn(SceneRoot::new(scenes::sandbox::SandboxScene));
+    // commands.spawn(SceneRoot::new(scenes::sandbox::SandboxScene));
 }

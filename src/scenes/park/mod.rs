@@ -1,27 +1,48 @@
 use self::fireflies::FireflySpawner;
 use self::player::Player;
-use super::{Scene, SceneCommands};
+use super::Scene;
 use crate::annual::{self, Interactions};
-use crate::characters::*;
-use crate::color::srgb_from_hex;
 use crate::cutscene::CutsceneFragment;
 use crate::frag_util::FragExt;
 use crate::gfx::camera::CameraCurveFragment;
 use crate::gfx::post_processing::PostProcessCommand;
+use crate::gfx::zorder::YOrigin;
 use crate::interactions::BindInteraction;
+use crate::physics::prelude::*;
 use crate::textbox::prelude::*;
-use bevy::audio::Volume;
+use crate::{characters::*, TILE_SIZE};
+use bevy::core_pipeline::bloom::Bloom;
 use bevy::input::keyboard::KeyboardInput;
 use bevy::input::ButtonState;
 use bevy::prelude::*;
 use bevy_light_2d::light::AmbientLight2d;
 use bevy_pretty_text::prelude::*;
 use bevy_seedling::sample::SamplePlayer;
-use bevy_seedling::{ConnectNode, VolumeNode};
+use bevy_seedling::RepeatMode;
 use bevy_sequence::prelude::*;
 use std::time::Duration;
 
 mod fireflies;
+
+#[derive(Default, Component)]
+#[require(YOrigin(|| YOrigin(-TILE_SIZE * 3.5)), StaticBody)]
+#[require(Collider(|| Collider::from_circle(Vec2::new(TILE_SIZE * 2., -TILE_SIZE * 3.5), 5.)))]
+struct ParkTreeComponents1;
+
+#[derive(Default, Component)]
+#[require(YOrigin(|| YOrigin(-TILE_SIZE * 4.25)), StaticBody)]
+#[require(Collider(|| Collider::from_rect(Vec2::new(TILE_SIZE * 1.75, -TILE_SIZE * 4.25), Vec2::new(28., 8.))))]
+struct ParkTreeComponents2;
+
+#[derive(Default, Component)]
+#[require(YOrigin(|| YOrigin(-TILE_SIZE * 3.)), StaticBody)]
+#[require(Collider(|| Collider::from_rect(Vec2::new(8., -48.), Vec2::new(10., 8.))))]
+struct LampComponents;
+
+#[derive(Default, Component)]
+#[require(YOrigin(|| YOrigin(-TILE_SIZE * 2.)), StaticBody)]
+#[require(Collider(|| Collider::from_rect(Vec2::new(3., -32.), Vec2::new(27., 8.))))]
+struct BenchComponents;
 
 pub struct ParkPlugin;
 
@@ -35,7 +56,15 @@ impl Plugin for ParkPlugin {
                 fireflies::update_lifetime,
             )
                 .run_if(super::scene_type_exists::<ParkScene>),
-        );
+        )
+        .register_required_components::<annual::ParkTree1, ParkTreeComponents1>()
+        .register_required_components::<annual::ParkTree2, ParkTreeComponents1>()
+        .register_required_components::<annual::ParkTree3, ParkTreeComponents2>()
+        .register_required_components::<annual::Lamp, LampComponents>()
+        .register_required_components::<annual::Bench, BenchComponents>()
+        .register_required_components_with::<annual::Flower, YOrigin>(|| YOrigin(-TILE_SIZE))
+        .register_required_components_with::<annual::Flower1, YOrigin>(|| YOrigin(-TILE_SIZE))
+        .register_required_components_with::<annual::Flower2, YOrigin>(|| YOrigin(-TILE_SIZE));
     }
 }
 
@@ -57,21 +86,21 @@ pub fn init(entity: Entity) -> impl FnOnce(&mut World) {
         }
 
         let handle = world.load_asset("sounds/ambient/night2.mp3");
-
-        let mut commands = world.commands();
-        let vol = commands.spawn(VolumeNode::new(0.5)).id();
-        let music_player = commands.spawn(SamplePlayer::new(handle)).connect(vol).id();
-        commands.entity(entity).add_children(&[music_player, vol]);
+        world.commands().entity(entity).with_child((
+            SamplePlayer::new(handle),
+            bevy_seedling::sample::PlaybackSettings {
+                mode: RepeatMode::RepeatEndlessly,
+                volume: 0.5,
+            },
+        ));
 
         world.commands().post_process(AmbientLight2d {
-            brightness: 5.,
-            color: srgb_from_hex(0x03193f),
-            ..Default::default()
+            brightness: 0.1,
+            color: Color::WHITE,
         });
+        world.commands().post_process(Bloom::NATURAL);
 
-        let player = world
-            .query_filtered::<Entity, With<Player>>()
-            .single(&world);
+        let player = world.query_filtered::<Entity, With<Player>>().single(world);
         world.entity_mut(player).insert(FireflySpawner {
             max: 20,
             rate: 0.5,
@@ -99,18 +128,16 @@ pub fn scene(
     {
         one().spawn_box(&mut commands);
 
-        let vol = commands.spawn(VolumeNode::new(0.5)).id();
-        let music_player = commands
-            .spawn(SamplePlayer::new(
-                server.load("sounds/music/quiet-night.wav"),
-            ))
-            .connect(vol)
-            .id();
+        let handle = server.load("sounds/music/quiet-night.wav");
+        commands.spawn((
+            SamplePlayer::new(handle),
+            bevy_seedling::sample::PlaybackSettings {
+                mode: RepeatMode::RepeatEndlessly,
+                volume: 0.85,
+            },
+        ));
     }
 }
-
-const OPENING_TRANSFORM: Transform =
-    Transform::from_xyz(175., 175., -10.).with_scale(Vec3::splat(1. / 3.));
 
 fn one() -> impl IntoBox<annual::ParkSceneFlower> {
     (
@@ -150,7 +177,6 @@ fn one() -> impl IntoBox<annual::ParkSceneFlower> {
         .izzy(),
         s!("<1>Oh, I guess so...").flower(),
     )
-        .portrait_transform(OPENING_TRANSFORM)
         .lock(Izzy)
         .always()
         .once()
@@ -167,7 +193,6 @@ fn two() -> impl IntoBox<annual::ParkSceneFlower> {
     )
         .once()
         .always()
-        .portrait_transform(OPENING_TRANSFORM)
         .delay(Duration::from_millis(4000), |mut commands: Commands| {
             three().spawn_box(&mut commands);
         })
@@ -182,5 +207,4 @@ fn three() -> impl IntoBox<annual::ParkSceneFlower> {
     )
         .once()
         .always()
-        .portrait_transform(OPENING_TRANSFORM)
 }
