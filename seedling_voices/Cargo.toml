@@ -1,0 +1,11 @@
+[package]
+name = "seedling_voices"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+fundsp = "0.20.0"
+rand = "0.8.5"
+bevy = "0.15"
+bevy_seedling = { path = "../bevy_seedling", features = ["mp3", "ogg"] }
+bevy_pretty_text = { path = "../bevy_pretty_text/" }

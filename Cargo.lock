@@ -179,11 +179,11 @@ dependencies = [
  "bevy_seedling",
  "bevy_sequence",
  "bytemuck",
- "fundsp",
  "leafwing-input-manager",
  "macros",
  "paste",
  "rand",
+ "seedling_voices",
  "winnow",
 ]
 
@@ -4401,6 +4401,17 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "seedling_voices"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "bevy_pretty_text",
+ "bevy_seedling",
+ "fundsp",
+ "rand",
 ]
 
 [[package]]

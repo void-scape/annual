@@ -217,9 +217,13 @@ impl AudioNodeProcessor for VoiceProcessor {
         // }
 
         for (frame, sample) in outputs[0].iter_mut().enumerate() {
-            let time = time + ClockSeconds(increment * frame as f64);
-            self.params.tick(time);
-            (self.updater)(&self.params);
+            // update once every 16 samples
+            if frame % 16 == 0 {
+                let time = time + ClockSeconds(increment * frame as f64);
+
+                self.params.tick(time);
+                (self.updater)(&self.params);
+            }
 
             *sample = self.graph.get_mono();
         }

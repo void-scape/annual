@@ -19,7 +19,6 @@ use scenes::SceneRoot;
 mod animation;
 mod annual;
 mod asset_loading;
-mod audio;
 mod characters;
 mod color;
 mod curves;
@@ -77,7 +76,7 @@ fn main() {
             scenes::ScenePlugin,
             bevy_enoki::EnokiPlugin,
             bevy_seedling::SeedlingPlugin::default(),
-            audio::AnnualAudioPlugin,
+            seedling_voices::VoicesPlugin,
         ))
         .add_systems(Update, close_on_escape)
         .add_systems(Startup, startup)

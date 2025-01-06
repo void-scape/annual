@@ -1,5 +1,8 @@
-use crate::annual;
 use crate::curves::IntoCurve;
+use crate::player::Player;
+use crate::{annual, TILE_SIZE};
+use bevy::ecs::component::ComponentId;
+use bevy::ecs::world::DeferredWorld;
 use bevy::prelude::*;
 use bevy::utils::hashbrown::HashSet;
 use bevy_sequence::prelude::*;
@@ -19,12 +22,12 @@ pub struct CameraPlugin;
 
 impl Plugin for CameraPlugin {
     fn build(&self, app: &mut App) {
-        let mut cache = CameraSystemCache::default();
-        cache.0.insert(TypeId::of::<EasingCurve<Vec3>>());
-
-        app.insert_resource(cache).add_systems(
+        app.add_systems(
             PostUpdate,
-            ((camera_binded, camera_move_to::<EasingCurve<Vec3>>), anchor)
+            (
+                (bind_to_anchor, unbind_anchor, camera_binded, camera_move_to),
+                anchor,
+            )
                 .chain()
                 .before(TransformSystem::TransformPropagate)
                 .in_set(CameraSystem::UpdateCamera),
@@ -49,13 +52,13 @@ where
         Self: IntoFragment<D, C>,
         D: Threaded;
 
-    fn move_camera_curve<M: Component, I: Curve<Vec3>>(
+    fn move_camera_curve<M: Component>(
         self,
         _marker: M,
         offset: Vec2,
         duration: Duration,
-        curve: impl IntoCurve<I> + Send + Sync + 'static,
-    ) -> CameraCurveFrag<impl IntoFragment<D, C>, I>;
+        curve: EaseFunction,
+    ) -> impl IntoFragment<D, C>;
 
     /// Bind the camera to an entity's position.
     fn bind_camera<M: Component>(self, marker: M) -> impl IntoFragment<D, C>;
@@ -71,13 +74,13 @@ where
         duration: Duration,
     ) -> impl IntoFragment<D, C>;
 
-    fn move_curve_then_bind_camera<M: Component, I: Curve<Vec3>>(
+    fn move_curve_then_bind_camera<M: Component>(
         self,
         _marker: M,
         offset: Vec2,
         duration: Duration,
-        curve: impl IntoCurve<I> + Send + Sync + 'static,
-    ) -> CameraCurveFrag<impl IntoFragment<D, C>, I>;
+        curve: EaseFunction,
+    ) -> impl IntoFragment<D, C>;
 }
 
 impl<D, C, T> CameraCurveFragment<D, C> for T
@@ -98,11 +101,9 @@ where
             let (camera, camera_t) = camera.into_inner();
             commands.entity(camera).insert(MoveTo::new(
                 duration,
-                EasingCurve::new(
-                    camera_t.translation,
-                    entity_t.translation + offset.extend(0.),
-                    EaseFunction::Linear,
-                ),
+                camera_t.translation,
+                entity_t.translation + offset.extend(0.),
+                EaseFunction::Linear,
             ));
             commands.entity(camera).remove::<Binded>();
         };
@@ -110,13 +111,13 @@ where
         self.on_start(system)
     }
 
-    fn move_camera_curve<M: Component, I: Curve<Vec3>>(
+    fn move_camera_curve<M: Component>(
         self,
         _marker: M,
         offset: Vec2,
         duration: Duration,
-        curve: impl IntoCurve<I> + Send + Sync + 'static,
-    ) -> CameraCurveFrag<impl IntoFragment<D, C>, I> {
+        curve: EaseFunction,
+    ) -> impl IntoFragment<D, C> {
         let system = move |camera: Single<(Entity, &Transform), With<MainCamera>>,
                            entity_t: Single<(&Transform, Option<&CameraOffset>), With<M>>,
                            mut commands: Commands| {
@@ -124,20 +125,16 @@ where
             let (camera, camera_t) = camera.into_inner();
             commands.entity(camera).insert(MoveTo::new(
                 duration,
-                curve.into_curve(
-                    camera_t.translation,
-                    entity_t.translation
-                        + offset.extend(0.)
-                        + entity_offset.map(|o| o.0).unwrap_or_default().extend(0.),
-                ),
+                camera_t.translation,
+                entity_t.translation
+                    + offset.extend(0.)
+                    + entity_offset.map(|o| o.0).unwrap_or_default().extend(0.),
+                curve,
             ));
             commands.entity(camera).remove::<Binded>();
         };
 
-        CameraCurveFrag {
-            fragment: self.on_start(system),
-            _marker: PhantomData,
-        }
+        self.on_start(system)
     }
 
     fn bind_camera<M: Component>(self, _marker: M) -> impl IntoFragment<D, C> {
@@ -156,11 +153,9 @@ where
             let (camera, camera_t) = camera.into_inner();
             commands.entity(camera).insert(MoveTo::new(
                 duration,
-                EasingCurve::new(
-                    camera_t.translation,
-                    entity_t.translation + offset.extend(0.),
-                    EaseFunction::Linear,
-                ),
+                camera_t.translation,
+                entity_t.translation + offset.extend(0.),
+                EaseFunction::Linear,
             ));
             commands.entity(camera).remove::<Binded>();
         };
@@ -168,13 +163,13 @@ where
         self.on_start(mov).on_end(bind_camera::<M>)
     }
 
-    fn move_curve_then_bind_camera<M: Component, I: Curve<Vec3>>(
+    fn move_curve_then_bind_camera<M: Component>(
         self,
         _marker: M,
         offset: Vec2,
         duration: Duration,
-        curve: impl IntoCurve<I> + Send + Sync + 'static,
-    ) -> CameraCurveFrag<impl IntoFragment<D, C>, I> {
+        curve: EaseFunction,
+    ) -> impl IntoFragment<D, C> {
         let system = move |camera: Single<(Entity, &Transform), With<MainCamera>>,
                            entity_t: Single<(&Transform, Option<&CameraOffset>), With<M>>,
                            mut commands: Commands| {
@@ -182,42 +177,64 @@ where
             let (camera, camera_t) = camera.into_inner();
             commands.entity(camera).insert(MoveTo::new(
                 duration,
-                curve.into_curve(
-                    camera_t.translation,
-                    entity_t.translation
-                        + offset.extend(0.)
-                        + entity_offset.map(|o| o.0).unwrap_or_default().extend(0.),
-                ),
+                camera_t.translation,
+                entity_t.translation
+                    + offset.extend(0.)
+                    + entity_offset.map(|o| o.0).unwrap_or_default().extend(0.),
+                curve,
             ));
-            commands.entity(camera).remove::<Binded>();
         };
 
-        CameraCurveFrag {
-            fragment: self.on_start(system).on_end(bind_camera::<M>),
-            _marker: PhantomData,
+        self.on_start(system).on_end(bind_camera::<M>)
+    }
+}
+
+enum Domain {
+    Entity { start: Vec3, end: Entity },
+    Positions { start: Vec3, end: Vec3 },
+}
+
+impl Domain {
+    pub fn target(&self) -> Option<Entity> {
+        match self {
+            Self::Entity { end, .. } => Some(*end),
+            _ => None,
         }
     }
 }
 
 #[derive(Component)]
-struct MoveTo<C> {
+#[component(on_insert = on_insert_moveto)]
+pub struct MoveTo {
     timer: Timer,
-    curve: C,
+    easing: EaseFunction,
+    domain: Domain,
 }
 
-impl<C> MoveTo<C>
-where
-    C: Curve<Vec3> + Threaded,
-{
-    pub fn new(duration: Duration, curve: C) -> Self {
+fn on_insert_moveto(mut world: DeferredWorld, entity: Entity, _: ComponentId) {
+    world.commands().entity(entity).remove::<Binded>();
+}
+
+impl MoveTo {
+    pub fn new(duration: Duration, start: Vec3, end: Vec3, easing: EaseFunction) -> Self {
         Self {
             timer: Timer::new(duration, TimerMode::Once),
-            curve,
+            easing,
+            domain: Domain::Positions { start, end },
         }
     }
 
-    pub fn position(&self) -> Option<Vec3> {
-        self.curve.sample(self.timer.fraction())
+    pub fn new_with_entity(
+        duration: Duration,
+        start: Vec3,
+        target: Entity,
+        easing: EaseFunction,
+    ) -> Self {
+        Self {
+            timer: Timer::new(duration, TimerMode::Once),
+            easing,
+            domain: Domain::Entity { start, end: target },
+        }
     }
 
     pub fn tick(&mut self, duration: Duration) {
@@ -226,41 +243,6 @@ where
 
     pub fn complete(&self) -> bool {
         self.timer.finished()
-    }
-}
-
-pub struct CameraCurveFrag<F, M> {
-    fragment: F,
-    _marker: PhantomData<fn() -> M>,
-}
-
-#[derive(Default, Resource)]
-struct CameraSystemCache(HashSet<TypeId>);
-
-impl<D, C, F, M> IntoFragment<D, C> for CameraCurveFrag<F, M>
-where
-    F: IntoFragment<D, C>,
-    D: Threaded,
-    M: Curve<Vec3> + Threaded,
-{
-    fn into_fragment(self, context: &Context<C>, commands: &mut Commands) -> FragmentId {
-        let id = self.fragment.into_fragment(context, commands);
-
-        commands.queue(|world: &mut World| {
-            world.schedule_scope(PostUpdate, |world: &mut World, schedule: &mut Schedule| {
-                let mut cache = world.resource_mut::<CameraSystemCache>();
-                if cache.0.insert(std::any::TypeId::of::<M>()) {
-                    schedule.add_systems(
-                        camera_move_to::<M>
-                            .before(anchor)
-                            .before(TransformSystem::TransformPropagate)
-                            .in_set(CameraSystem::UpdateCamera),
-                    );
-                }
-            })
-        });
-
-        id
     }
 }
 
@@ -288,17 +270,45 @@ pub fn bind_camera<M: Component>(
     }
 }
 
-fn camera_move_to<C: Curve<Vec3> + Threaded>(
-    camera: Option<Single<(Entity, &mut Transform, &mut MoveTo<C>), With<MainCamera>>>,
+fn camera_move_to(
+    camera: Option<Single<(Entity, &mut Transform, &mut MoveTo), With<MainCamera>>>,
+    targets: Query<(&Transform, Option<&CameraOffset>), Without<MainCamera>>,
     mut commands: Commands,
     time: Res<Time>,
 ) {
     if let Some((entity, mut transform, mut move_to)) = camera.map(|c| c.into_inner()) {
         move_to.tick(time.delta());
+
         if move_to.complete() {
-            commands.entity(entity).remove::<MoveTo<C>>();
-        } else if let Some(position) = move_to.position() {
-            transform.translation = position;
+            let mut entity = commands.entity(entity);
+            entity.remove::<MoveTo>();
+
+            if let Some(target) = move_to.domain.target() {
+                entity.insert(Binded(target));
+            }
+        } else {
+            let translation = match move_to.domain {
+                Domain::Positions { start, end } => {
+                    let curve = EasingCurve::new(start, end, move_to.easing);
+                    curve.sample(move_to.timer.fraction())
+                }
+                Domain::Entity { start, end } => {
+                    let Ok((target, offset)) = targets.get(end) else {
+                        return;
+                    };
+
+                    let curve = EasingCurve::new(
+                        start,
+                        target.translation + offset.map(|o| o.0).unwrap_or_default().extend(0.),
+                        move_to.easing,
+                    );
+                    curve.sample(move_to.timer.fraction())
+                }
+            };
+
+            if let Some(t) = translation {
+                transform.translation = t;
+            }
         }
     }
 }
@@ -328,5 +338,83 @@ fn anchor(
             }
         }
         Err(e) => warn_once!("could not anchor camera: {e}"),
+    }
+}
+
+#[derive(Component)]
+struct DynamicMoveTo;
+
+#[derive(Component)]
+struct DynamicallyAnchored(Entity);
+
+fn unbind_anchor(
+    q: Query<(&annual::DynamicCameraAnchor, &Transform)>,
+    player: Query<(Entity, &Transform), With<Player>>,
+    camera: Query<(Entity, &Transform, &DynamicallyAnchored), With<MainCamera>>,
+    mut commands: Commands,
+) {
+    let Ok((camera, camera_transform, anchor_ref)) = camera.get_single() else {
+        return;
+    };
+
+    let Ok((anchor, anchor_transform)) = q.get(anchor_ref.0) else {
+        return;
+    };
+
+    let Ok((player, player_transform)) = player.get_single() else {
+        return;
+    };
+
+    if player_transform
+        .translation
+        .xy()
+        .distance_squared(anchor_transform.translation.xy())
+        .abs()
+        > anchor.radius * anchor.radius
+    {
+        commands
+            .entity(camera)
+            .insert(MoveTo::new_with_entity(
+                Duration::from_millis(anchor.speed as u64),
+                camera_transform.translation,
+                player,
+                easing::EaseFunction::QuadraticOut,
+            ))
+            .remove::<DynamicallyAnchored>();
+    }
+}
+
+fn bind_to_anchor(
+    q: Query<(Entity, &annual::DynamicCameraAnchor, &Transform)>,
+    player: Query<(Entity, &Transform), With<Player>>,
+    camera: Query<(Entity, &Transform), (With<MainCamera>, Without<DynamicallyAnchored>)>,
+    mut commands: Commands,
+) {
+    let Ok((camera, camera_transform)) = camera.get_single() else {
+        return;
+    };
+
+    let Ok((player, player_transform)) = player.get_single() else {
+        return;
+    };
+
+    for (entity, anchor, transform) in q.iter() {
+        if transform
+            .translation
+            .xy()
+            .distance_squared(player_transform.translation.xy())
+            .abs()
+            <= anchor.radius * anchor.radius
+        {
+            commands.entity(camera).insert((
+                MoveTo::new(
+                    Duration::from_millis(anchor.speed as u64),
+                    camera_transform.translation,
+                    transform.translation + Vec3::new(TILE_SIZE / 2., -TILE_SIZE / 2., 0.),
+                    easing::EaseFunction::QuadraticOut,
+                ),
+                DynamicallyAnchored(entity),
+            ));
+        }
     }
 }

@@ -13,9 +13,9 @@ mod formants;
 pub use formants::VoiceNode;
 use rand::Rng;
 
-pub struct AnnualAudioPlugin;
+pub struct VoicesPlugin;
 
-impl Plugin for AnnualAudioPlugin {
+impl Plugin for VoicesPlugin {
     fn build(&self, app: &mut App) {
         app.register_params_node::<VoiceNode>()
             .add_systems(Startup, add_voice)

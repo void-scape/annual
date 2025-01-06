@@ -17,7 +17,7 @@ bevy_pretty_text = { path = "bevy_pretty_text" }
 bevy_light_2d = "0.5"
 bevy_enoki = "0.3.3"
 bevy_seedling = { path = "bevy_seedling", features = ["mp3", "ogg"] }
-fundsp = "0.20.0"
+seedling_voices = { path = "seedling_voices" }
 
 [dependencies.bevy]
 version = "0.15"
