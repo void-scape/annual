@@ -153,7 +153,7 @@ impl AudioNode for VoiceNode {
 
         let voice = var(&frequency) >> saw();
 
-        let mut processor = Box::new(voice >> (formants * adsr) >> lowpass_hz(3000., 1.) * 0.75)
+        let mut processor = Box::new(voice >> (formants * adsr) >> lowpass_hz(3000., 1.) * 1.0)
             as Box<dyn AudioUnit>;
 
         processor.set_sample_rate(stream_info.sample_rate.get() as f64);
