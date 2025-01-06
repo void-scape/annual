@@ -16,7 +16,6 @@ pub fn init_point_light_tiles(
                 radius: 100.,
                 falloff: 100.,
                 cast_shadows: true,
-                ..default()
             },
             Transform::from_xyz(TILE_SIZE / 2., -TILE_SIZE / 2. - TILE_SIZE * 3., 0.),
         ));

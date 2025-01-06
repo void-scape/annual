@@ -3142,6 +3142,12 @@
                   flip_y: false,
                 ),
                 (
+                  xy: (1056.0, 256.0),
+                  index: 376,
+                  flip_x: false,
+                  flip_y: false,
+                ),
+                (
                   xy: (288.0, 272.0),
                   index: 373,
                   flip_x: false,

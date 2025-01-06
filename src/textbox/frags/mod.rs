@@ -1,9 +1,9 @@
 use super::{Continue, TextBox};
-use crate::{WINDOW_HEIGHT, WINDOW_WIDTH};
+use crate::{HEIGHT, WIDTH};
 use bevy::prelude::*;
 use bevy::sprite::Anchor;
 use bevy::text::TextBounds;
-use bevy_pretty_text::prelude::{SfxChar, SfxWord, TypeWriterSection};
+use bevy_pretty_text::prelude::{SfxWord, TypeWriterSection};
 use bevy_sequence::{fragment::DataLeaf, prelude::*};
 use portrait::{Portrait, TextBoxPortrait};
 use std::marker::PhantomData;
@@ -19,15 +19,9 @@ pub fn textbox_once<C: 'static>(section: impl IntoBox<C>, commands: &mut Command
              //mut commands: Commands,
              frag_query: Query<&FragmentState>| {
                 if let Ok(state) = frag_query.get(fragment.entity()) {
-                    if state.completed > 0 {
-                        // TODO: despawn crashes
-                        //commands.entity(fragment.entity()).despawn();
-                        false
-                    } else if state.active {
-                        false
-                    } else {
-                        true
-                    }
+                    !(state.completed > 0 || state.active)
+                    // TODO: despawn crashes
+                    //commands.entity(fragment.entity()).despawn();
                 } else {
                     false
                 }
@@ -61,10 +55,7 @@ where
     }
 
     fn textbox(self) -> impl IntoBox<C> {
-        //self.textbox_with(traditional_textbox)
-        // self.textbox_with(fade_textbox)
         self.textbox_with(void_stranger_textbox)
-            .portrait_transform(Transform::from_xyz(150., 130., 0.).with_scale(Vec3::splat(4.)))
     }
 
     fn textbox_with(
@@ -90,114 +81,64 @@ where
     }
 }
 
-pub fn traditional_textbox(entity: Entity, asset_server: &AssetServer, commands: &mut Commands) {
-    let size = Vec2::new(48. * 8., 45. * 3.);
-    let offset = Vec2::new(20., -20.);
-
+pub fn void_stranger_textbox(entity: Entity, _server: &AssetServer, commands: &mut Commands) {
     commands
         .entity(entity)
-        .insert((
-            TextBox {
-                text_offset: offset,
-                text_bounds: TextBounds::from(size - offset * 2.),
-                text_anchor: Some(Anchor::TopLeft),
-                font_size: 16.,
-                font: Some(asset_server.load("textbox/joystix.otf")),
-            },
-            // SfxChar::from_source(asset_server.load("characters/izzy/girl.mp3")),
-            SfxWord::default(),
-            Transform::from_xyz(-400., -150., 0.).with_scale(Vec3::splat(2.)),
-        ))
-        .with_child((Sprite {
-            image: asset_server.load("textbox/textbox.png"),
-            anchor: Anchor::TopLeft,
-            custom_size: Some(size),
-            image_mode: SpriteImageMode::Sliced(TextureSlicer {
-                center_scale_mode: SliceScaleMode::Tile { stretch_value: 1. },
-                sides_scale_mode: SliceScaleMode::Tile { stretch_value: 1. },
-                border: BorderRect::square(16.),
-                ..Default::default()
-            }),
-            ..Default::default()
-        },))
-        .with_child((
-            Sprite {
-                image: asset_server.load("textbox/collision_mask.png"),
-                anchor: Anchor::TopLeft,
-                ..Default::default()
-            },
-            Transform::from_translation(Vec3::default().with_z(100.)),
-            Continue,
-            Visibility::Hidden,
-        ));
-}
+        .insert((Portrait::default(), TextBox::default(), SfxWord::default()));
 
-pub fn fade_textbox(entity: Entity, asset_server: &AssetServer, commands: &mut Commands) {
-    commands
-        .entity(entity)
-        .insert((
-            TextBox {
-                text_offset: Vec2::new(400., 150.),
-                text_bounds: TextBounds::from(Vec2::new(700., 100.)),
-                text_anchor: Some(Anchor::TopLeft),
-                font_size: 28.,
-                font: Some(asset_server.load("textbox/joystix.otf")),
-            },
-            SfxWord::default(),
-            Transform::from_xyz(-WINDOW_WIDTH / 2., -WINDOW_HEIGHT / 2., 0.),
-        ))
-        .with_child((
-            Sprite {
-                image: asset_server.load("textbox/black.png"),
-                anchor: Anchor::BottomLeft,
-                ..Default::default()
-            },
-            Transform::from_xyz(0., 0., -1.),
-        ))
-        .with_child((
-            Sprite {
-                image: asset_server.load("textbox/collision_mask.png"),
-                anchor: Anchor::BottomLeft,
-                ..Default::default()
-            },
-            Transform::from_xyz(0., 0., 100.),
-            Continue,
-            Visibility::Hidden,
-        ));
-}
+    commands.queue(move |world: &mut World| {
+        let window = world.query::<&Window>().single(world);
+        let window_resolution = window.resolution.size();
+        let textbox_scale = window_resolution / Vec2::new(WIDTH, HEIGHT);
+        let font = world.load_asset("textbox/Pixellari.ttf");
+        let textbox_sprite = world.load_asset("sprites/textbox.png");
+        let continue_sprite = world.load_asset("sprites/textbox_continue.png");
 
-pub fn void_stranger_textbox(entity: Entity, asset_server: &AssetServer, commands: &mut Commands) {
-    commands
-        .entity(entity)
-        .insert((
-            TextBox {
-                text_offset: Vec2::new(325., 225.),
-                text_bounds: TextBounds::from(Vec2::new(800., 200.)),
-                text_anchor: Some(Anchor::TopLeft),
-                font_size: 48.,
-                font: Some(asset_server.load("textbox/Pixellari.ttf")),
-            },
-            SfxWord::default(),
-            Transform::from_xyz(-WINDOW_WIDTH / 2., -WINDOW_HEIGHT / 2., 0.),
-        ))
-        .with_child((
-            Sprite {
-                image: asset_server.load("sprites/textbox.png"),
-                anchor: Anchor::BottomLeft,
-                ..Default::default()
-            },
-            Transform::from_xyz(0., 0., -1.).with_scale(Vec3::splat(4.)),
-        ))
-        .with_child((
-            Sprite {
-                image: asset_server.load("sprites/textbox_continue.png"),
-                anchor: Anchor::BottomLeft,
-                ..Default::default()
-            },
-            Transform::from_xyz(0., 0., 100.).with_scale(Vec3::splat(4.)),
-            Continue,
-            Visibility::Hidden,
-        ));
+        world
+            .entity_mut(entity)
+            .insert((
+                Portrait {
+                    transform: Transform::from_xyz(
+                        textbox_scale.x * 38.,
+                        textbox_scale.y * 32.,
+                        1.,
+                    )
+                    .with_scale(textbox_scale.extend(1.)),
+                    ..Default::default()
+                },
+                TextBox {
+                    text_transform: Transform::from_xyz(
+                        textbox_scale.x * 82.,
+                        textbox_scale.y * 52.,
+                        1.,
+                    )
+                    .with_scale(textbox_scale.extend(1.) / 4.),
+                    text_bounds: TextBounds::from(Vec2::new(800., 200.)),
+                    text_anchor: Some(Anchor::TopLeft),
+                    font_size: 48.,
+                    font: Some(font),
+                },
+                Transform::from_xyz(-window_resolution.x / 2., -window_resolution.y / 2., 0.),
+            ))
+            .with_child((
+                Sprite {
+                    image: textbox_sprite,
+                    anchor: Anchor::BottomLeft,
+                    ..Default::default()
+                },
+                Transform::from_scale(textbox_scale.extend(1.)).with_translation(Vec3::NEG_Z),
+            ))
+            .with_child((
+                Sprite {
+                    image: continue_sprite,
+                    anchor: Anchor::BottomLeft,
+                    ..Default::default()
+                },
+                Transform::from_scale(textbox_scale.extend(1.)).with_translation(Vec3::Z),
+                Continue,
+                Visibility::Hidden,
+            ));
+    });
 }
 
 #[derive(Debug, Component)]
@@ -262,3 +203,79 @@ macro_rules! impl_into_frag {
 impl_into_frag!(&'static str, slf, slf.into());
 impl_into_frag!(String, slf, slf.into());
 impl_into_frag!(TypeWriterSection, slf, slf);
+
+// pub fn traditional_textbox(entity: Entity, asset_server: &AssetServer, commands: &mut Commands) {
+//     let size = Vec2::new(48. * 8., 45. * 3.);
+//     let offset = Vec2::new(20., -20.);
+//
+//     commands
+//         .entity(entity)
+//         .insert((
+//             TextBox {
+//                 text_offset: offset,
+//                 text_bounds: TextBounds::from(size - offset * 2.),
+//                 text_anchor: Some(Anchor::TopLeft),
+//                 font_size: 16.,
+//                 font: Some(asset_server.load("textbox/joystix.otf")),
+//             },
+//             // SfxChar::from_source(asset_server.load("characters/izzy/girl.mp3")),
+//             SfxWord::default(),
+//             Transform::from_xyz(-400., -150., 0.).with_scale(Vec3::splat(2.)),
+//         ))
+//         .with_child((Sprite {
+//             image: asset_server.load("textbox/textbox.png"),
+//             anchor: Anchor::TopLeft,
+//             custom_size: Some(size),
+//             image_mode: SpriteImageMode::Sliced(TextureSlicer {
+//                 center_scale_mode: SliceScaleMode::Tile { stretch_value: 1. },
+//                 sides_scale_mode: SliceScaleMode::Tile { stretch_value: 1. },
+//                 border: BorderRect::square(16.),
+//                 ..Default::default()
+//             }),
+//             ..Default::default()
+//         },))
+//         .with_child((
+//             Sprite {
+//                 image: asset_server.load("textbox/collision_mask.png"),
+//                 anchor: Anchor::TopLeft,
+//                 ..Default::default()
+//             },
+//             Transform::from_translation(Vec3::default().with_z(100.)),
+//             Continue,
+//             Visibility::Hidden,
+//         ));
+// }
+//
+// pub fn fade_textbox(entity: Entity, asset_server: &AssetServer, commands: &mut Commands) {
+//     commands
+//         .entity(entity)
+//         .insert((
+//             TextBox {
+//                 text_offset: Vec2::new(400., 150.),
+//                 text_bounds: TextBounds::from(Vec2::new(700., 100.)),
+//                 text_anchor: Some(Anchor::TopLeft),
+//                 font_size: 28.,
+//                 font: Some(asset_server.load("textbox/joystix.otf")),
+//             },
+//             SfxWord::default(),
+//             Transform::from_xyz(-WINDOW_WIDTH / 2., -WINDOW_HEIGHT / 2., 0.),
+//         ))
+//         .with_child((
+//             Sprite {
+//                 image: asset_server.load("textbox/black.png"),
+//                 anchor: Anchor::BottomLeft,
+//                 ..Default::default()
+//             },
+//             Transform::from_xyz(0., 0., -1.),
+//         ))
+//         .with_child((
+//             Sprite {
+//                 image: asset_server.load("textbox/collision_mask.png"),
+//                 anchor: Anchor::BottomLeft,
+//                 ..Default::default()
+//             },
+//             Transform::from_xyz(0., 0., 100.),
+//             Continue,
+//             Visibility::Hidden,
+//         ));
+// }

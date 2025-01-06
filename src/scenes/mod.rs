@@ -10,6 +10,7 @@ use std::any::TypeId;
 //use std::fs::File;
 //use std::io::Write;
 
+mod emitters;
 pub mod home;
 pub mod park;
 mod point_light;
@@ -32,6 +33,7 @@ impl Plugin for ScenePlugin {
                 point_light::init_point_light_tiles,
                 point_light::init_point_light_entities,
                 point_light::init_occluders,
+                emitters::leaf_emitters,
             ),
         );
     }

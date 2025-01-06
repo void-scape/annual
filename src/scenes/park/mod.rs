@@ -88,10 +88,7 @@ pub fn init(entity: Entity) -> impl FnOnce(&mut World) {
         let handle = world.load_asset("sounds/ambient/night2.mp3");
         world.commands().entity(entity).with_child((
             SamplePlayer::new(handle),
-            bevy_seedling::sample::PlaybackSettings {
-                mode: RepeatMode::RepeatEndlessly,
-                volume: 0.5,
-            },
+            bevy_seedling::sample::PlaybackSettings::LOOP,
         ));
 
         world.commands().post_process(AmbientLight2d {

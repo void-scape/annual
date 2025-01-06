@@ -1,6 +1,9 @@
+use crate::{HEIGHT, WIDTH};
+
 use self::frags::SectionFrag;
 use self::render_layer::RenderLayerPlugin;
 use bevy::render::view::RenderLayers;
+use bevy::window::WindowResized;
 use bevy::{prelude::*, sprite::Anchor, text::TextBounds};
 use bevy_pretty_text::text::TypeWriterCommand;
 use bevy_pretty_text::type_writer::TypeWriterSets;
@@ -30,6 +33,7 @@ impl Plugin for TextBoxPlugin {
                     frags::portrait::update_portrait,
                     update_continue_visibility,
                     spawn_section_frags,
+                    resize_textbox,
                 )
                     .chain()
                     .after(TypeWriterSets::Update),
@@ -53,10 +57,10 @@ fn init_camera(mut commands: Commands) {
     ));
 }
 
-#[derive(Component)]
+#[derive(Default, Component)]
 #[require(RenderLayers(|| TextBox::RENDER_LAYER), PropagateRenderLayers)]
 pub struct TextBox {
-    pub text_offset: Vec2,
+    pub text_transform: Transform,
     pub text_bounds: TextBounds,
     pub text_anchor: Option<Anchor>,
     pub font_size: f32,
@@ -70,7 +74,7 @@ impl TextBox {
         (
             self.text_bounds,
             self.text_anchor.unwrap_or_default(),
-            Transform::from_translation(self.text_offset.extend(100.)),
+            self.text_transform,
             TextFont {
                 font_size: self.font_size,
                 font: self.font.clone().unwrap_or_default(),
@@ -182,6 +186,19 @@ fn spawn_section_frags(
 
                 commands.entity(textbox).add_child(id);
             }
+        }
+    }
+}
+
+fn resize_textbox(
+    mut resize_events: EventReader<WindowResized>,
+    mut textbox_query: Query<&mut Transform, With<TextBox>>,
+) {
+    for event in resize_events.read() {
+        let h_scale = event.width / WIDTH;
+        let v_scale = event.height / HEIGHT;
+        for mut t in textbox_query.iter_mut() {
+            t.scale = Vec2::new(h_scale, v_scale).extend(1.);
         }
     }
 }

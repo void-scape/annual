@@ -32,14 +32,10 @@ mod scenes;
 mod textbox;
 
 const TILE_SIZE: f32 = 16.;
-
 const WINDOW_WIDTH: f32 = 1280.;
 const WINDOW_HEIGHT: f32 = 720.;
-
 const WIDTH: f32 = 320.;
 const HEIGHT: f32 = 180.;
-
-const PIXEL_SIZE: f32 = 4.;
 
 fn main() {
     App::default()
@@ -48,6 +44,9 @@ fn main() {
                 .set(WindowPlugin {
                     primary_window: Some(Window {
                         resolution: [WINDOW_WIDTH, WINDOW_HEIGHT].into(),
+                        mode: bevy::window::WindowMode::BorderlessFullscreen(
+                            MonitorSelection::Primary,
+                        ),
                         ..Default::default()
                     }),
                     ..Default::default()

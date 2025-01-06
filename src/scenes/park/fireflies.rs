@@ -35,6 +35,7 @@ pub struct Lifetime {
 /// Spawn new fireflies and bind them to the given scene.
 pub fn spawn_fireflies<S: Scene>(
     mut commands: Commands,
+    server: Res<AssetServer>,
     mut spawner_query: Query<(
         Entity,
         &FireflySpawner,
@@ -53,6 +54,7 @@ pub fn spawn_fireflies<S: Scene>(
                     commands.entity(scene_root).with_child((
                         Firefly,
                         FireflyParent(entity),
+                        Sprite::from_image(server.load("sprites/firefly.png")),
                         Velocity(Vec2::new(
                             rand::thread_rng().gen_range(-1.0..1.0) * SPEED,
                             rand::thread_rng().gen_range(-1.0..1.0) * SPEED,
