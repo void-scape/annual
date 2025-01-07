@@ -342,9 +342,6 @@ fn anchor(
 }
 
 #[derive(Component)]
-struct DynamicMoveTo;
-
-#[derive(Component)]
 struct DynamicallyAnchored(Entity);
 
 fn unbind_anchor(
@@ -386,7 +383,7 @@ fn unbind_anchor(
 
 fn bind_to_anchor(
     q: Query<(Entity, &annual::DynamicCameraAnchor, &Transform)>,
-    player: Query<(Entity, &Transform), With<Player>>,
+    player: Query<&Transform, With<Player>>,
     camera: Query<(Entity, &Transform), (With<MainCamera>, Without<DynamicallyAnchored>)>,
     mut commands: Commands,
 ) {
@@ -394,7 +391,7 @@ fn bind_to_anchor(
         return;
     };
 
-    let Ok((player, player_transform)) = player.get_single() else {
+    let Ok(player_transform) = player.get_single() else {
         return;
     };
 
@@ -410,7 +407,7 @@ fn bind_to_anchor(
                 MoveTo::new(
                     Duration::from_millis(anchor.speed as u64),
                     camera_transform.translation,
-                    transform.translation + Vec3::new(TILE_SIZE / 2., -TILE_SIZE / 2., 0.),
+                    transform.translation,
                     easing::EaseFunction::QuadraticOut,
                 ),
                 DynamicallyAnchored(entity),

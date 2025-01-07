@@ -5,38 +5,38 @@ use bevy_light_2d::light::PointLight2d;
 use bevy_light_2d::prelude::{LightOccluder2d, LightOccluder2dShape};
 
 pub fn init_point_light_tiles(
-    mut commands: Commands,
-    tile_query: Query<Entity, Added<crate::annual::TilePointLight>>,
+    _commands: Commands,
+    _tile_query: Query<
+        (Entity, &crate::annual::TilePointLight),
+        Added<crate::annual::TilePointLight>,
+    >,
 ) {
-    for entity in tile_query.iter() {
-        commands.entity(entity).with_child((
-            PointLight2d {
-                color: srgb_from_hex(0xffeb57),
-                intensity: 2.,
-                radius: 100.,
-                falloff: 100.,
-                cast_shadows: true,
-            },
-            Transform::from_xyz(TILE_SIZE / 2., -TILE_SIZE / 2. - TILE_SIZE * 3., 0.),
-        ));
-    }
+    // for entity in tile_query.iter() {
+    //     commands.entity(entity).with_child((
+    //         PointLight2d {
+    //             color: srgb_from_hex(0xffeb57),
+    //             intensity: 2.,
+    //             radius: 100.,
+    //             falloff: 100.,
+    //             ..Default::default()
+    //         },
+    //         Transform::from_xyz(TILE_SIZE / 2., -TILE_SIZE / 2. - TILE_SIZE * 3., 0.),
+    //     ));
+    // }
 }
 
 pub fn init_point_light_entities(
     mut commands: Commands,
-    light_query: Query<Entity, Added<crate::annual::PointLight>>,
+    light_query: Query<(Entity, &crate::annual::PointLight), Added<crate::annual::PointLight>>,
 ) {
-    for entity in light_query.iter() {
-        commands.entity(entity).with_child((
-            PointLight2d {
-                color: srgb_from_hex(0xf6cd26),
-                intensity: 5.,
-                radius: 150.,
-                falloff: 50.,
-                ..default()
-            },
-            Transform::from_xyz(TILE_SIZE / 2., -TILE_SIZE / 2., 0.),
-        ));
+    for (entity, light) in light_query.iter() {
+        commands.entity(entity).with_child((PointLight2d {
+            color: srgb_from_hex(0xf6cd26),
+            intensity: light.intensity,
+            radius: light.radius,
+            falloff: light.falloff,
+            ..default()
+        },));
     }
 }
 

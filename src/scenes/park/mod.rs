@@ -4,7 +4,7 @@ use super::Scene;
 use crate::annual::{self, Interactions};
 use crate::cutscene::CutsceneFragment;
 use crate::frag_util::FragExt;
-use crate::gfx::camera::{Binded, CameraCurveFragment, MainCamera, MoveTo};
+use crate::gfx::camera::CameraCurveFragment;
 use crate::gfx::post_processing::PostProcessCommand;
 use crate::gfx::zorder::YOrigin;
 use crate::interactions::BindInteraction;
@@ -14,7 +14,6 @@ use crate::{characters::*, TILE_SIZE};
 use bevy::core_pipeline::bloom::Bloom;
 use bevy::input::keyboard::KeyboardInput;
 use bevy::input::ButtonState;
-use bevy::math::NormedVectorSpace;
 use bevy::prelude::*;
 use bevy_light_2d::light::AmbientLight2d;
 use bevy_pretty_text::prelude::*;
@@ -45,6 +44,21 @@ struct LampComponents;
 #[require(Collider(|| Collider::from_rect(Vec2::new(3., -32.), Vec2::new(27., 8.))))]
 struct BenchComponents;
 
+#[derive(Default, Component)]
+#[require(YOrigin(|| YOrigin(-TILE_SIZE * 2.75)), StaticBody)]
+#[require(Collider(|| Collider::from_circle(Vec2::new(TILE_SIZE / 2., -TILE_SIZE * 2.75), 5.)))]
+struct TrunkComponents1;
+
+#[derive(Default, Component)]
+#[require(YOrigin(|| YOrigin(-TILE_SIZE * 2.75)), StaticBody)]
+#[require(Collider(|| Collider::from_circle(Vec2::new(TILE_SIZE / 2., -TILE_SIZE * 2.6), 8.)))]
+struct TrunkComponents2;
+
+#[derive(Default, Component)]
+#[require(YOrigin(|| YOrigin(-TILE_SIZE * 0.9)), StaticBody)]
+#[require(Collider(|| Collider::from_rect(Vec2::new(TILE_SIZE / 2., -TILE_SIZE), Vec2::new(TILE_SIZE, TILE_SIZE / 2.))))]
+struct RockComponents;
+
 pub struct ParkPlugin;
 
 impl Plugin for ParkPlugin {
@@ -61,9 +75,12 @@ impl Plugin for ParkPlugin {
         .register_required_components::<annual::ParkTree1, ParkTreeComponents1>()
         .register_required_components::<annual::ParkTree2, ParkTreeComponents1>()
         .register_required_components::<annual::ParkTree3, ParkTreeComponents2>()
+        .register_required_components::<annual::Trunk1, TrunkComponents1>()
+        .register_required_components::<annual::Trunk2, TrunkComponents2>()
         .register_required_components::<annual::Lamp, LampComponents>()
         .register_required_components::<annual::Bench, BenchComponents>()
-        .register_required_components_with::<annual::Flower, YOrigin>(|| YOrigin(-TILE_SIZE))
+        .register_required_components::<annual::Rock, RockComponents>()
+        .register_required_components_with::<annual::Flower, YOrigin>(|| YOrigin(-TILE_SIZE * 0.9))
         .register_required_components_with::<annual::Flower1, YOrigin>(|| YOrigin(-TILE_SIZE))
         .register_required_components_with::<annual::Flower2, YOrigin>(|| YOrigin(-TILE_SIZE));
     }

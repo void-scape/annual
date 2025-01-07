@@ -74,7 +74,7 @@ fn setup_camera(world: &mut World) {
         Camera2d,
         Camera {
             hdr: true,
-            clear_color: ClearColorConfig::Custom(srgb_from_hex(0x725956)),
+            clear_color: ClearColorConfig::Custom(srgb_from_hex(0x6fa14d)),
             order: -1,
             target: RenderTarget::Image(image_handle.clone()),
             ..Default::default()
